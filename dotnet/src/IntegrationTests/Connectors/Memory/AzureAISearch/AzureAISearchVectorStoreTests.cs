@@ -1,16 +1,12 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using System;
 using System.Collections.Generic;
-using System.Text.Json.Serialization;
+using System.Linq;
 using System.Threading.Tasks;
-using Azure;
-using Azure.Search.Documents;
-using Azure.Search.Documents.Indexes;
-using Azure.Search.Documents.Indexes.Models;
-using Azure.Search.Documents.Models;
+using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.AzureAISearch;
 using Microsoft.SemanticKernel.Memory;
+using SemanticKernel.IntegrationTests.Connectors.Memory.AzureAISearch;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -20,243 +16,138 @@ namespace SemanticKernel.IntegrationTests.Connectors.AzureAISearch;
 /// Integration tests for <see cref="AzureAISearchVectorStore{TDataModel}"/> class.
 /// Tests work with Azure AI Search Instance..
 /// </summary>
-public sealed class AzureAISearchVectorStoreTests : IAsyncLifetime
+public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, AzureAISearchVectorStoreFixture fixture) : IClassFixture<AzureAISearchVectorStoreFixture>
 {
     // If null, all tests will be enabled
-    private const string SkipReason = "Requires Azure AI Search Service instance up and running";
+    private const string SkipReason = null; //"Requires Azure AI Search Service instance up and running";
 
-    private const string BaseAddress = "";
-
-    private readonly SearchIndexClient _searchClientIndex;
-    private readonly ITestOutputHelper _output;
-
-    public AzureAISearchVectorStoreTests(ITestOutputHelper output)
-    {
-        this._searchClientIndex = new SearchIndexClient(new Uri(BaseAddress), new AzureKeyCredential(""));
-        this._output = output;
-    }
-
-    public async Task InitializeAsync()
-    {
-        await DeleteIndexIfExistsAsync("hotels", this._searchClientIndex);
-        await CreateIndexAsync("hotels", this._searchClientIndex);
-        UploadDocuments(this._searchClientIndex.GetSearchClient("hotels"));
-    }
-
-    public async Task DisposeAsync()
-    {
-        //await DeleteIndexIfExistsAsync("hotels", this._searchClientIndex);
-    }
+    private const string KeyFieldName = "HotelId";
 
     [Fact(Skip = SkipReason)]
     public async Task ItCanUpsertDocumentToVectorStoreAsync()
     {
         // Arrange
-        var searchClient = this._searchClientIndex.GetSearchClient("hotels");
-        var vectorStore = new AzureAISearchVectorStore<HotelShortInfo>(searchClient);
+        var searchClient = fixture.SearchIndexClient.GetSearchClient(fixture.TestIndexName);
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(searchClient, KeyFieldName);
 
         // Act
-        var result = await vectorStore.UpsertAsync(new HotelShortInfo("MyHotel", "My Hotel is great."));
+        var upsertResult = await sut.UpsertAsync(new AzureAISearchVectorStoreFixture.HotelShortInfo("mh5", "MyHotel5", "My Hotel is great."));
+        var getResult = await sut.GetAsync("mh5");
 
         // Assert
-        Assert.NotNull(result);
+        Assert.NotNull(upsertResult);
+        Assert.Equal("mh5", upsertResult);
+
+        Assert.NotNull(getResult);
+        Assert.Equal("MyHotel5", getResult.HotelName);
 
         // Output
-        this._output.WriteLine(result);
+        output.WriteLine(upsertResult);
+        output.WriteLine(getResult.ToString());
+    }
+
+    [Fact(Skip = SkipReason)]
+    public async Task ItCanUpsertManyDocumentsToVectorStoreAsync()
+    {
+        // Arrange
+        var searchClient = fixture.SearchIndexClient.GetSearchClient(fixture.TestIndexName);
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(searchClient, KeyFieldName);
+
+        // Act
+        var results = sut.UpsertBatchAsync(
+            [
+                new AzureAISearchVectorStoreFixture.HotelShortInfo("mh1", "MyHotel1", "My Hotel is great 1."),
+                new AzureAISearchVectorStoreFixture.HotelShortInfo("mh2", "MyHotel2", "My Hotel is great 2."),
+                new AzureAISearchVectorStoreFixture.HotelShortInfo("mh3", "MyHotel3", "My Hotel is great 2."),
+            ]);
+
+        // Assert
+        Assert.NotNull(results);
+        var resultsList = await results.ToListAsync();
+
+        Assert.Equal(3, resultsList.Count);
+        Assert.Contains("mh1", resultsList);
+        Assert.Contains("mh2", resultsList);
+        Assert.Contains("mh3", resultsList);
+
+        // Output
+        foreach (var result in resultsList)
+        {
+            output.WriteLine(result);
+        }
     }
 
     [Fact(Skip = SkipReason)]
     public async Task ItCanGetDocumentFromVectorStoreAsync()
     {
         // Arrange
-        var searchClient = this._searchClientIndex.GetSearchClient("hotels");
-        var vectorStore = new AzureAISearchVectorStore<HotelShortInfo>(searchClient);
+        var searchClient = fixture.SearchIndexClient.GetSearchClient(fixture.TestIndexName);
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(searchClient, KeyFieldName);
 
         // Act
-        var hotel1 = await vectorStore.GetAsync("1", new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName" } });
+        var hotel1 = await sut.GetAsync("1", new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName" } });
 
         // Assert
         Assert.NotNull(hotel1);
 
         // Output
-        this._output.WriteLine(hotel1.ToString());
+        output.WriteLine(hotel1.ToString());
     }
 
-    // Delete the hotels-quickstart index to reuse its name
-    private static async Task DeleteIndexIfExistsAsync(string indexName, SearchIndexClient adminClient)
+    [Fact(Skip = SkipReason)]
+    public async Task ItCanGetManyDocumentsFromVectorStoreAsync()
     {
-        adminClient.GetIndexNames();
+        // Arrange
+        var searchClient = fixture.SearchIndexClient.GetSearchClient(fixture.TestIndexName);
+        var options = new AzureAISearchVectorStoreOptions { MaxDegreeOfGetParallelism = 3 };
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(searchClient, KeyFieldName, options);
+
+        // Act
+        var hotels = sut.GetBatchAsync(["1", "2", "3", "4"], new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName", "Description" } });
+
+        // Assert
+        Assert.NotNull(hotels);
+        var hotelsList = await hotels.ToListAsync();
+        Assert.Equal(4, hotelsList.Count);
+
+        // Output
+        foreach (var hotel in hotelsList)
         {
-            await adminClient.DeleteIndexAsync(indexName);
+            output.WriteLine(hotel.ToString());
         }
     }
 
-    // Create hotels-quickstart index
-    private static async Task CreateIndexAsync(string indexName, SearchIndexClient adminClient)
+    [Fact(Skip = SkipReason)]
+    public async Task ItCanRemoveDocumentFromVectorStoreAsync()
     {
-        FieldBuilder fieldBuilder = new();
-        var searchFields = fieldBuilder.Build(typeof(Hotel));
+        // Arrange
+        var searchClient = fixture.SearchIndexClient.GetSearchClient(fixture.TestIndexName);
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(searchClient, KeyFieldName);
+        await sut.UpsertAsync(new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp1", "TempHotel1", "This hotel will be deleted."));
 
-        var definition = new SearchIndex(indexName, searchFields);
+        // Act
+        await sut.RemoveAsync("tmp1");
 
-        var suggester = new SearchSuggester("sg", new[] { "HotelName", "Category", "Address/City", "Address/StateProvince" });
-        definition.Suggesters.Add(suggester);
-
-        await adminClient.CreateOrUpdateIndexAsync(definition);
+        // Assert
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp1", new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName" } }));
     }
 
-    // Upload documents in a single Upload request.
-    private static void UploadDocuments(SearchClient searchClient)
+    [Fact(Skip = SkipReason)]
+    public async Task ItCanRemoveManyDocumentsFromVectorStoreAsync()
     {
-        IndexDocumentsBatch<Hotel> batch = IndexDocumentsBatch.Create(
-            IndexDocumentsAction.Upload(
-                new Hotel()
-                {
-                    HotelId = "1",
-                    HotelName = "Secret Point Motel",
-                    Description = "The hotel is ideally located on the main commercial artery of the city in the heart of New York. A few minutes away is Time's Square and the historic centre of the city, as well as other places of interest that make New York one of America's most attractive and cosmopolitan cities.",
-                    DescriptionFr = "L'hôtel est idéalement situé sur la principale artère commerciale de la ville en plein cœur de New York. A quelques minutes se trouve la place du temps et le centre historique de la ville, ainsi que d'autres lieux d'intérêt qui font de New York l'une des villes les plus attractives et cosmopolites de l'Amérique.",
-                    Category = "Boutique",
-                    Tags = new[] { "pool", "air conditioning", "concierge" },
-                    ParkingIncluded = false,
-                    LastRenovationDate = new DateTimeOffset(1970, 1, 18, 0, 0, 0, TimeSpan.Zero),
-                    Rating = 3.6,
-                    Address = new Address()
-                    {
-                        StreetAddress = "677 5th Ave",
-                        City = "New York",
-                        StateProvince = "NY",
-                        PostalCode = "10022",
-                        Country = "USA"
-                    }
-                }),
-            IndexDocumentsAction.Upload(
-                new Hotel()
-                {
-                    HotelId = "2",
-                    HotelName = "Twin Dome Motel",
-                    Description = "The hotel is situated in a  nineteenth century plaza, which has been expanded and renovated to the highest architectural standards to create a modern, functional and first-class hotel in which art and unique historical elements coexist with the most modern comforts.",
-                    DescriptionFr = "L'hôtel est situé dans une place du XIXe siècle, qui a été agrandie et rénovée aux plus hautes normes architecturales pour créer un hôtel moderne, fonctionnel et de première classe dans lequel l'art et les éléments historiques uniques coexistent avec le confort le plus moderne.",
-                    Category = "Boutique",
-                    Tags = new[] { "pool", "free wifi", "concierge" },
-                    ParkingIncluded = false,
-                    LastRenovationDate = new DateTimeOffset(1979, 2, 18, 0, 0, 0, TimeSpan.Zero),
-                    Rating = 3.60,
-                    Address = new Address()
-                    {
-                        StreetAddress = "140 University Town Center Dr",
-                        City = "Sarasota",
-                        StateProvince = "FL",
-                        PostalCode = "34243",
-                        Country = "USA"
-                    }
-                }),
-            IndexDocumentsAction.Upload(
-                new Hotel()
-                {
-                    HotelId = "3",
-                    HotelName = "Triple Landscape Hotel",
-                    Description = "The Hotel stands out for its gastronomic excellence under the management of William Dough, who advises on and oversees all of the Hotel’s restaurant services.",
-                    DescriptionFr = "L'hôtel est situé dans une place du XIXe siècle, qui a été agrandie et rénovée aux plus hautes normes architecturales pour créer un hôtel moderne, fonctionnel et de première classe dans lequel l'art et les éléments historiques uniques coexistent avec le confort le plus moderne.",
-                    Category = "Resort and Spa",
-                    Tags = new[] { "air conditioning", "bar", "continental breakfast" },
-                    ParkingIncluded = true,
-                    LastRenovationDate = new DateTimeOffset(2015, 9, 20, 0, 0, 0, TimeSpan.Zero),
-                    Rating = 4.80,
-                    Address = new Address()
-                    {
-                        StreetAddress = "3393 Peachtree Rd",
-                        City = "Atlanta",
-                        StateProvince = "GA",
-                        PostalCode = "30326",
-                        Country = "USA"
-                    }
-                }),
-            IndexDocumentsAction.Upload(
-                new Hotel()
-                {
-                    HotelId = "4",
-                    HotelName = "Sublime Cliff Hotel",
-                    Description = "Sublime Cliff Hotel is located in the heart of the historic center of Sublime in an extremely vibrant and lively area within short walking distance to the sites and landmarks of the city and is surrounded by the extraordinary beauty of churches, buildings, shops and monuments. Sublime Cliff is part of a lovingly restored 1800 palace.",
-                    DescriptionFr = "Le sublime Cliff Hotel est situé au coeur du centre historique de sublime dans un quartier extrêmement animé et vivant, à courte distance de marche des sites et monuments de la ville et est entouré par l'extraordinaire beauté des églises, des bâtiments, des commerces et Monuments. Sublime Cliff fait partie d'un Palace 1800 restauré avec amour.",
-                    Category = "Boutique",
-                    Tags = new[] { "concierge", "view", "24-hour front desk service" },
-                    ParkingIncluded = true,
-                    LastRenovationDate = new DateTimeOffset(1960, 2, 06, 0, 0, 0, TimeSpan.Zero),
-                    Rating = 4.60,
-                    Address = new Address()
-                    {
-                        StreetAddress = "7400 San Pedro Ave",
-                        City = "San Antonio",
-                        StateProvince = "TX",
-                        PostalCode = "78216",
-                        Country = "USA"
-                    }
-                })
-            );
+        // Arrange
+        var searchClient = fixture.SearchIndexClient.GetSearchClient(fixture.TestIndexName);
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(searchClient, KeyFieldName);
+        await sut.UpsertAsync(new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp5", "TempHotel5", "This hotel will be deleted."));
+        await sut.UpsertAsync(new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp6", "TempHotel6", "This hotel will be deleted."));
+        await sut.UpsertAsync(new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp7", "TempHotel7", "This hotel will be deleted."));
 
-        try
-        {
-            IndexDocumentsResult result = searchClient.IndexDocuments(batch);
-        }
-        catch (Exception)
-        {
-            // If for some reason any documents are dropped during indexing, you can compensate by delaying and
-            // retrying. This simple demo just logs the failed document keys and continues.
-            Console.WriteLine("Failed to index some of the documents: {0}");
-        }
-    }
+        // Act
+        await sut.RemoveBatchAsync(["tmp5", "tmp6", "tmp7"]);
 
-    private record HotelShortInfo(string HotelName, string Description);
-
-    private partial record Hotel
-    {
-        [SimpleField(IsKey = true, IsFilterable = true)]
-        public string HotelId { get; set; }
-
-        [SearchableField(IsSortable = true)]
-        public string HotelName { get; set; }
-
-        [SearchableField(AnalyzerName = LexicalAnalyzerName.Values.EnLucene)]
-        public string Description { get; set; }
-
-        [SearchableField(AnalyzerName = LexicalAnalyzerName.Values.FrLucene)]
-        [JsonPropertyName("Description_fr")]
-        public string DescriptionFr { get; set; }
-
-        [SearchableField(IsFilterable = true, IsSortable = true, IsFacetable = true)]
-        public string Category { get; set; }
-
-        [SearchableField(IsFilterable = true, IsFacetable = true)]
-        public string[] Tags { get; set; }
-
-        [SimpleField(IsFilterable = true, IsSortable = true, IsFacetable = true)]
-        public bool? ParkingIncluded { get; set; }
-
-        [SimpleField(IsFilterable = true, IsSortable = true, IsFacetable = true)]
-        public DateTimeOffset? LastRenovationDate { get; set; }
-
-        [SimpleField(IsFilterable = true, IsSortable = true, IsFacetable = true)]
-        public double? Rating { get; set; }
-
-        [SearchableField]
-        public Address Address { get; set; }
-    }
-    private partial record Address
-    {
-        [SearchableField(IsFilterable = true)]
-        public string StreetAddress { get; set; }
-
-        [SearchableField(IsFilterable = true, IsSortable = true, IsFacetable = true)]
-        public string City { get; set; }
-
-        [SearchableField(IsFilterable = true, IsSortable = true, IsFacetable = true)]
-        public string StateProvince { get; set; }
-
-        [SearchableField(IsFilterable = true, IsSortable = true, IsFacetable = true)]
-        public string PostalCode { get; set; }
-
-        [SearchableField(IsFilterable = true, IsSortable = true, IsFacetable = true)]
-        public string Country { get; set; }
+        // Assert
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp5", new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName" } }));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp6", new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName" } }));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp7", new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName" } }));
     }
 }

@@ -10,19 +10,22 @@ namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 public class AzureAISearchVectorStoreOptions
 {
     /// <summary>
-    /// Gets a function that can be used to sanitize the azure ai search record id before it is sent to Azure AI Search.
+    /// Gets a function that can be used to encode the azure ai search record id before it is sent to Azure AI Search.
     /// </summary>
     /// <remarks>
     /// Azure AI Search keys can contain only letters, digits, underscore, dash, equal sign, recommending
-    /// to encode values with a URL-safe algorithm.
+    /// to encode values with a URL-safe algorithm or use base64 encoding.
     /// </remarks>
-    public Func<string, string>? RecordKeySanitizer { get; init; }
+    public Func<string, string>? RecordKeyEncoder { get; init; }
 
     /// <summary>
-    /// Gets the name of the field that is the key of the azure ai search record.
-    /// This is required if the key field name should be sanitized.
+    /// Gets a function that can be used to decode the azure ai search record id after it is retrieved from Azure AI Search.
     /// </summary>
-    public string? KeyFieldName { get; init; }
+    /// <remarks>
+    /// Azure AI Search keys can contain only letters, digits, underscore, dash, equal sign, recommending
+    /// to encode values with a URL-safe algorithm or use base64 encoding.
+    /// </remarks>
+    public Func<string, string>? RecordKeyDecoder { get; init; }
 
     /// <summary>
     /// Gets the maximum number of items to retrieve in paraellel when getting records in a batch.

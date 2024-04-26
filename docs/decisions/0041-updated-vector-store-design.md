@@ -84,8 +84,11 @@ Schema Comparison
 Open Questions:
 - Can we annotate the Vector Store data model with attributes that identify the vectors and the fields they describe, and is it useful?
   - Definitely useful, and there is precedence already with Azure AI Search doing the same.
-
-
+- How would someone pick a collection, if they are storing the same data across many collections, e.g. partitioned by user.
+  - Option 1, add a Collections class where you can get one first and then do crud on it.
+  - Option 2, add a collection name parameter to each method, like we have now.
+- How do we change the key of a record for azure search before wriing without updating the passed in model.
+  - This should be done in a decorator, and not in the main class.  If someone really wants this, they can layer it on top, and there can be multiple solutions, e.g. changed passed in model, clone using serialization.
 ---
 
 

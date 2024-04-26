@@ -51,4 +51,19 @@ public interface IVectorStore<TDataModel>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>The memory records associated with the unique keys provided.</returns>
     IAsyncEnumerable<TDataModel> GetBatchAsync(IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Removes a memory record from the data store. Does not guarantee that the collection exists.
+    /// </summary>
+    /// <param name="key">The unique id associated with the memory record to remove.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    /// <returns>The unique identifier for the memory record.</returns>
+    Task<string> RemoveAsync(string key, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Removes a batch of memory records from the data store. Does not guarantee that the collection exists.
+    /// </summary>
+    /// <param name="keys">The unique ids associated with the memory record to remove.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    Task RemoveBatchAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default);
 }
