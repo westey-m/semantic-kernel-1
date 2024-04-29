@@ -15,28 +15,6 @@ namespace Microsoft.SemanticKernel.Memory;
 public interface IVectorStore<TDataModel>
 {
     /// <summary>
-    /// Upserts a memory record into the data store. Does not guarantee that the collection exists.
-    ///     If the record already exists, it will be updated.
-    ///     If the record does not exist, it will be created.
-    /// </summary>
-    /// <param name="collectionName">The name of the collection of records.</param>
-    /// <param name="record">The memory record to upsert.</param>
-    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
-    /// <returns>The unique identifier for the memory record.</returns>
-    Task<string> UpsertAsync(string collectionName, TDataModel record, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Upserts a group of memory records into the data store. Does not guarantee that the collection exists.
-    ///     If the record already exists, it will be updated.
-    ///     If the record does not exist, it will be created.
-    /// </summary>
-    /// <param name="collectionName">The name of the collection of records.</param>
-    /// <param name="records">The memory records to upsert.</param>
-    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
-    /// <returns>The unique identifiers for the memory records.</returns>
-    IAsyncEnumerable<string> UpsertBatchAsync(string collectionName, IEnumerable<TDataModel> records, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets a memory record from the data store. Does not guarantee that the collection exists.
     /// </summary>
     /// <param name="collectionName">The name of the collection of records.</param>
@@ -72,4 +50,26 @@ public interface IVectorStore<TDataModel>
     /// <param name="keys">The unique ids associated with the memory record to remove.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     Task RemoveBatchAsync(string collectionName, IEnumerable<string> keys, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Upserts a memory record into the data store. Does not guarantee that the collection exists.
+    ///     If the record already exists, it will be updated.
+    ///     If the record does not exist, it will be created.
+    /// </summary>
+    /// <param name="collectionName">The name of the collection of records.</param>
+    /// <param name="record">The memory record to upsert.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    /// <returns>The unique identifier for the memory record.</returns>
+    Task<string> UpsertAsync(string collectionName, TDataModel record, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Upserts a group of memory records into the data store. Does not guarantee that the collection exists.
+    ///     If the record already exists, it will be updated.
+    ///     If the record does not exist, it will be created.
+    /// </summary>
+    /// <param name="collectionName">The name of the collection of records.</param>
+    /// <param name="records">The memory records to upsert.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    /// <returns>The unique identifiers for the memory records.</returns>
+    IAsyncEnumerable<string> UpsertBatchAsync(string collectionName, IEnumerable<TDataModel> records, CancellationToken cancellationToken = default);
 }

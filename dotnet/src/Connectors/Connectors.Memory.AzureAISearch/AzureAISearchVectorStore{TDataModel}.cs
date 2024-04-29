@@ -52,53 +52,6 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<string> UpsertAsync(string collectionName, TDataModel record, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(collectionName))
-        {
-            throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
-        }
-
-        if (record is null)
-        {
-            throw new ArgumentNullException(nameof(record));
-        }
-
-        var searchClient = this.GetSearchClient(collectionName);
-        var results = await RunOperationAsync(() => searchClient.UploadDocumentsAsync<TDataModel>([record], new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
-        return results.Value.Results[0].Key;
-    }
-
-    /// <inheritdoc />
-    public async IAsyncEnumerable<string> UpsertBatchAsync(string collectionName, IEnumerable<TDataModel> records, [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(collectionName))
-        {
-            throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
-        }
-
-        if (records is null)
-        {
-            throw new ArgumentNullException(nameof(records));
-        }
-
-        // Create Options
-        var innerOptions = new IndexDocumentsOptions { ThrowOnAnyError = true };
-
-        // Upload data
-        var searchClient = this.GetSearchClient(collectionName);
-        var results = await RunOperationAsync(
-            () => searchClient.IndexDocumentsAsync(
-                IndexDocumentsBatch.Upload(records),
-                innerOptions,
-                cancellationToken: cancellationToken)).ConfigureAwait(false);
-
-        // Get results
-        var resultKeys = results.Value.Results.Select(x => x.Key).ToList();
-        foreach (var resultKey in resultKeys) { yield return resultKey; }
-    }
-
-    /// <inheritdoc />
     public async Task<TDataModel?> GetAsync(string collectionName, string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(collectionName))
@@ -182,6 +135,53 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
 
         var searchClient = this.GetSearchClient(collectionName);
         var results = await RunOperationAsync(() => searchClient.DeleteDocumentsAsync(this._keyFieldName, keys, new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<string> UpsertAsync(string collectionName, TDataModel record, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(collectionName))
+        {
+            throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
+        }
+
+        if (record is null)
+        {
+            throw new ArgumentNullException(nameof(record));
+        }
+
+        var searchClient = this.GetSearchClient(collectionName);
+        var results = await RunOperationAsync(() => searchClient.UploadDocumentsAsync<TDataModel>([record], new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
+        return results.Value.Results[0].Key;
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<string> UpsertBatchAsync(string collectionName, IEnumerable<TDataModel> records, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(collectionName))
+        {
+            throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
+        }
+
+        if (records is null)
+        {
+            throw new ArgumentNullException(nameof(records));
+        }
+
+        // Create Options
+        var innerOptions = new IndexDocumentsOptions { ThrowOnAnyError = true };
+
+        // Upload data
+        var searchClient = this.GetSearchClient(collectionName);
+        var results = await RunOperationAsync(
+            () => searchClient.IndexDocumentsAsync(
+                IndexDocumentsBatch.Upload(records),
+                innerOptions,
+                cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        // Get results
+        var resultKeys = results.Value.Results.Select(x => x.Key).ToList();
+        foreach (var resultKey in resultKeys) { yield return resultKey; }
     }
 
     /// <summary>

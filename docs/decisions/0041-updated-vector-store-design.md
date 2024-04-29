@@ -61,14 +61,24 @@ interface IMemoryStore
 
 ### Vector Store Cross Store support
 
-|Feature|Azure AI Search|Weaviate|Redis|
-|-|-|-|-|
-|Per Item Results for Batch Operations|Y|||
-|Keys of upserted records|Y|||
-|Keys of removed records||||
-|Retrieval field selection for gets|Y|||
-|Failure reasons when batch partially fails|Y|||
+|Feature|Azure AI Search|Weaviate|Redis|Chroma|FAISS|Pinecone|LLamaIndex|
+|-|-|-|-|-|-|-|-|
+|Get Item Suport|Y|Y|Y|Y||Y||
+|Batch Operation Support|Y|||Y||Y||
+|Per Item Results for Batch Operations|Y|Y||N||N||
+|Keys of upserted records|Y|Y|N<sup>3</sup>|N<sup>3</sup>||N<sup>3</sup>||
+|Keys of removed records|Y|||N||N||
+|Retrieval field selection for gets|Y|||P<sup>2</sup>||N||
+|Include/Exclude Embeddings for gets|P<sup>1</sup>|||Y||N||
+|Failure reasons when batch partially fails|Y|Y||N||N||
 
+P = Partial Support
+
+<sup>1</sup> Only if you have the schema, to select the appropriate fields.
+
+<sup>2</sup> Supports broad categories of fields only.
+
+<sup>3</sup> Id is required in request, so can be returned if needed.
 
 ### Collection/Index management
 
