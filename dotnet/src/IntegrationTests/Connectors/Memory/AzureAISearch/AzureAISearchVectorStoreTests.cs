@@ -27,12 +27,11 @@ public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, Azur
     public async Task ItCanUpsertDocumentToVectorStoreAsync()
     {
         // Arrange
-        var searchClient = fixture.SearchIndexClient.GetSearchClient(fixture.TestIndexName);
-        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(searchClient, KeyFieldName);
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, KeyFieldName);
 
         // Act
-        var upsertResult = await sut.UpsertAsync(new AzureAISearchVectorStoreFixture.HotelShortInfo("mh5", "MyHotel5", "My Hotel is great."));
-        var getResult = await sut.GetAsync("mh5");
+        var upsertResult = await sut.UpsertAsync(fixture.TestIndexName, new AzureAISearchVectorStoreFixture.HotelShortInfo("mh5", "MyHotel5", "My Hotel is great."));
+        var getResult = await sut.GetAsync(fixture.TestIndexName, "mh5");
 
         // Assert
         Assert.NotNull(upsertResult);
@@ -50,11 +49,11 @@ public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, Azur
     public async Task ItCanUpsertManyDocumentsToVectorStoreAsync()
     {
         // Arrange
-        var searchClient = fixture.SearchIndexClient.GetSearchClient(fixture.TestIndexName);
-        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(searchClient, KeyFieldName);
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, KeyFieldName);
 
         // Act
         var results = sut.UpsertBatchAsync(
+            fixture.TestIndexName,
             [
                 new AzureAISearchVectorStoreFixture.HotelShortInfo("mh1", "MyHotel1", "My Hotel is great 1."),
                 new AzureAISearchVectorStoreFixture.HotelShortInfo("mh2", "MyHotel2", "My Hotel is great 2."),
@@ -81,11 +80,10 @@ public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, Azur
     public async Task ItCanGetDocumentFromVectorStoreAsync()
     {
         // Arrange
-        var searchClient = fixture.SearchIndexClient.GetSearchClient(fixture.TestIndexName);
-        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(searchClient, KeyFieldName);
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, KeyFieldName);
 
         // Act
-        var hotel1 = await sut.GetAsync("1", new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName" } });
+        var hotel1 = await sut.GetAsync(fixture.TestIndexName, "1", new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName" } });
 
         // Assert
         Assert.NotNull(hotel1);
@@ -98,12 +96,11 @@ public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, Azur
     public async Task ItCanGetManyDocumentsFromVectorStoreAsync()
     {
         // Arrange
-        var searchClient = fixture.SearchIndexClient.GetSearchClient(fixture.TestIndexName);
         var options = new AzureAISearchVectorStoreOptions { MaxDegreeOfGetParallelism = 3 };
-        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(searchClient, KeyFieldName, options);
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, KeyFieldName, options);
 
         // Act
-        var hotels = sut.GetBatchAsync(["1", "2", "3", "4"], new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName", "Description" } });
+        var hotels = sut.GetBatchAsync(fixture.TestIndexName, ["1", "2", "3", "4"], new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName", "Description" } });
 
         // Assert
         Assert.NotNull(hotels);
@@ -121,33 +118,31 @@ public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, Azur
     public async Task ItCanRemoveDocumentFromVectorStoreAsync()
     {
         // Arrange
-        var searchClient = fixture.SearchIndexClient.GetSearchClient(fixture.TestIndexName);
-        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(searchClient, KeyFieldName);
-        await sut.UpsertAsync(new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp1", "TempHotel1", "This hotel will be deleted."));
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, KeyFieldName);
+        await sut.UpsertAsync(fixture.TestIndexName, new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp1", "TempHotel1", "This hotel will be deleted."));
 
         // Act
-        await sut.RemoveAsync("tmp1");
+        await sut.RemoveAsync(fixture.TestIndexName, "tmp1");
 
         // Assert
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp1", new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName" } }));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync(fixture.TestIndexName, "tmp1", new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName" } }));
     }
 
     [Fact(Skip = SkipReason)]
     public async Task ItCanRemoveManyDocumentsFromVectorStoreAsync()
     {
         // Arrange
-        var searchClient = fixture.SearchIndexClient.GetSearchClient(fixture.TestIndexName);
-        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(searchClient, KeyFieldName);
-        await sut.UpsertAsync(new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp5", "TempHotel5", "This hotel will be deleted."));
-        await sut.UpsertAsync(new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp6", "TempHotel6", "This hotel will be deleted."));
-        await sut.UpsertAsync(new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp7", "TempHotel7", "This hotel will be deleted."));
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, KeyFieldName);
+        await sut.UpsertAsync(fixture.TestIndexName, new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp5", "TempHotel5", "This hotel will be deleted."));
+        await sut.UpsertAsync(fixture.TestIndexName, new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp6", "TempHotel6", "This hotel will be deleted."));
+        await sut.UpsertAsync(fixture.TestIndexName, new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp7", "TempHotel7", "This hotel will be deleted."));
 
         // Act
-        await sut.RemoveBatchAsync(["tmp5", "tmp6", "tmp7"]);
+        await sut.RemoveBatchAsync(fixture.TestIndexName, ["tmp5", "tmp6", "tmp7"]);
 
         // Assert
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp5", new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName" } }));
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp6", new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName" } }));
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp7", new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName" } }));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync(fixture.TestIndexName, "tmp5", new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName" } }));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync(fixture.TestIndexName, "tmp6", new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName" } }));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync(fixture.TestIndexName, "tmp7", new VectorStoreGetDocumentOptions { SelectedFields = new List<string>() { "HotelId", "HotelName" } }));
     }
 }

@@ -1,14 +1,15 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure;
 using Azure.Search.Documents;
+using Azure.Search.Documents.Indexes;
 using Azure.Search.Documents.Models;
 using Microsoft.SemanticKernel.Memory;
 
@@ -20,27 +21,27 @@ namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 /// <typeparam name="TDataModel">The data model to use for adding, updating and retrieving data from storage.</typeparam>
 public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
 {
-    /// <summary>Azure AI Search client that can be used to manage data in a Azure AI Search Service index.</summary>
-    private readonly SearchClient _client;
+    /// <summary>Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</summary>
+    private readonly SearchIndexClient _searchIndexClient;
 
-    /// <summary>The name of the key field for the collection that this class is used with.</summary>
+    /// <summary>The name of the key field for the collections that this class is used with.</summary>
     private readonly string _keyFieldName;
+
+    /// <summary>Azure AI Search clients that can be used to manage data in an Azure AI Search Service index.</summary>
+    private readonly ConcurrentDictionary<string, SearchClient> _searchClientsByIndex = new();
 
     /// <summary>Optional configuration options for this class.</summary>
     private readonly AzureAISearchVectorStoreOptions? _options;
 
-    /// <summary>A property info object that points at the key field for the current model, allowing easy reading and writing of this property.</summary>
-    private readonly PropertyInfo _keyFieldPropertyInfo;
-
     /// <summary>
     /// Create a new instance of vector storage using Azure AI Search.
     /// </summary>
-    /// <param name="searchClient">Azure AI Search client that can be used to manage data in a Azure AI Search Service index.</param>
+    /// <param name="searchIndexClient">Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</param>
     /// <param name="keyFieldName">The name of the key field for the collection that this class is used with.</param>
     /// <param name="options">Optional configuration options for this class.</param>
-    public AzureAISearchVectorStore(SearchClient searchClient, string keyFieldName, AzureAISearchVectorStoreOptions? options = default)
+    public AzureAISearchVectorStore(SearchIndexClient searchIndexClient, string keyFieldName, AzureAISearchVectorStoreOptions? options = default)
     {
-        this._client = searchClient ?? throw new ArgumentNullException(nameof(searchClient));
+        this._searchIndexClient = searchIndexClient ?? throw new ArgumentNullException(nameof(searchIndexClient));
         this._keyFieldName = string.IsNullOrWhiteSpace(keyFieldName) ? throw new ArgumentException("Key Field name is required.", nameof(keyFieldName)) : keyFieldName;
         this._options = options ?? new AzureAISearchVectorStoreOptions();
 
@@ -48,29 +49,34 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
         {
             throw new ArgumentOutOfRangeException(nameof(options), "AzureAISearchVectorStoreOptions.MaxDegreeOfGetParallelism must be greater than 0.");
         }
-
-        this._keyFieldPropertyInfo = typeof(TDataModel).GetProperty(this._keyFieldName, BindingFlags.Public | BindingFlags.Instance);
-        if (this._keyFieldPropertyInfo.PropertyType != typeof(string))
-        {
-            throw new ArgumentException($"Key field must be of type string. Type of {this._keyFieldName} is {this._keyFieldPropertyInfo.PropertyType.FullName}.");
-        }
     }
 
     /// <inheritdoc />
-    public async Task<string> UpsertAsync(TDataModel record, CancellationToken cancellationToken = default)
+    public async Task<string> UpsertAsync(string collectionName, TDataModel record, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(collectionName))
+        {
+            throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
+        }
+
         if (record is null)
         {
             throw new ArgumentNullException(nameof(record));
         }
 
-        var results = await RunOperationAsync(() => this._client.UploadDocumentsAsync<TDataModel>([record], new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
+        var searchClient = this.GetSearchClient(collectionName);
+        var results = await RunOperationAsync(() => searchClient.UploadDocumentsAsync<TDataModel>([record], new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
         return results.Value.Results[0].Key;
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<string> UpsertBatchAsync(IEnumerable<TDataModel> records, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<string> UpsertBatchAsync(string collectionName, IEnumerable<TDataModel> records, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(collectionName))
+        {
+            throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
+        }
+
         if (records is null)
         {
             throw new ArgumentNullException(nameof(records));
@@ -80,8 +86,9 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
         var innerOptions = new IndexDocumentsOptions { ThrowOnAnyError = true };
 
         // Upload data
+        var searchClient = this.GetSearchClient(collectionName);
         var results = await RunOperationAsync(
-            () => this._client.IndexDocumentsAsync(
+            () => searchClient.IndexDocumentsAsync(
                 IndexDocumentsBatch.Upload(records),
                 innerOptions,
                 cancellationToken: cancellationToken)).ConfigureAwait(false);
@@ -92,8 +99,13 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task<TDataModel?> GetAsync(string collectionName, string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(collectionName))
+        {
+            throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
+        }
+
         if (key is null)
         {
             throw new ArgumentNullException(nameof(key));
@@ -103,12 +115,18 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
         var innerOptions = ConvertGetDocumentOptions(options);
 
         // Get data
-        return await RunOperationAsync(() => this._client.GetDocumentAsync<TDataModel>(key, innerOptions, cancellationToken)).ConfigureAwait(false);
+        var searchClient = this.GetSearchClient(collectionName);
+        return await RunOperationAsync(() => searchClient.GetDocumentAsync<TDataModel>(key, innerOptions, cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<TDataModel> GetBatchAsync(IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<TDataModel> GetBatchAsync(string collectionName, IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(collectionName))
+        {
+            throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
+        }
+
         if (keys is null)
         {
             throw new ArgumentNullException(nameof(keys));
@@ -121,76 +139,67 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
         var maxDegreeOfGetParallelism = this._options?.MaxDegreeOfGetParallelism ?? 50;
         var batches = keys.SplitIntoBatches(maxDegreeOfGetParallelism);
 
+        var searchClient = this.GetSearchClient(collectionName);
         foreach (var batch in batches)
         {
             // Get each batch
-            var tasks = batch.Select(key => RunOperationAsync(() => this._client.GetDocumentAsync<TDataModel>(key, innerOptions, cancellationToken)));
+            var tasks = batch.Select(key => RunOperationAsync(() => searchClient.GetDocumentAsync<TDataModel>(key, innerOptions, cancellationToken)));
             var results = await Task.WhenAll(tasks).ConfigureAwait(false);
             foreach (var result in results) { yield return result; }
         }
     }
 
     /// <inheritdoc />
-    public async Task<string> RemoveAsync(string key, CancellationToken cancellationToken = default)
+    public async Task<string> RemoveAsync(string collectionName, string key, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(collectionName))
+        {
+            throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
+        }
+
         if (key is null)
         {
             throw new ArgumentNullException(nameof(key));
         }
 
-        var results = await RunOperationAsync(() => this._client.DeleteDocumentsAsync(this._keyFieldName, [key], new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
+        var searchClient = this.GetSearchClient(collectionName);
+        var results = await RunOperationAsync(() => searchClient.DeleteDocumentsAsync(this._keyFieldName, [key], new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
         return results.Value.Results[0].Key;
     }
 
     /// <inheritdoc />
-    public async Task RemoveBatchAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default)
+    public async Task RemoveBatchAsync(string collectionName, IEnumerable<string> keys, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(collectionName))
+        {
+            throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
+        }
+
         if (keys is null)
         {
             throw new ArgumentNullException(nameof(keys));
         }
 
-        var results = await RunOperationAsync(() => this._client.DeleteDocumentsAsync(this._keyFieldName, keys, new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
-    }
-
-    private void EncodeKeyField(TDataModel record)
-    {
-        if (this._options?.RecordKeyEncoder is not null)
-        {
-            var key = this.GetKeyFieldValue(record);
-            var encodedKey = this._options.RecordKeyEncoder.Invoke(key);
-            this.SetKeyFieldValue(record, encodedKey);
-        }
-    }
-
-    private void DecodeKeyField(TDataModel record)
-    {
-        if (this._options?.RecordKeyDecoder is not null)
-        {
-            var key = this.GetKeyFieldValue(record);
-            var decodedKey = this._options.RecordKeyDecoder.Invoke(key);
-            this.SetKeyFieldValue(record, decodedKey);
-        }
+        var searchClient = this.GetSearchClient(collectionName);
+        var results = await RunOperationAsync(() => searchClient.DeleteDocumentsAsync(this._keyFieldName, keys, new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Get the key property value from the given record.
+    /// Get a search client for the index specified.
+    /// Note: the index might not exist, but we avoid checking everytime and the extra latency.
     /// </summary>
-    /// <param name="record">The record to read the key property's value from.</param>
-    /// <returns>The value of the key property.</returns>
-    private string GetKeyFieldValue(TDataModel record)
+    /// <param name="indexName">Index name</param>
+    /// <returns>Search client ready to read/write</returns>
+    private SearchClient GetSearchClient(string indexName)
     {
-        return (string)this._keyFieldPropertyInfo.GetValue(record);
-    }
+        // Search an available client from the local cache
+        if (!this._searchClientsByIndex.TryGetValue(indexName, out SearchClient? client))
+        {
+            client = this._searchIndexClient.GetSearchClient(indexName);
+            this._searchClientsByIndex[indexName] = client;
+        }
 
-    /// <summary>
-    /// Set the key property on the given record to the given value.
-    /// </summary>
-    /// <param name="record">The record to update.</param>
-    /// <param name="value">The new value for the key property.</param>
-    private void SetKeyFieldValue(TDataModel record, string value)
-    {
-        this._keyFieldPropertyInfo.SetValue(record, value);
+        return client;
     }
 
     /// <summary>

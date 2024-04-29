@@ -105,7 +105,14 @@ You may want to articulate the problem in form of a question and add links to co
 
 ## Considered Options
 
-### Option 1 - Combined index and data item management
+Options Sets:
+1. Combined Index and data item management vs separated.
+2. Collection name and key value normalization in decorator or main class.
+3. Collection name as method param or constructor param.
+
+### Question 1: Combined Index and data item management vs separated.
+
+#### Option 1 - Combined index and data item management
 
 ```cs
 interface IVectorStore<TDataModel>
@@ -136,7 +143,7 @@ class RedisVectorStore<TDataModel>(
     Schema schema): IVectorStore<TDataModel>;
 ```
 
-### Option 2 - Separated index and data item management with layered index management
+#### Option 2 - Separated index and data item management with layered index management
 
 ```cs
 
@@ -191,14 +198,14 @@ class FieldSchema
 - {title of option 3}
 - … <!-- numbers of options can vary -->
 
-## Decision Outcome
+#### Decision Outcome
 
 Chosen option: "{title of option 1}", because
 {justification. e.g., only option, which meets k.o. criterion decision driver | which resolves force {force} | … | comes out best (see below)}.
 
 <!-- This is an optional element. Feel free to remove. -->
 
-### Consequences
+#### Consequences
 
 - Good, because {positive consequence, e.g., improvement of one or more desired qualities, …}
 - Bad, because {negative consequence, e.g., compromising one or more desired qualities, …}
@@ -206,15 +213,15 @@ Chosen option: "{title of option 1}", because
 
 <!-- This is an optional element. Feel free to remove. -->
 
-## Validation
+#### Validation
 
 {describe how the implementation of/compliance with the ADR is validated. E.g., by a review or an ArchUnit test}
 
 <!-- This is an optional element. Feel free to remove. -->
 
-## Pros and Cons of the Options
+#### Pros and Cons of the Options
 
-### {title of option 1}
+##### {title of option 1}
 
 <!-- This is an optional element. Feel free to remove. -->
 
@@ -227,7 +234,7 @@ Chosen option: "{title of option 1}", because
 - Bad, because {argument d}
 - … <!-- numbers of pros and cons can vary -->
 
-### {title of other option}
+##### {title of other option}
 
 {example | description | pointer to more information | …}
 
@@ -238,6 +245,61 @@ Chosen option: "{title of option 1}", because
 - …
 
 <!-- This is an optional element. Feel free to remove. -->
+
+###  Question 2: Collection name and key value normalization in decorator or main class.
+
+#### Option 1 - Normalization in main vector store
+
+```cs
+    public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
+    {
+        ...
+
+        // On input.
+        var normalizedIndexName = this.NormalizeIndexName(collectionName);
+        var encodedId = AzureAISearchMemoryRecord.EncodeId(key);
+
+        ...
+
+        // On output.
+        DecodeId(this.Id)
+
+        ...
+    }
+```
+
+#### Option 2 - Normalization in decorator
+
+```cs
+    new KeyNormalizingAISearchVectorStore<MyModel>(
+        "keyField",
+         new AzureAISearchVectorStore<MyModel>(...));
+```
+
+#### Decision Outcome
+
+Chosen option 2 because this behavior mostly makes sense for scenarios where the vector store is both being written to and read from.
+If e.g. the data was written using another tool, it may be unlikely that it was encoded using the same mechanism as supported here
+and therefore this functionality may not be appropriate. The developer should have the ability to not use this functionality or
+provide their own encoding / decoding behavior.
+
+###  Question 3: Collection name as method param or via constructor
+
+#### Option 1 - Collection name as method param
+
+```cs
+public async Task<TDataModel?> GetAsync(string collectionName,  VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+```
+
+#### Option 2 - Collection name via construtor
+
+```cs
+public async Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+```
+
+#### Decision Outcome
+
+Chosen option 1, because we need to support customers / databases who use collections as a partitioning strategy, where e.g. the name may be a user id.
 
 ## More Information
 
