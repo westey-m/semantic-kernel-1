@@ -49,22 +49,31 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     private readonly Func<string, string> _recordKeyDecoder;
 
     /// <summary>
+    /// The function that is used to encode the azure ai search index name (collection name parameter).
+    /// </summary>
+    /// <remarks>Index names have length and character type restrictions.</remarks>
+    private readonly Func<string, string> _indexNameEncoder;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="KeyNormalizingAzureAISearchVectorStore{TDataModel}"/> class.
     /// </summary>
     /// <param name="vectorStore">The vector store instance that is being decorated.</param>
     /// <param name="keyFieldName">The name of the key field for the collections that this class is used with.</param>
     /// <param name="recordKeyEncoder">The function that is used to encode the azure ai search record id before it is sent to Azure AI Search.</param>
     /// <param name="recordKeyDecoder">The function that is used to decode the azure ai search record id after it is retrieved from Azure AI Search.</param>
+    /// <param name="indexNameEncoder">The function that is used to encode the azure ai search index name (collection name parameter).</param>
     public KeyNormalizingAzureAISearchVectorStore(
         IVectorStore<TDataModel> vectorStore,
         string keyFieldName,
-        Func<string, string>? recordKeyEncoder,
-        Func<string, string>? recordKeyDecoder)
+        Func<string, string> recordKeyEncoder,
+        Func<string, string> recordKeyDecoder,
+        Func<string, string> indexNameEncoder)
     {
         this._vectorStore = vectorStore ?? throw new ArgumentNullException(nameof(vectorStore));
         this._keyFieldName = string.IsNullOrWhiteSpace(keyFieldName) ? throw new ArgumentException("Key Field name is required.", nameof(keyFieldName)) : keyFieldName;
         this._recordKeyEncoder = recordKeyEncoder ?? throw new ArgumentNullException(nameof(recordKeyEncoder));
         this._recordKeyDecoder = recordKeyDecoder ?? throw new ArgumentNullException(nameof(recordKeyDecoder));
+        this._indexNameEncoder = indexNameEncoder ?? throw new ArgumentNullException(nameof(indexNameEncoder));
 
         this._keyFieldPropertyInfo = typeof(TDataModel).GetProperty(this._keyFieldName, BindingFlags.Public | BindingFlags.Instance);
         if (this._keyFieldPropertyInfo.PropertyType != typeof(string))
@@ -77,7 +86,7 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     public async Task<TDataModel?> GetAsync(string collectionName, string key, VectorStoreGetDocumentOptions? options = null, CancellationToken cancellationToken = default)
     {
         var result = await this._vectorStore.GetAsync(
-            collectionName,
+            this._indexNameEncoder(collectionName),
             this._recordKeyEncoder.Invoke(key),
             options,
             cancellationToken).ConfigureAwait(false);
@@ -95,7 +104,7 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     {
         var encodedKeys = keys.Select(this._recordKeyEncoder);
         var results = this._vectorStore.GetBatchAsync(
-            collectionName,
+            this._indexNameEncoder(collectionName),
             encodedKeys,
             options,
             cancellationToken);
@@ -111,7 +120,7 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     public async Task<string> RemoveAsync(string collectionName, string key, CancellationToken cancellationToken = default)
     {
         var result = await this._vectorStore.RemoveAsync(
-            collectionName,
+            this._indexNameEncoder(collectionName),
             this._recordKeyEncoder.Invoke(key),
             cancellationToken).ConfigureAwait(false);
 
@@ -122,7 +131,7 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     public async Task RemoveBatchAsync(string collectionName, IEnumerable<string> keys, CancellationToken cancellationToken = default)
     {
         await this._vectorStore.RemoveBatchAsync(
-            collectionName,
+            this._indexNameEncoder(collectionName),
             keys.Select(this._recordKeyEncoder),
             cancellationToken).ConfigureAwait(false);
     }
@@ -133,7 +142,7 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
         this.EncodeKeyField(record);
 
         var result = await this._vectorStore.UpsertAsync(
-            collectionName,
+            this._indexNameEncoder(collectionName),
             record,
             cancellationToken).ConfigureAwait(false);
 
@@ -149,7 +158,7 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
         }
 
         var results = this._vectorStore.UpsertBatchAsync(
-            collectionName,
+            this._indexNameEncoder(collectionName),
             records,
             cancellationToken);
 

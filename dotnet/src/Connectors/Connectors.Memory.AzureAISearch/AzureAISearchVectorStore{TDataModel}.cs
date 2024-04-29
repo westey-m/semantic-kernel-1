@@ -192,7 +192,7 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <returns>Search client ready to read/write</returns>
     private SearchClient GetSearchClient(string indexName)
     {
-        // Search an available client from the local cache
+        // Check the local cache first, if not found create a new one.
         if (!this._searchClientsByIndex.TryGetValue(indexName, out SearchClient? client))
         {
             client = this._searchIndexClient.GetSearchClient(indexName);
