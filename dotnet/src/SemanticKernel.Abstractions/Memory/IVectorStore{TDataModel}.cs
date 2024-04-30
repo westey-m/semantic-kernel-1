@@ -13,6 +13,7 @@ namespace Microsoft.SemanticKernel.Memory;
 /// <typeparam name="TDataModel">The data model to use for adding, updating and retrieving data from storage.</typeparam>
 [Experimental("SKEXP0001")]
 public interface IVectorStore<TDataModel>
+    where TDataModel : class
 {
     /// <summary>
     /// Gets a memory record from the data store. Does not guarantee that the collection exists.

@@ -57,20 +57,24 @@ interface IMemoryStore
 
 1. The `IMemoryStore` should be split into three different interfaces, one for each responsibility.
 2. The **Data Storage and Retrieval** and **Vector Search** areas should allow typed access to data and support any schema that is currently available in the customer's data store.
-3. The Collection / Index management area should provide an abstraction across the different types of data stores. A common schema format can be provided via a common interface and used to create/update/delete indices / collections.
+3. The Collection / Index management area should be evolved to support managing common schemas for built in functionality like chat history, and would work with built in models, filters and plugins.
+4. Batching should be removed from **Data Storage and Retrieval** since it's primarily there to support bulk load and index operations and this is outside of the scope of SK.
 
 ### Vector Store Cross Store support
 
 |Feature|Azure AI Search|Weaviate|Redis|Chroma|FAISS|Pinecone|LLamaIndex|
 |-|-|-|-|-|-|-|-|
 |Get Item Suport|Y|Y|Y|Y||Y||
-|Batch Operation Support|Y|||Y||Y||
-|Per Item Results for Batch Operations|Y|Y||N||N||
+|Batch Operation Support|Y|Y|Y|Y||Y||
+|Per Item Results for Batch Operations|Y|Y|Y|N||N||
 |Keys of upserted records|Y|Y|N<sup>3</sup>|N<sup>3</sup>||N<sup>3</sup>||
-|Keys of removed records|Y|||N||N||
-|Retrieval field selection for gets|Y|||P<sup>2</sup>||N||
-|Include/Exclude Embeddings for gets|P<sup>1</sup>|||Y||N||
+|Keys of removed records|Y||N<sup>3</sup>|N||N||
+|Retrieval field selection for gets|Y||Y<sup>4<sup>|P<sup>2</sup>||N||
+|Include/Exclude Embeddings for gets|P<sup>1</sup>|Y||Y||N||
 |Failure reasons when batch partially fails|Y|Y||N||N||
+|Is Key separate from data|N|Y|Y|||||
+|Can Generate Ids|N|Y|N|N||Y||
+|Field Differentiation|Key,Props,Vectors|Key,Props,Vectors|Key,Props,Vectors|Key,Text,Metadata,Vectors||Key,Props,Vectors||
 
 P = Partial Support
 
@@ -79,6 +83,8 @@ P = Partial Support
 <sup>2</sup> Supports broad categories of fields only.
 
 <sup>3</sup> Id is required in request, so can be returned if needed.
+
+<sup>4<sup> No strong typed support when specifying field list.
 
 ### Collection/Index management
 
@@ -94,6 +100,11 @@ Schema Comparison
 Open Questions:
 - Can we annotate the Vector Store data model with attributes that identify the vectors and the fields they describe, and is it useful?
   - Definitely useful, and there is precedence already with Azure AI Search doing the same.
+  - Actually, we'll have to do it, because some databases store regular data values separately from vectors, so we'll need to know what is what.
+    - Key
+    - Vector
+    - Metadata
+    - Text
 - How would someone pick a collection, if they are storing the same data across many collections, e.g. partitioned by user.
   - Option 1, add a Collections class where you can get one first and then do crud on it.
   - Option 2, add a collection name parameter to each method, like we have now.
@@ -109,6 +120,9 @@ You may want to articulate the problem in form of a question and add links to co
 
 ## Decision Drivers
 
+- Focus on the core value propisition of SK
+- Allow break glass scenarios
+- 
 - {decision driver 1, e.g., a force, facing concern, …}
 - {decision driver 2, e.g., a force, facing concern, …}
 - … <!-- numbers of drivers can vary -->
@@ -180,25 +194,6 @@ interface IVectorStore<TDataModel>
     Task RemoveAsync(string key, CancellationToken cancellationToken = default);
     Task RemoveBatchAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default);
 }
-
-class CollectionSchema
-{
-
-}
-
-class FieldSchema
-{
-    string Name { get; init; };
-    string Type { get; init; };
-}
-
-    // Azure AI Search Options:
-    "searchable": false, 
-    "filterable": true, 
-    "retrievable": true, 
-    "sortable": false, 
-    "facetable": false,
-    "key": true
 
 ```
 
