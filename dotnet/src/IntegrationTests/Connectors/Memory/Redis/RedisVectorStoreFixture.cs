@@ -53,12 +53,14 @@ public class RedisVectorStoreFixture : IAsyncLifetime
             ["DIM"] = "4",
             ["DISTANCE_METRIC"] = "L2"
         });
-        await this.Database.FT().CreateAsync("hotels", schema);
+        var createParams = new FTCreateParams();
+        createParams.AddPrefix("hotels");
+        await this.Database.FT().CreateAsync("hotels", createParams, schema);
 
         // Create some test data.
-        await this.Database.JSON().SetAsync("H10", "$", new HotelShortInfo("H10", "My Hotel 10", "This is a great hotel.", Array.Empty<float>()));
-        await this.Database.JSON().SetAsync("H11", "$", new HotelShortInfo("H11", "My Hotel 11", "This is a great hotel.", Array.Empty<float>()));
-        await this.Database.JSON().SetAsync("H12", "$", new HotelShortInfo("H12", "My Hotel 12", "This is a great hotel.", Array.Empty<float>()));
+        await this.Database.JSON().SetAsync("hotels:H10", "$", new HotelShortInfo("hotels:H10", "My Hotel 10", "This is a great hotel.", Array.Empty<float>()));
+        await this.Database.JSON().SetAsync("hotels:H11", "$", new HotelShortInfo("hotels:H11", "My Hotel 11", "This is a great hotel.", Array.Empty<float>()));
+        await this.Database.JSON().SetAsync("hotels:H12", "$", new HotelShortInfo("hotels:H12", "My Hotel 12", "This is a great hotel.", Array.Empty<float>()));
     }
 
     /// <summary>

@@ -10,6 +10,14 @@ informed: {list everyone who is kept up-to-date on progress; and with whom there
 
 # Updated Memory Connected Design
 
+Open Questions:
+- How would someone pick a collection, if they are storing the same data across many collections, e.g. partitioned by user.
+  - Option 1, add a Collections class where you can get one first and then do crud on it.
+  - Option 2, add a collection name parameter to each method, like we have now.
+- How do we change the key of a record for azure search before writing without updating the passed in model.
+  - This should be done in a decorator, and not in the main class.  If someone really wants this, they can layer it on top, and there can be multiple solutions, e.g. changed passed in model, clone using serialization.
+
+
 ## Context and Problem Statement
 
 Semantic Kernel has a collection of connectors to popular Vector databases e.g. Azure AI Search, Chroma, Milvus, ...
@@ -59,6 +67,10 @@ interface IMemoryStore
 2. The **Data Storage and Retrieval** and **Vector Search** areas should allow typed access to data and support any schema that is currently available in the customer's data store.
 3. The Collection / Index management area should be evolved to support managing common schemas for built in functionality like chat history, and would work with built in models, filters and plugins.
 4. Batching should be removed from **Data Storage and Retrieval** since it's primarily there to support bulk load and index operations and this is outside of the scope of SK.
+5. Remove opinionated behaviors from connectors. The opinionated behavior limits the ability of these connectors to be used with pre-created vector databases. As far as possible these behaviors should be moved into decorators.  Examples of opinionated behaviors:
+    1. The AzureAISearch connector encodes keys before storing and decodes them after retrieval since keys in Azure AI Search supports a limited set of characters.
+    2. The AzureAISearch connector sanitizes collection names before using them, since Azure AI Search supports a limited set of characters.
+    3. The Redis connector prepends the collection name on to the front of keys before storing records and also registers the collection name as a prefix for records to be indexed by the index.
 
 ### Vector Store Cross Store support
 
@@ -84,7 +96,25 @@ P = Partial Support
 
 <sup>3</sup> Id is required in request, so can be returned if needed.
 
-<sup>4<sup> No strong typed support when specifying field list.
+<sup>4</sup> No strong typed support when specifying field list.
+
+### Support for different storage schemas
+
+The different stores vary in many ways around how data is organized.
+- Some just store a record with fields on it, where fields can be a key or a data field or a vector and their type is determined at index creation time.
+- Others separate fields by type when interacting with the api, e.g. you have to specify a key explicitly, put metadata into a metadata dictionary and put vectors into a vector array.
+
+This means that we have to know the category of field for each field in the record.
+I'm therefore proposing that we use attributes to annotate the model indicating the category of field.
+
+```cs
+    [VectorStoreModel]
+    public record HotelShortInfo(
+        [property: VectorStoreModelKey] string HotelId,
+        [property: VectorStoreModelMetadata] string HotelName,
+        [property: VectorStoreModelDocument] string Description,
+        [property: VectorStoreModelVector] float[] DescriptionEmbeddings);
+```
 
 ### Collection/Index management
 
@@ -96,20 +126,6 @@ Schema Comparison
 |Multiple Vectors Per Record||||
 |Vector Algorithm config per Vector Field||||
 
-
-Open Questions:
-- Can we annotate the Vector Store data model with attributes that identify the vectors and the fields they describe, and is it useful?
-  - Definitely useful, and there is precedence already with Azure AI Search doing the same.
-  - Actually, we'll have to do it, because some databases store regular data values separately from vectors, so we'll need to know what is what.
-    - Key
-    - Vector
-    - Metadata
-    - Text
-- How would someone pick a collection, if they are storing the same data across many collections, e.g. partitioned by user.
-  - Option 1, add a Collections class where you can get one first and then do crud on it.
-  - Option 2, add a collection name parameter to each method, like we have now.
-- How do we change the key of a record for azure search before wriing without updating the passed in model.
-  - This should be done in a decorator, and not in the main class.  If someone really wants this, they can layer it on top, and there can be multiple solutions, e.g. changed passed in model, clone using serialization.
 ---
 
 
