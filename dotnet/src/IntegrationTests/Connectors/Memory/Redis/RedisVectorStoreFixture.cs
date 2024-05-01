@@ -123,7 +123,6 @@ public class RedisVectorStoreFixture : IAsyncLifetime
     /// <param name="HotelName">A metadata field.</param>
     /// <param name="Description">A document field.</param>
     /// <param name="DescriptionEmbeddings">A vector field.</param>
-    [VectorStoreModel]
     public record HotelShortInfo(
         [property: VectorStoreModelKey] string HotelId,
         [property: VectorStoreModelMetadata] string HotelName,

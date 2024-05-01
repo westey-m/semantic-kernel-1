@@ -254,16 +254,22 @@ I'm therefore proposing that we use attributes to annotate the model indicating 
 
 ## Decision Drivers
 
-- Focus on the core value propisition of SK
-- Ease of use
-- Design for Memory Plugin
+From GitHub Issue:
+- API surface must be easy to use and intuitive
+- Alignment with other patterns in the SK
+- - Design must allow Memory Plugins to be easily instantiated with any connector
 - Design must support all Kernel content types
 - Design must allow for database specific configuration
+- All NFR's to be production ready are implemented
 - Basic CRUD operations must be supported so that connectors can be used in a polymorphic manner
 - Official Database Clients must be used where available
 - Dynamic database schema must be supported
 - Dependency injection must be supported
-- Allow break glass scenarios
+- Azure-ML YAML format must be supported
+- Breaking glass scenarios must be supported
+
+Additional:
+- Focus on the core value propisition of SK
 
 
 ## Considered Questions
@@ -331,9 +337,9 @@ class MLIndexAzureAISearchCollectionsManager(MLIndex mlIndexSpec): AzureAISearch
 
 interface IVectorStore<TDataModel>
 {
-    Task UpsertAsync(TDataModel data, CancellationToken cancellationToken = default);
-    Task<TDataModel> GetAsync(string key, bool withEmbedding = false, CancellationToken cancellationToken = default);
-    Task RemoveAsync(string key, CancellationToken cancellationToken = default);
+    Task<TDataModel?> GetAsync(string collectionName, string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    Task<string> RemoveAsync(string collectionName, string key, CancellationToken cancellationToken = default);
+    Task<string> UpsertAsync(string collectionName, TDataModel record, CancellationToken cancellationToken = default);
 }
 
 class AzureAISearchVectorStore<TDataModel>(IndexConfig indexConfig): IVectorStore<TDataModel>;
@@ -352,6 +358,9 @@ Chosen option: "Option 2 - Separated index and data item management".
 ###  Question 2: Collection name and key value normalization in decorator or main class.
 
 #### Option 1 - Normalization in main vector store
+
+- Pros: Simple
+- Cons: The normaliation needs to vary separately from the vector store, so this will not work
 
 ```cs
     public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
@@ -373,16 +382,39 @@ Chosen option: "Option 2 - Separated index and data item management".
 
 #### Option 2 - Normalization in decorator
 
+- Pros: Allows normaliation to vary separately from the vector store.
+- Pros: No code executed when no normalization required.
+- Pros: Easy to package matching encoders/decoders together.
+- Cons: Need to implement the full VectorStore interface.
+
 ```cs
     new KeyNormalizingAISearchVectorStore<MyModel>(
         "keyField",
          new AzureAISearchVectorStore<MyModel>(...));
 ```
 
+#### Option 3 - Normalization via optional function parameters to vector store constructor
+
+- Pros: Allows normaliation to vary separately from the vector store.
+- Pros: No need to implement the full VectorStore interface.
+- Cons: Harder to package matching encoders/decoders together.
+
+```cs
+public class AzureAISearchVectorStore<TDataModel>(StoreOptions options);
+
+public class StoreOptions
+{
+    public Func<string, string>? EncodeKey { get; init; }
+    public Func<string, string>? DecodeKey { get; init; }
+    public Func<string, string>? SanitizeCollectionName { get; init; }
+}
+```
+
 #### Decision Outcome
 
-Chosen option 2 because this behavior mostly makes sense for scenarios where the vector store is not an existing store that has been created outside of SK.
-If e.g. the data was written using another tool, it may be unlikely that it was encoded using the same mechanism as supported here
+Option 2 / 3 should work. Leaning towards 2, but let's discuss.
+
+Option 1 won't work because if e.g. the data was written using another tool, it may be unlikely that it was encoded using the same mechanism as supported here
 and therefore this functionality may not be appropriate. The developer should have the ability to not use this functionality or
 provide their own encoding / decoding behavior.
 

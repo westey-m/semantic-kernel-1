@@ -208,7 +208,6 @@ public class AzureAISearchVectorStoreFixture : IAsyncLifetime
         searchClient.IndexDocuments(batch);
     }
 
-    [VectorStoreModel]
     public record HotelShortInfo(
         [property: VectorStoreModelKey] string HotelId,
         [property: VectorStoreModelMetadata] string HotelName,
