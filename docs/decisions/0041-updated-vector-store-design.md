@@ -217,22 +217,22 @@ A comparison of the different ways in which stores implement storage capabilitie
 |Get Item Suport|Y|Y|Y|Y||Y||Y|
 |Batch Operation Support|Y|Y|Y|Y||Y|||
 |Per Item Results for Batch Operations|Y|Y|Y|N||N|||
-|Keys of upserted records|Y|Y|N[^3]|N[^3]||N[^3]|||
-|Keys of removed records|Y||N[^3]|N||N|||
-|Retrieval field selection for gets|Y||Y[^4]|P[^2]||N||Y|
-|Include/Exclude Embeddings for gets|P[^1]|Y|Y[^4][^1]|Y||N||P[^1]|
+|Keys of upserted records|Y|Y|N<sup>3</sup>|N<sup>3</sup>||N<sup>3</sup>|||
+|Keys of removed records|Y||N<sup>3</sup>|N||N|||
+|Retrieval field selection for gets|Y||Y<sup>4<sup>|P<sup>2</sup>||N||Y|
+|Include/Exclude Embeddings for gets|P<sup>1</sup>|Y|Y<sup>4,1<sup>|Y||N||P<sup>1</sup>|
 |Failure reasons when batch partially fails|Y|Y|Y|N||N|||
 |Is Key separate from data|N|Y|Y|Y||Y||N|
 |Can Generate Ids|N|Y|N|N||Y|||
 |Field Differentiation|Key,Props,Vectors|Key,Props,Vectors|Key,Props,Vectors|Key,Text,Metadata,Vectors||Key,Props,Vectors|||
 |Index to Collection|1 to 1|1 to 1|1 to many|1 to 1|-|1 to 1|-|1 to 1|
 
-P = Partial Support
-
-[^1] Only if you have the schema, to select the appropriate fields.
-[^2] Supports broad categories of fields only.
-[^3] Id is required in request, so can be returned if needed.
-[^4] No strong typed support when specifying field list.
+Footnotes:
+- P = Partial Support
+- <sup>1</sup> Only if you have the schema, to select the appropriate fields.
+- <sup>2</sup> Supports broad categories of fields only.
+- <sup>3</sup> Id is required in request, so can be returned if needed.
+- <sup>4</sup> No strong typed support when specifying field list.
 
 ### Support for different storage schemas
 
