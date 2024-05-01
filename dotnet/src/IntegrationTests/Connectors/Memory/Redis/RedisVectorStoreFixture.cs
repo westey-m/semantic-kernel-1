@@ -127,6 +127,6 @@ public class RedisVectorStoreFixture : IAsyncLifetime
     public record HotelShortInfo(
         [property: VectorStoreModelKey] string HotelId,
         [property: VectorStoreModelMetadata] string HotelName,
-        [property: VectorStoreModelDocument] string Description,
-        [property: VectorStoreModelVector] float[] DescriptionEmbeddings);
+        [property: VectorStoreModelData] string Description,
+        [property: VectorStoreModelVector] float[]? DescriptionEmbeddings);
 }

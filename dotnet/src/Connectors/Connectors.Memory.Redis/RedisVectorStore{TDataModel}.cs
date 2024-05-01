@@ -23,6 +23,11 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
 
     private readonly IDatabase _database;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RedisVectorStore{TDataModel}"/> class.
+    /// </summary>
+    /// <param name="database">The redis database to read/write records from.</param>
+    /// <exception cref="ArgumentNullException">Throw when parameters are invalid.</exception>
     public RedisVectorStore(IDatabase database)
     {
         this._database = database ?? throw new ArgumentNullException(nameof(database));
@@ -30,9 +35,9 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public Task<TDataModel?> GetAsync(string collectionName, string key, VectorStoreGetDocumentOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<TDataModel?> GetAsync(string collectionName, string key, VectorStoreGetDocumentOptions? options = null, CancellationToken cancellationToken = default)
     {
-        var result = this._database.JSON().GetAsync<TDataModel>(key);
+        var result = await this._database.JSON().GetAsync<TDataModel>(key).ConfigureAwait(false);
         if (result == null)
         {
             throw new HttpOperationException($"Could not find document with key '{key}'");

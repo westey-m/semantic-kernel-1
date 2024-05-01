@@ -1,7 +1,5 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using System.Collections.Generic;
-
 namespace Microsoft.SemanticKernel.Memory;
 
 /// <summary>
@@ -10,7 +8,7 @@ namespace Microsoft.SemanticKernel.Memory;
 public class VectorStoreGetDocumentOptions
 {
     /// <summary>
-    /// Gets the names of the fields to retrieve, in case only a subset of fields is needed.
+    /// Get or sets a value indicating whether to include embeddings in the retrieval result.
     /// </summary>
-    public IList<string> SelectedFields { get; init; } = new List<string>();
+    public bool IncludeEmbeddings { get; init; } = false;
 }

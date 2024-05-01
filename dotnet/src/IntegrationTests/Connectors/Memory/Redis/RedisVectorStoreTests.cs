@@ -52,7 +52,7 @@ public sealed class RedisVectorStoreTests(ITestOutputHelper output, RedisVectorS
     {
         // Arrange.
         var sut = new RedisVectorStore<RedisVectorStoreFixture.HotelShortInfo>(fixture.Database);
-        var record = new RedisVectorStoreFixture.HotelShortInfo("hotels:H1", "My Hotel 1", "This is a great hotel.", Array.Empty<float>());
+        var record = new RedisVectorStoreFixture.HotelShortInfo("hotels:H1", "My Hotel 1", "This is a great hotel.", null);
 
         // Act.
         var upsertResult = await sut.UpsertAsync("hotels", record);

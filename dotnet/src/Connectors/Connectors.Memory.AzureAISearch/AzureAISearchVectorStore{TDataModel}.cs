@@ -34,6 +34,9 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <summary>Optional configuration options for this class.</summary>
     private readonly AzureAISearchVectorStoreOptions? _options;
 
+    /// <summary>The names of all non vector fields on the current model.</summary>
+    private readonly List<string> _nonVectorFieldNames;
+
     /// <summary>
     /// Create a new instance of vector storage using Azure AI Search.
     /// </summary>
@@ -50,6 +53,13 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
         {
             throw new ArgumentOutOfRangeException(nameof(options), "AzureAISearchVectorStoreOptions.MaxDegreeOfGetParallelism must be greater than 0.");
         }
+
+        // Build the list of field names on the curent model that don't have the VectorStoreModelVectorAtrribute but has
+        // the VectorStoreModelKeyAttribute or VectorStoreModelDataAtrribute or VectorStoreModelMetadataAtrribute attributes.
+        this._nonVectorFieldNames = typeof(TDataModel).GetProperties()
+            .Where(x => x.GetCustomAttributes(true).Select(x => x.GetType()).Intersect([typeof(VectorStoreModelKeyAttribute), typeof(VectorStoreModelDataAttribute), typeof(VectorStoreModelMetadataAttribute)]).Any())
+            .Select(x => x.Name)
+            .ToList();
     }
 
     /// <inheritdoc />
@@ -66,7 +76,7 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
         }
 
         // Create Options
-        var innerOptions = ConvertGetDocumentOptions(options);
+        var innerOptions = this.ConvertGetDocumentOptions(options);
 
         // Get data
         var searchClient = this.GetSearchClient(collectionName);
@@ -87,7 +97,7 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
         }
 
         // Create Options
-        var innerOptions = ConvertGetDocumentOptions(options);
+        var innerOptions = this.ConvertGetDocumentOptions(options);
 
         // Split keys into batches
         var maxDegreeOfGetParallelism = this._options?.MaxDegreeOfGetParallelism ?? 50;
@@ -208,13 +218,12 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// </summary>
     /// <param name="options">The public options model.</param>
     /// <returns>The azure ai search options model.</returns>
-    private static GetDocumentOptions ConvertGetDocumentOptions(VectorStoreGetDocumentOptions? options)
+    private GetDocumentOptions ConvertGetDocumentOptions(VectorStoreGetDocumentOptions? options)
     {
         var innerOptions = new GetDocumentOptions();
-        var selectedFields = options?.SelectedFields;
-        if (selectedFields is not null)
+        if (options?.IncludeEmbeddings is false)
         {
-            innerOptions.SelectedFields.AddRange(selectedFields);
+            innerOptions.SelectedFields.AddRange(this._nonVectorFieldNames);
         }
 
         return innerOptions;

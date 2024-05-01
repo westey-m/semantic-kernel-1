@@ -5,9 +5,9 @@ using System;
 namespace Microsoft.SemanticKernel.Memory;
 
 /// <summary>
-/// Attribute to mark a property on a vector model class as the indexed document.
+/// Attribute to mark a property on a vector model class as the data that is being indexed.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-public sealed class VectorStoreModelDocumentAttribute : Attribute
+public sealed class VectorStoreModelDataAttribute : Attribute
 {
 }

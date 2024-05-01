@@ -13,6 +13,7 @@ using Xunit;
 using Microsoft.Extensions.Configuration;
 using SemanticKernel.IntegrationTests.Connectors.AzureAISearch;
 using System.Text.RegularExpressions;
+using Microsoft.SemanticKernel.Memory;
 
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.AzureAISearch;
 
@@ -207,7 +208,11 @@ public class AzureAISearchVectorStoreFixture : IAsyncLifetime
         searchClient.IndexDocuments(batch);
     }
 
-    public record HotelShortInfo(string HotelId, string HotelName, string Description);
+    [VectorStoreModel]
+    public record HotelShortInfo(
+        [property: VectorStoreModelKey] string HotelId,
+        [property: VectorStoreModelMetadata] string HotelName,
+        [property: VectorStoreModelData] string Description);
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     public partial record Hotel

@@ -16,7 +16,168 @@ Open Questions:
   - Option 2, add a collection name parameter to each method, like we have now.
 - How do we change the key of a record for azure search before writing without updating the passed in model.
   - This should be done in a decorator, and not in the main class.  If someone really wants this, they can layer it on top, and there can be multiple solutions, e.g. changed passed in model, clone using serialization.
+- Current design hides the difference between an index and a collection from users, but they are not always the same thing.
+  - In some cases each collection has it's own index.
+  - In some cases multiple collections can share an index.
 
+```mermaid
+---
+title: SK Collection/Index and Vector management
+---
+classDiagram
+    note for IVectorStore "Can manage records for any scenario"
+    note for ICollectionManagement "Can manage collections and\nindexes for core scenarios"
+
+    namespace SKAbstractions{
+        class ICollectionManagement{
+            <<interface>>
+            +CreateChatHistoryCollection
+            +CreateSemanticCacheCollection
+            +GetCollections
+            +DeleteCollection
+        }
+
+        class IVectorStore~TModel~{
+            <<interface>>
+            +Upsert(TModel record) string
+            +Get(string key) TModel
+            +Remove(string key) string
+        }
+    }
+
+    namespace AzureAIMemory{
+        class AzureAISearchCollectionManagement{
+        }
+
+        class AzureAISearchVectorStore{
+        }
+    }
+
+    namespace RedisMemory{
+        class RedisCollectionManagement{
+        }
+
+        class RedisVectorStore{
+        }
+    }
+
+    ICollectionManagement <|-- AzureAISearchCollectionManagement
+    ICollectionManagement <|-- RedisCollectionManagement
+
+    IVectorStore <|-- AzureAISearchVectorStore
+    IVectorStore <|-- RedisVectorStore
+```
+
+```mermaid
+---
+title: Chat History Break Glass
+---
+classDiagram
+    note for IVectorStore "Can manage records for any scenario"
+    note for CustomerHistoryModelMapping "Decorator class for IVectorStore that maps\nbetween the customer model to our model"
+    note for ICollectionManagement "Can manage collections and\nindexes for core scenarios"
+
+    namespace SKAbstractions{
+        class ICollectionManagement{
+            <<interface>>
+            +CreateChatHistoryCollection
+            +CreateSemanticCacheCollection
+            +GetCollections
+            +DeleteCollection
+        }
+
+        class IVectorStore~TModel~{
+            <<interface>>
+            +Upsert(TModel record) string
+            +Get(string key) TModel
+            +Remove(string key) string
+        }
+    }
+
+    namespace CustomerProject{
+        class CustomCustomerHistoryModel{
+            +string text
+            +float[] vector
+            +Dictionary~string, string~ properties
+        }
+
+        class CustomerHistoryModelMapping{
+            -IVectorStore~CustomCustomerHistoryModel~ _store
+            +Upsert(ChatHistoryModel record) string
+            +Get(string key) ChatHistoryModel
+            +Remove(string key) string
+        }
+    }
+
+    namespace SKCore{
+        class ChatHistoryPlugin{
+            -IVectorStore~ChatHistoryModel~ _store
+        }
+
+        class ChatHistoryModel{
+            +string message
+            +float[] embedding
+            +Dictionary~string, string~ metadata
+        }
+    }
+
+    IVectorStore <|-- CustomerHistoryModelMapping
+    IVectorStore <.. CustomerHistoryModelMapping
+    CustomCustomerHistoryModel <.. CustomerHistoryModelMapping
+    ChatHistoryModel <.. CustomerHistoryModelMapping
+
+    ChatHistoryModel <.. ChatHistoryPlugin
+    IVectorStore <.. ChatHistoryPlugin
+    ICollectionManagement <.. ChatHistoryPlugin
+```
+
+```mermaid
+C4Component
+title Component diagram for SK Memory Connectors
+
+
+Container_Boundary(IndexManagement, "Index Management") {
+    Component(IIndexManagement, "IIndexManagement", "e.g. CreateChatHistoryCollection", "Can create indices for core scenarios")
+
+    Rel(AzureAISearchIndexManagement, IIndexManagement, "Implements")
+    Rel(RedisIndexManagement, IIndexManagement, "Implements")
+
+    Component(AzureAISearchIndexManagement, "AzureAISearchIndexManagement", "", "Can create indices for core scenarios using Azure AI Search")
+    Component(RedisIndexManagement, "RedisIndexManagement", "", "Can create indices for core scenarios using Redis")
+}
+
+Container_Boundary(RecordManagement, "Record Management") {
+    Component(IVectorStore, "IVectorStore", "e.g. Upsert, Get, Remove", "Can manage records in an existing index")
+
+    Rel(AzureAISearchVectorStore, IVectorStore, "Implements")
+    Rel(RedisVectorStore, IVectorStore, "Implements")
+
+    Component(AzureAISearchVectorStore, "AzureAISearchVectorStore", "", "Can manage records in an existing index using Azure AI Search")
+    Component(RedisVectorStore, "RedisVectorStore", "", "Can manage records in an existing index using Redis")
+}
+
+Container_Boundary(CustomerStorageModel, "Customer Storage Models") {
+    Component(CustomerChatHistoryModel, "CustomerChatHistoryModel", "Customer Provided Record Storage model for chat history scenario")
+}
+
+Container_Boundary(CoreScenarioModels, "Core Scenario Storage Models") {
+    Component(ChatHistoryModel, "ChatHistoryModel", "Record Storage model for chat history scenario")
+}
+
+Container_Boundary(CustomerMapping, "Customer Mapping") {
+    Component(CustomerChatHistoryVectorStoreDecorator, "CustomerChatHistoryVectorStoreDecorator", "Decorator that maps customer chat history model to our model")
+}
+
+Container_Boundary(ChatHistoryPlugin, "Chat History Plugin") {
+    Component(ChatHistoryPluginClass, "ChatHistoryPluginClass", "Can store all message as a conversation happens")
+}
+
+Rel(ChatHistoryPluginClass, ChatHistoryModel, "Uses")
+Rel(ChatHistoryPluginClass, IVectorStore, "Uses")
+Rel(CustomerChatHistoryVectorStoreDecorator, IVectorStore, "Implements")
+Rel(CustomerChatHistoryVectorStoreDecorator, CustomerChatHistoryModel, "Uses")
+Rel(CustomerChatHistoryVectorStoreDecorator, ChatHistoryModel, "Uses")
+```
 
 ## Context and Problem Statement
 
@@ -74,19 +235,20 @@ interface IMemoryStore
 
 ### Vector Store Cross Store support
 
-|Feature|Azure AI Search|Weaviate|Redis|Chroma|FAISS|Pinecone|LLamaIndex|
-|-|-|-|-|-|-|-|-|
-|Get Item Suport|Y|Y|Y|Y||Y||
-|Batch Operation Support|Y|Y|Y|Y||Y||
-|Per Item Results for Batch Operations|Y|Y|Y|N||N||
-|Keys of upserted records|Y|Y|N<sup>3</sup>|N<sup>3</sup>||N<sup>3</sup>||
-|Keys of removed records|Y||N<sup>3</sup>|N||N||
-|Retrieval field selection for gets|Y||Y<sup>4<sup>|P<sup>2</sup>||N||
-|Include/Exclude Embeddings for gets|P<sup>1</sup>|Y||Y||N||
-|Failure reasons when batch partially fails|Y|Y||N||N||
-|Is Key separate from data|N|Y|Y|||||
-|Can Generate Ids|N|Y|N|N||Y||
-|Field Differentiation|Key,Props,Vectors|Key,Props,Vectors|Key,Props,Vectors|Key,Text,Metadata,Vectors||Key,Props,Vectors||
+|Feature|Azure AI Search|Weaviate|Redis|Chroma|FAISS|Pinecone|LLamaIndex|PostgreSql|
+|-|-|-|-|-|-|-|-|-|
+|Get Item Suport|Y|Y|Y|Y||Y||Y|
+|Batch Operation Support|Y|Y|Y|Y||Y|||
+|Per Item Results for Batch Operations|Y|Y|Y|N||N|||
+|Keys of upserted records|Y|Y|N<sup>3</sup>|N<sup>3</sup>||N<sup>3</sup>|||
+|Keys of removed records|Y||N<sup>3</sup>|N||N|||
+|Retrieval field selection for gets|Y||Y<sup>4<sup>|P<sup>2</sup>||N||Y|
+|Include/Exclude Embeddings for gets|P<sup>1</sup>|Y|Y<sup>4,1<sup>|Y||N||P<sup>1</sup>|
+|Failure reasons when batch partially fails|Y|Y|Y|N||N|||
+|Is Key separate from data|N|Y|Y|Y||Y||N|
+|Can Generate Ids|N|Y|N|N||Y|||
+|Field Differentiation|Key,Props,Vectors|Key,Props,Vectors|Key,Props,Vectors|Key,Text,Metadata,Vectors||Key,Props,Vectors|||
+|Index to Collection|1 to 1|1 to 1|1 to many|1 to 1|-|1 to 1|-|1 to 1|
 
 P = Partial Support
 
@@ -112,40 +274,26 @@ I'm therefore proposing that we use attributes to annotate the model indicating 
     public record HotelShortInfo(
         [property: VectorStoreModelKey] string HotelId,
         [property: VectorStoreModelMetadata] string HotelName,
-        [property: VectorStoreModelDocument] string Description,
+        [property: VectorStoreModelData] string Description,
         [property: VectorStoreModelVector] float[] DescriptionEmbeddings);
 ```
-
-### Collection/Index management
-
-Schema Comparison
-|Feature|Azure AI Search|Weaviate|Redis|
-|-|-|-|-|
-|Object Properties||||
-|Collection Properties||||
-|Multiple Vectors Per Record||||
-|Vector Algorithm config per Vector Field||||
-
----
-
-
-{Describe the context and problem statement, e.g., in free form using two to three sentences or in the form of an illustrative story.
-You may want to articulate the problem in form of a question and add links to collaboration boards or issue management systems.}
-
-<!-- This is an optional element. Feel free to remove. -->
 
 ## Decision Drivers
 
 - Focus on the core value propisition of SK
+- Ease of use
+- Design for Memory Plugin
+- Design must support all Kernel content types
+- Design must allow for database specific configuration
+- Basic CRUD operations must be supported so that connectors can be used in a polymorphic manner
+- Official Database Clients must be used where available
+- Dynamic database schema must be supported
+- Dependency injection must be supported
 - Allow break glass scenarios
-- 
-- {decision driver 1, e.g., a force, facing concern, …}
-- {decision driver 2, e.g., a force, facing concern, …}
-- … <!-- numbers of drivers can vary -->
 
-## Considered Options
 
-Options Sets:
+## Considered Questions
+
 1. Combined Index and data item management vs separated.
 2. Collection name and key value normalization in decorator or main class.
 3. Collection name as method param or constructor param.
@@ -183,7 +331,7 @@ class RedisVectorStore<TDataModel>(
     Schema schema): IVectorStore<TDataModel>;
 ```
 
-#### Option 2 - Separated index and data item management with layered index management
+#### Option 2 - Separated index and data item management
 
 ```cs
 
@@ -193,8 +341,10 @@ class WeaviateCollectionsManager: IVectorCollectionsManager;
 
 interface IVectorCollectionsManager
 {
-    Task CreateCollectionAsync(IndexConfig indexConfig, CancellationToken cancellationToken = default);
-    Task<IEnumerable<IndexConfig>> GetCollectionsAsync(CancellationToken cancellationToken = default);
+    Task CreateChatHistoryCollectionAsync(string name, CancellationToken cancellationToken = default);
+    Task CreateSemanticCacheCollectionAsync(string name, CancellationToken cancellationToken = default);
+
+    Task<IEnumerable<string>> GetCollectionsAsync(CancellationToken cancellationToken = default);
     Task DoesCollectionExistAsync(string name, CancellationToken cancellationToken = default);
     Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default);
 }
@@ -210,62 +360,15 @@ interface IVectorStore<TDataModel>
     Task RemoveAsync(string key, CancellationToken cancellationToken = default);
     Task RemoveBatchAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default);
 }
-
 ```
-
-
-- {title of option 1}
-- {title of option 2}
-- {title of option 3}
-- … <!-- numbers of options can vary -->
 
 #### Decision Outcome
 
-Chosen option: "{title of option 1}", because
-{justification. e.g., only option, which meets k.o. criterion decision driver | which resolves force {force} | … | comes out best (see below)}.
+Chosen option: "Option 2 - Separated index and data item management".
 
-<!-- This is an optional element. Feel free to remove. -->
+- Index setup and configuration varies considerably across different databases.
+- Index setup and configuration outside of some core supported scenarios is not part of the value proposition of SK.
 
-#### Consequences
-
-- Good, because {positive consequence, e.g., improvement of one or more desired qualities, …}
-- Bad, because {negative consequence, e.g., compromising one or more desired qualities, …}
-- … <!-- numbers of consequences can vary -->
-
-<!-- This is an optional element. Feel free to remove. -->
-
-#### Validation
-
-{describe how the implementation of/compliance with the ADR is validated. E.g., by a review or an ArchUnit test}
-
-<!-- This is an optional element. Feel free to remove. -->
-
-#### Pros and Cons of the Options
-
-##### {title of option 1}
-
-<!-- This is an optional element. Feel free to remove. -->
-
-{example | description | pointer to more information | …}
-
-- Good, because {argument a}
-- Good, because {argument b}
-<!-- use "neutral" if the given argument weights neither for good nor bad -->
-- Neutral, because {argument c}
-- Bad, because {argument d}
-- … <!-- numbers of pros and cons can vary -->
-
-##### {title of other option}
-
-{example | description | pointer to more information | …}
-
-- Good, because {argument a}
-- Good, because {argument b}
-- Neutral, because {argument c}
-- Bad, because {argument d}
-- …
-
-<!-- This is an optional element. Feel free to remove. -->
 
 ###  Question 2: Collection name and key value normalization in decorator or main class.
 
