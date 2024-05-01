@@ -1,11 +1,11 @@
 ---
 # These are optional elements. Feel free to remove any of them.
-status: proposed {proposed | rejected | accepted | deprecated | … | superseded by [ADR-0001](0001-madr-architecture-decisions.md)}
+status: proposed
 contact: westey-m
-date: {YYYY-MM-DD when the decision was last updated}
+date: 2024-05-01
 deciders: sergeymenshykh, markwallace, rbarreto, dmytrostruk, westey-m
-consulted: {list everyone whose opinions are sought (typically subject-matter experts); and with whom there is a two-way communication}
-informed: {list everyone who is kept up-to-date on progress; and with whom there is a one-way communication}
+consulted: 
+informed: 
 ---
 
 # Updated Memory Connector Design
@@ -84,6 +84,8 @@ interface IMemoryStore
 
 ### New Designs
 
+The separation between collection/index management and record management with batching support removed.
+
 ```mermaid
 ---
 title: SK Collection/Index and Vector management
@@ -131,6 +133,8 @@ classDiagram
     IVectorStore <|-- AzureAISearchVectorStore
     IVectorStore <|-- RedisVectorStore
 ```
+
+How to use your own schema with core sk functionality.
 
 ```mermaid
 ---
@@ -206,15 +210,17 @@ classDiagram
 
 ### Vector Store Cross Store support
 
+A comparison of the different ways in which stores implement storage capabilities to help drive decisions:
+
 |Feature|Azure AI Search|Weaviate|Redis|Chroma|FAISS|Pinecone|LLamaIndex|PostgreSql|
 |-|-|-|-|-|-|-|-|-|
 |Get Item Suport|Y|Y|Y|Y||Y||Y|
 |Batch Operation Support|Y|Y|Y|Y||Y|||
 |Per Item Results for Batch Operations|Y|Y|Y|N||N|||
-|Keys of upserted records|Y|Y|N<sup>3</sup>|N<sup>3</sup>||N<sup>3</sup>|||
-|Keys of removed records|Y||N<sup>3</sup>|N||N|||
-|Retrieval field selection for gets|Y||Y<sup>4<sup>|P<sup>2</sup>||N||Y|
-|Include/Exclude Embeddings for gets|P<sup>1</sup>|Y|Y<sup>4,1<sup>|Y||N||P<sup>1</sup>|
+|Keys of upserted records|Y|Y|N[^3]|N[^3]||N[^3]|||
+|Keys of removed records|Y||N[^3]|N||N|||
+|Retrieval field selection for gets|Y||Y[^4]|P[^2]||N||Y|
+|Include/Exclude Embeddings for gets|P[^1]|Y|Y[^4][^1]|Y||N||P[^1]|
 |Failure reasons when batch partially fails|Y|Y|Y|N||N|||
 |Is Key separate from data|N|Y|Y|Y||Y||N|
 |Can Generate Ids|N|Y|N|N||Y|||
@@ -223,13 +229,10 @@ classDiagram
 
 P = Partial Support
 
-<sup>1</sup> Only if you have the schema, to select the appropriate fields.
-
-<sup>2</sup> Supports broad categories of fields only.
-
-<sup>3</sup> Id is required in request, so can be returned if needed.
-
-<sup>4</sup> No strong typed support when specifying field list.
+[^1] Only if you have the schema, to select the appropriate fields.
+[^2] Supports broad categories of fields only.
+[^3] Id is required in request, so can be returned if needed.
+[^4] No strong typed support when specifying field list.
 
 ### Support for different storage schemas
 
