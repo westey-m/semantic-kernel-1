@@ -8,17 +8,81 @@ consulted: {list everyone whose opinions are sought (typically subject-matter ex
 informed: {list everyone who is kept up-to-date on progress; and with whom there is a one-way communication}
 ---
 
-# Updated Memory Connected Design
+# Updated Memory Connector Design
 
 Open Questions:
-- How would someone pick a collection, if they are storing the same data across many collections, e.g. partitioned by user.
-  - Option 1, add a Collections class where you can get one first and then do crud on it.
-  - Option 2, add a collection name parameter to each method, like we have now.
 - How do we change the key of a record for azure search before writing without updating the passed in model.
   - This should be done in a decorator, and not in the main class.  If someone really wants this, they can layer it on top, and there can be multiple solutions, e.g. changed passed in model, clone using serialization.
-- Current design hides the difference between an index and a collection from users, but they are not always the same thing.
-  - In some cases each collection has it's own index.
-  - In some cases multiple collections can share an index.
+
+## Context and Problem Statement
+
+Semantic Kernel has a collection of connectors to popular Vector databases e.g. Azure AI Search, Chroma, Milvus, ...
+Each Memory connector implements a memory abstraction defined by Semantic Kernel and allows developers to easily intergrate Vector databases into their applications.
+The current abstractions are experimental and the purpose of this ADR is to progress the design of the abstractions so that they can graduate to non experimental status.
+
+### Problems with current design
+
+1. The `IMemoryStore` interface has three responsibilities with different cardinalities and levels of significance to Semantic Kernel.
+2. The `IMemoryStore` interface only supports a fixed schema for data storage, retrieval and search, which limits its usability by customers with existing data sets.
+2. The `IMemoryStore` implementations are opinionated around key encoding / decoding and collection name sanitization, which limits its usability by customers with existing data sets.
+
+Responsibilities:
+
+|Functional Area|Cardinality|Significance to Semantic Kernel|Avaialble alternatives|
+|-|-|-|-|
+|Collection/Index management|An implementation per store type and model|Only indirectly useful, when building a store|SDKs for each individual memory store|
+|Data Storage and Retrieval|An implementation per store type|Directly valueable for storing chat history and indirectly valueable in building a store|kernel-memory sdk/service|
+|Vector Search|An implementation per store type, model and search type|Directly valueable for RAG scenarios|No alternatives since it's a core scenario for Semantic Kernel|
+
+
+### Memory Store Today
+```cs
+interface IMemoryStore
+{
+    // Collection / Index Management
+    Task CreateCollectionAsync(string collectionName, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<string> GetCollectionsAsync(CancellationToken cancellationToken = default);
+    Task<bool> DoesCollectionExistAsync(string collectionName, CancellationToken cancellationToken = default);
+    Task DeleteCollectionAsync(string collectionName, CancellationToken cancellationToken = default);
+
+    // Data Storage and Retrieval
+    Task<string> UpsertAsync(string collectionName, MemoryRecord record, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<string> UpsertBatchAsync(string collectionName, IEnumerable<MemoryRecord> records, CancellationToken cancellationToken = default);
+    Task<MemoryRecord?> GetAsync(string collectionName, string key, bool withEmbedding = false, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<MemoryRecord> GetBatchAsync(string collectionName, IEnumerable<string> keys, bool withEmbeddings = false, CancellationToken cancellationToken = default);
+    Task RemoveAsync(string collectionName, string key, CancellationToken cancellationToken = default);
+    Task RemoveBatchAsync(string collectionName, IEnumerable<string> keys, CancellationToken cancellationToken = default);
+
+    // Vector Search
+    IAsyncEnumerable<(MemoryRecord, double)> GetNearestMatchesAsync(
+        string collectionName,
+        ReadOnlyMemory<float> embedding,
+        int limit,
+        double minRelevanceScore = 0.0,
+        bool withEmbeddings = false,
+        CancellationToken cancellationToken = default);
+
+    Task<(MemoryRecord, double)?> GetNearestMatchAsync(
+        string collectionName,
+        ReadOnlyMemory<float> embedding,
+        double minRelevanceScore = 0.0,
+        bool withEmbedding = false,
+        CancellationToken cancellationToken = default);
+}
+```
+
+### Actions
+
+1. The `IMemoryStore` should be split into three different interfaces, one for each responsibility.
+2. The **Data Storage and Retrieval** and **Vector Search** areas should allow typed access to data and support any schema that is currently available in the customer's data store.
+3. The Collection / Index management area should be evolved to support managing common schemas for built in functionality like chat history, and would work with built in models, filters and plugins.
+4. Batching should be removed from **Data Storage and Retrieval** since it's primarily there to support bulk load and index operations and this is outside of the scope of SK.
+5. Remove opinionated behaviors from connectors. The opinionated behavior limits the ability of these connectors to be used with pre-created vector databases. As far as possible these behaviors should be moved into decorators.  Examples of opinionated behaviors:
+    1. The AzureAISearch connector encodes keys before storing and decodes them after retrieval since keys in Azure AI Search supports a limited set of characters.
+    2. The AzureAISearch connector sanitizes collection names before using them, since Azure AI Search supports a limited set of characters.
+    3. The Redis connector prepends the collection name on to the front of keys before storing records and also registers the collection name as a prefix for records to be indexed by the index.
+
+### New Designs
 
 ```mermaid
 ---
@@ -26,10 +90,10 @@ title: SK Collection/Index and Vector management
 ---
 classDiagram
     note for IVectorStore "Can manage records for any scenario"
-    note for ICollectionManagement "Can manage collections and\nindexes for core scenarios"
+    note for IVectorCollectionsManager "Can manage collections and\nindexes for core scenarios"
 
     namespace SKAbstractions{
-        class ICollectionManagement{
+        class IVectorCollectionsManager{
             <<interface>>
             +CreateChatHistoryCollection
             +CreateSemanticCacheCollection
@@ -46,7 +110,7 @@ classDiagram
     }
 
     namespace AzureAIMemory{
-        class AzureAISearchCollectionManagement{
+        class AzureAISearchCollectionsManager{
         }
 
         class AzureAISearchVectorStore{
@@ -54,15 +118,15 @@ classDiagram
     }
 
     namespace RedisMemory{
-        class RedisCollectionManagement{
+        class RedisCollectionsManager{
         }
 
         class RedisVectorStore{
         }
     }
 
-    ICollectionManagement <|-- AzureAISearchCollectionManagement
-    ICollectionManagement <|-- RedisCollectionManagement
+    IVectorCollectionsManager <|-- AzureAISearchCollectionsManager
+    IVectorCollectionsManager <|-- RedisCollectionsManager
 
     IVectorStore <|-- AzureAISearchVectorStore
     IVectorStore <|-- RedisVectorStore
@@ -74,11 +138,12 @@ title: Chat History Break Glass
 ---
 classDiagram
     note for IVectorStore "Can manage records for any scenario"
-    note for CustomerHistoryModelMapping "Decorator class for IVectorStore that maps\nbetween the customer model to our model"
-    note for ICollectionManagement "Can manage collections and\nindexes for core scenarios"
+    note for IVectorCollectionsManager "Can manage collections and\nindexes for core scenarios"
+    note for CustomerHistoryVectorStore "Decorator class for IVectorStore that maps\nbetween the customer model to our model"
+    note for CustomerCollectionManagement "Creates indices using\nCustomer requirements"
 
     namespace SKAbstractions{
-        class ICollectionManagement{
+        class IVectorCollectionsManager{
             <<interface>>
             +CreateChatHistoryCollection
             +CreateSemanticCacheCollection
@@ -95,17 +160,24 @@ classDiagram
     }
 
     namespace CustomerProject{
-        class CustomCustomerHistoryModel{
+        class CustomerHistoryModel{
             +string text
             +float[] vector
             +Dictionary~string, string~ properties
         }
 
-        class CustomerHistoryModelMapping{
-            -IVectorStore~CustomCustomerHistoryModel~ _store
+        class CustomerHistoryVectorStore{
+            -IVectorStore~CustomerHistoryModel~ _store
             +Upsert(ChatHistoryModel record) string
             +Get(string key) ChatHistoryModel
             +Remove(string key) string
+        }
+
+        class CustomerCollectionManagement{
+            +CreateChatHistoryCollection
+            +CreateSemanticCacheCollection
+            +GetCollections
+            +DeleteCollection
         }
     }
 
@@ -121,117 +193,16 @@ classDiagram
         }
     }
 
-    IVectorStore <|-- CustomerHistoryModelMapping
-    IVectorStore <.. CustomerHistoryModelMapping
-    CustomCustomerHistoryModel <.. CustomerHistoryModelMapping
-    ChatHistoryModel <.. CustomerHistoryModelMapping
+    IVectorStore <|-- CustomerHistoryVectorStore
+    IVectorStore <.. CustomerHistoryVectorStore
+    CustomerHistoryModel <.. CustomerHistoryVectorStore
+    ChatHistoryModel <.. CustomerHistoryVectorStore
+    IVectorCollectionsManager <|-- CustomerCollectionManagement
 
     ChatHistoryModel <.. ChatHistoryPlugin
     IVectorStore <.. ChatHistoryPlugin
-    ICollectionManagement <.. ChatHistoryPlugin
+    IVectorCollectionsManager <.. ChatHistoryPlugin
 ```
-
-```mermaid
-C4Component
-title Component diagram for SK Memory Connectors
-
-
-Container_Boundary(IndexManagement, "Index Management") {
-    Component(IIndexManagement, "IIndexManagement", "e.g. CreateChatHistoryCollection", "Can create indices for core scenarios")
-
-    Rel(AzureAISearchIndexManagement, IIndexManagement, "Implements")
-    Rel(RedisIndexManagement, IIndexManagement, "Implements")
-
-    Component(AzureAISearchIndexManagement, "AzureAISearchIndexManagement", "", "Can create indices for core scenarios using Azure AI Search")
-    Component(RedisIndexManagement, "RedisIndexManagement", "", "Can create indices for core scenarios using Redis")
-}
-
-Container_Boundary(RecordManagement, "Record Management") {
-    Component(IVectorStore, "IVectorStore", "e.g. Upsert, Get, Remove", "Can manage records in an existing index")
-
-    Rel(AzureAISearchVectorStore, IVectorStore, "Implements")
-    Rel(RedisVectorStore, IVectorStore, "Implements")
-
-    Component(AzureAISearchVectorStore, "AzureAISearchVectorStore", "", "Can manage records in an existing index using Azure AI Search")
-    Component(RedisVectorStore, "RedisVectorStore", "", "Can manage records in an existing index using Redis")
-}
-
-Container_Boundary(CustomerStorageModel, "Customer Storage Models") {
-    Component(CustomerChatHistoryModel, "CustomerChatHistoryModel", "Customer Provided Record Storage model for chat history scenario")
-}
-
-Container_Boundary(CoreScenarioModels, "Core Scenario Storage Models") {
-    Component(ChatHistoryModel, "ChatHistoryModel", "Record Storage model for chat history scenario")
-}
-
-Container_Boundary(CustomerMapping, "Customer Mapping") {
-    Component(CustomerChatHistoryVectorStoreDecorator, "CustomerChatHistoryVectorStoreDecorator", "Decorator that maps customer chat history model to our model")
-}
-
-Container_Boundary(ChatHistoryPlugin, "Chat History Plugin") {
-    Component(ChatHistoryPluginClass, "ChatHistoryPluginClass", "Can store all message as a conversation happens")
-}
-
-Rel(ChatHistoryPluginClass, ChatHistoryModel, "Uses")
-Rel(ChatHistoryPluginClass, IVectorStore, "Uses")
-Rel(CustomerChatHistoryVectorStoreDecorator, IVectorStore, "Implements")
-Rel(CustomerChatHistoryVectorStoreDecorator, CustomerChatHistoryModel, "Uses")
-Rel(CustomerChatHistoryVectorStoreDecorator, ChatHistoryModel, "Uses")
-```
-
-## Context and Problem Statement
-
-Semantic Kernel has a collection of connectors to popular Vector databases e.g. Azure AI Search, Chroma, Milvus, ...
-Each Memory connector implements a memory abstraction defined by Semantic Kernel and allows developers to easily intergrate Vector databases into their applications.
-The current abstractions are experimental and the purpose of this ADR is to progress the design of the abstractions so that they can graduate to non experimental status.
-
-### Problems with current design
-
-1. The `IMemoryStore` interface has three responsibilities with different cardinalities and levels of significance to Semantic Kernel.
-2. The `IMemoryStore` interface only supports a fixed schema for data storage, retrieval and search, which limits it's usefulness to our customers.
-
-Responsibilities:
-
-|Functional Area|Cardinality|Significance to Semantic Kernel|Avaialble alternatives|
-|-|-|-|-|
-|Collection/Index management|A single instance per store type|Only indirectly useful, when building a store|SDKs for each individual memory store|
-|Data Storage and Retrieval|An instance per store type and model|Directly valueable for storing chat history and indirectly valueable in building a store|kernel-memory sdk/service|
-|Vector Search|An instance per store type, model and search type|Directly valueable for RAG scenarios|No alternatives since it's a core scenario for Semantic Kernel|
-
-
-### Memory Store Today
-```cs
-interface IMemoryStore
-{
-    // Collection / Index Management
-    CreateCollection
-    GetCollections
-    DoesCollectionExist
-    DeleteCollection
-
-    // Data Storage and Retrieval
-    Upsert
-    UpsertBatch
-    Get
-    GetBatch
-    Remove
-    RemoveBatch
-
-    // Vector Search
-    GetNearestMatches
-}
-```
-
-### Actions
-
-1. The `IMemoryStore` should be split into three different interfaces, one for each responsibility.
-2. The **Data Storage and Retrieval** and **Vector Search** areas should allow typed access to data and support any schema that is currently available in the customer's data store.
-3. The Collection / Index management area should be evolved to support managing common schemas for built in functionality like chat history, and would work with built in models, filters and plugins.
-4. Batching should be removed from **Data Storage and Retrieval** since it's primarily there to support bulk load and index operations and this is outside of the scope of SK.
-5. Remove opinionated behaviors from connectors. The opinionated behavior limits the ability of these connectors to be used with pre-created vector databases. As far as possible these behaviors should be moved into decorators.  Examples of opinionated behaviors:
-    1. The AzureAISearch connector encodes keys before storing and decodes them after retrieval since keys in Azure AI Search supports a limited set of characters.
-    2. The AzureAISearch connector sanitizes collection names before using them, since Azure AI Search supports a limited set of characters.
-    3. The Redis connector prepends the collection name on to the front of keys before storing records and also registers the collection name as a prefix for records to be indexed by the index.
 
 ### Vector Store Cross Store support
 
@@ -335,31 +306,34 @@ class RedisVectorStore<TDataModel>(
 
 ```cs
 
-class AzureAISearchCollectionsManager: IVectorCollectionsManager;
-class RedisCollectionsManager: IVectorCollectionsManager;
-class WeaviateCollectionsManager: IVectorCollectionsManager;
-
 interface IVectorCollectionsManager
 {
-    Task CreateChatHistoryCollectionAsync(string name, CancellationToken cancellationToken = default);
-    Task CreateSemanticCacheCollectionAsync(string name, CancellationToken cancellationToken = default);
+    virtual Task CreateChatHistoryCollectionAsync(string name, CancellationToken cancellationToken = default);
+    virtual Task CreateSemanticCacheCollectionAsync(string name, CancellationToken cancellationToken = default);
 
     Task<IEnumerable<string>> GetCollectionsAsync(CancellationToken cancellationToken = default);
     Task DoesCollectionExistAsync(string name, CancellationToken cancellationToken = default);
     Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default);
 }
 
-class AzureAISearchVectorStore<TDataModel>(IndexConfig indexConfig): IVectorStore<TDataModel>;
+class AzureAISearchCollectionsManager: IVectorCollectionsManager;
+class RedisCollectionsManager: IVectorCollectionsManager;
+class WeaviateCollectionsManager: IVectorCollectionsManager;
+
+// Customers can inherit from our implementations and replace just the creation scenarios to match their schemas.
+class CustomerCollectionsManager: AzureAISearchCollectionsManager, IVectorCollectionsManager;
+
+// We can also create implementations that create indices based on an MLIndex specification.
+class MLIndexAzureAISearchCollectionsManager(MLIndex mlIndexSpec): AzureAISearchCollectionsManager, IVectorCollectionsManager;
 
 interface IVectorStore<TDataModel>
 {
     Task UpsertAsync(TDataModel data, CancellationToken cancellationToken = default);
-    IAsyncEnumerable<string> UpsertBatchAsync(IEnumerable<TDataModel> dataSet, CancellationToken cancellationToken = default);
     Task<TDataModel> GetAsync(string key, bool withEmbedding = false, CancellationToken cancellationToken = default);
-    IAsyncEnumerable<TDataModel> GetBatchAsync(IEnumerable<string> keys, bool withEmbeddings = false, CancellationToken cancellationToken = default);
     Task RemoveAsync(string key, CancellationToken cancellationToken = default);
-    Task RemoveBatchAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default);
 }
+
+class AzureAISearchVectorStore<TDataModel>(IndexConfig indexConfig): IVectorStore<TDataModel>;
 ```
 
 #### Decision Outcome
@@ -368,6 +342,8 @@ Chosen option: "Option 2 - Separated index and data item management".
 
 - Index setup and configuration varies considerably across different databases.
 - Index setup and configuration outside of some core supported scenarios is not part of the value proposition of SK.
+- Vector storage, even with custom schemas can be supported using a single implementation.
+- We will therefore need to support multiple collection manager implementations per store type and a single vector store implementation per store type.
 
 
 ###  Question 2: Collection name and key value normalization in decorator or main class.
@@ -402,7 +378,7 @@ Chosen option: "Option 2 - Separated index and data item management".
 
 #### Decision Outcome
 
-Chosen option 2 because this behavior mostly makes sense for scenarios where the vector store is both being written to and read from.
+Chosen option 2 because this behavior mostly makes sense for scenarios where the vector store is not an existing store that has been created outside of SK.
 If e.g. the data was written using another tool, it may be unlikely that it was encoded using the same mechanism as supported here
 and therefore this functionality may not be appropriate. The developer should have the ability to not use this functionality or
 provide their own encoding / decoding behavior.
