@@ -230,20 +230,21 @@ classDiagram
 
 A comparison of the different ways in which stores implement storage capabilities to help drive decisions:
 
-|Feature|Azure AI Search|Weaviate|Redis|Chroma|FAISS|Pinecone|LLamaIndex|PostgreSql|
-|-|-|-|-|-|-|-|-|-|
-|Get Item Suport|Y|Y|Y|Y||Y||Y|
-|Batch Operation Support|Y|Y|Y|Y||Y|||
-|Per Item Results for Batch Operations|Y|Y|Y|N||N|||
-|Keys of upserted records|Y|Y|N<sup>3</sup>|N<sup>3</sup>||N<sup>3</sup>|||
-|Keys of removed records|Y||N<sup>3</sup>|N||N|||
-|Retrieval field selection for gets|Y||Y<sup>4<sup>|P<sup>2</sup>||N||Y|
-|Include/Exclude Embeddings for gets|P<sup>1</sup>|Y|Y<sup>4,1<sup>|Y||N||P<sup>1</sup>|
-|Failure reasons when batch partially fails|Y|Y|Y|N||N|||
-|Is Key separate from data|N|Y|Y|Y||Y||N|
-|Can Generate Ids|N|Y|N|N||Y|||
-|Field Differentiation|Key,Props,Vectors|Key,Props,Vectors|Key,Props,Vectors|Key,Text,Metadata,Vectors||Key,Props,Vectors|||
-|Index to Collection|1 to 1|1 to 1|1 to many|1 to 1|-|1 to 1|-|1 to 1|
+|Feature|Azure AI Search|Weaviate|Redis|Chroma|FAISS|Pinecone|LLamaIndex|PostgreSql|Qdrant|Milvus|
+|-|-|-|-|-|-|-|-|-|-|-|
+|Get Item Suport|Y|Y|Y|Y||Y||Y|Y|Y|
+|Batch Operation Support|Y|Y|Y|Y||Y||||Y|
+|Per Item Results for Batch Operations|Y|Y|Y|N||N|||||
+|Keys of upserted records|Y|Y|N<sup>3</sup>|N<sup>3</sup>||N<sup>3</sup>||||Y|
+|Keys of removed records|Y||N<sup>3</sup>|N||N||||N<sup>3</sup>|
+|Retrieval field selection for gets|Y||Y<sup>4<sup>|P<sup>2</sup>||N||Y|Y|Y|
+|Include/Exclude Embeddings for gets|P<sup>1</sup>|Y|Y<sup>4,1<sup>|Y||N||P<sup>1</sup>|Y|N|
+|Failure reasons when batch partially fails|Y|Y|Y|N||N|||||
+|Is Key separate from data|N|Y|Y|Y||Y||N|Y|N|
+|Can Generate Ids|N|Y|N|N||Y||Y|N|Y|
+|Field Differentiation|Fields|Key,Props,Vectors|Key,Fields|Key,Documents,Metadata,Vectors||Key,Metadata,SparseValues,Vectors||Fields|Key,Props(Payload),Vectors|Fields|
+|Index to Collection|1 to 1|1 to 1|1 to many|1 to 1|-|1 to 1|-|1 to 1|1 to 1|1 to 1|
+|Id Type|String|UUID|string with collection name prefix|string||string|UUID|64Bit Int / UUID / ULID|64Bit Unsigned Int / UUID|Int64 / varchar|
 
 Footnotes:
 - P = Partial Support
@@ -403,6 +404,7 @@ Chosen option: "Option 2 - Separated index and data item management".
 - Pros: Allows normaliation to vary separately from the vector store.
 - Pros: No code executed when no normalization required.
 - Pros: Easy to package matching encoders/decoders together.
+- Pros: Easier to obsolete encoding/normalization as a concept.
 - Cons: Need to implement the full VectorStore interface.
 
 ```cs
