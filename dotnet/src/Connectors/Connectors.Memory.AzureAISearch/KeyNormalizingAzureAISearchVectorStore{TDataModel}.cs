@@ -84,12 +84,17 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     }
 
     /// <inheritdoc />
-    public async Task<TDataModel?> GetAsync(string collectionName, string key, VectorStoreGetDocumentOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = null, CancellationToken cancellationToken = default)
     {
+        var innerOptions = options == null ? null : new VectorStoreGetDocumentOptions
+        {
+            IncludeEmbeddings = options.IncludeEmbeddings,
+            CollectionName = options.CollectionName == null ? null : this._indexNameEncoder(options.CollectionName)
+        };
+
         var result = await this._vectorStore.GetAsync(
-            this._indexNameEncoder(collectionName),
             this._recordKeyEncoder.Invoke(key),
-            options,
+            innerOptions,
             cancellationToken).ConfigureAwait(false);
 
         if (result != null)
@@ -118,11 +123,16 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     }
 
     /// <inheritdoc />
-    public async Task<string> RemoveAsync(string collectionName, string key, CancellationToken cancellationToken = default)
+    public async Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default)
     {
+        var innerOptions = options == null ? null : new VectorStoreRemoveDocumentOptions
+        {
+            CollectionName = options.CollectionName == null ? null : this._indexNameEncoder(options.CollectionName)
+        };
+
         var result = await this._vectorStore.RemoveAsync(
-            this._indexNameEncoder(collectionName),
             this._recordKeyEncoder.Invoke(key),
+            innerOptions,
             cancellationToken).ConfigureAwait(false);
 
         return this._recordKeyDecoder.Invoke(result);
@@ -138,13 +148,18 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     }
 
     /// <inheritdoc />
-    public async Task<string> UpsertAsync(string collectionName, TDataModel record, CancellationToken cancellationToken = default)
+    public async Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default)
     {
+        var innerOptions = options == null ? null : new VectorStoreUpsertDocumentOptions
+        {
+            CollectionName = options.CollectionName == null ? null : this._indexNameEncoder(options.CollectionName)
+        };
+
         this.EncodeKeyField(record);
 
         var result = await this._vectorStore.UpsertAsync(
-            this._indexNameEncoder(collectionName),
             record,
+            innerOptions,
             cancellationToken).ConfigureAwait(false);
 
         return this._recordKeyDecoder.Invoke(result);

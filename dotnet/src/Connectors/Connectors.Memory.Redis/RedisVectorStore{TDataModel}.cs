@@ -35,7 +35,7 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<TDataModel?> GetAsync(string collectionName, string key, VectorStoreGetDocumentOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = null, CancellationToken cancellationToken = default)
     {
         var result = await this._database.JSON().GetAsync<TDataModel>(key).ConfigureAwait(false);
         if (result == null)
@@ -52,7 +52,7 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<string> RemoveAsync(string collectionName, string key, CancellationToken cancellationToken = default)
+    public async Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default)
     {
         await this._database.JSON().DelAsync(key).ConfigureAwait(false);
         return key;
@@ -65,7 +65,7 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<string> UpsertAsync(string collectionName, TDataModel record, CancellationToken cancellationToken = default)
+    public async Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default)
     {
         var keyValue = (string)this._keyFieldPropertyInfo.GetValue(record);
         await this._database.JSON().SetAsync(keyValue, "$", record).ConfigureAwait(false);

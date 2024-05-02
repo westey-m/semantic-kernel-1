@@ -161,6 +161,16 @@ classDiagram
             +Get(string key) TModel
             +Remove(string key) string
         }
+
+        class ISemanticTextMemory{
+            <<interface>>
+            +SaveInformationAsync()
+            +SaveReferenceAsync()
+            +GetAsync()
+            +RemoveAsync()
+            +SearchAsync()
+            +GetCollectionsAsync()
+        }
     }
 
     namespace CustomerProject{
@@ -186,8 +196,14 @@ classDiagram
     }
 
     namespace SKCore{
+        class SemanticTextMemory{
+            -IVectorStore~ChatHistoryModel~ _vectorStore
+            -IVectorCollectionsManager _collectionsManager
+            -ITextEmbeddingGenerationService _embeddingGenerationService
+        }
+
         class ChatHistoryPlugin{
-            -IVectorStore~ChatHistoryModel~ _store
+            -ISemanticTextMemory memory
         }
 
         class ChatHistoryModel{
@@ -203,9 +219,11 @@ classDiagram
     ChatHistoryModel <.. CustomerHistoryVectorStore
     IVectorCollectionsManager <|-- CustomerCollectionManagement
 
-    ChatHistoryModel <.. ChatHistoryPlugin
-    IVectorStore <.. ChatHistoryPlugin
-    IVectorCollectionsManager <.. ChatHistoryPlugin
+    ChatHistoryModel <.. SemanticTextMemory
+    IVectorStore <.. SemanticTextMemory
+    IVectorCollectionsManager <.. SemanticTextMemory
+
+    ISemanticTextMemory <.. ChatHistoryPlugin
 ```
 
 ### Vector Store Cross Store support
@@ -418,23 +436,46 @@ Option 1 won't work because if e.g. the data was written using another tool, it 
 and therefore this functionality may not be appropriate. The developer should have the ability to not use this functionality or
 provide their own encoding / decoding behavior.
 
-###  Question 3: Collection name as method param or via constructor
+###  Question 3: Collection name as method param or via constructor or either
 
 #### Option 1 - Collection name as method param
 
 ```cs
-public async Task<TDataModel?> GetAsync(string collectionName,  VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+public class MyMemoryStore()
+{
+    public async Task<TDataModel?> GetAsync(string collectionName, string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
+}
 ```
 
 #### Option 2 - Collection name via construtor
 
 ```cs
-public async Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+public class MyMemoryStore(string defaultCollectionName)
+{
+    public async Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
+}
+```
+
+#### Option 3 - Collection name via either
+
+```cs
+public class MyMemoryStore(string defaultCollectionName)
+{
+    public async Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
+}
+
+public class VectorStoreGetDocumentOptions
+{
+    public string CollectionName { get; init; };
+}
 ```
 
 #### Decision Outcome
 
-Chosen option 1, because we need to support customers / databases who use collections as a partitioning strategy, where e.g. the name may be a user id.
+Chosen option 3, because we need to support customers / databases who use collections as a partitioning strategy, where e.g. the name may be a user id.
+At the same time, the sdk should be easy to use for people who don't need this.
+So requiring customers to provide a default collection name, but they can optionally choose to provide a per operation collection name per operation as well.
+This also has the benefit of having an options object for each operation, so making the api future proof for extensibility.
 
 ## More Information
 

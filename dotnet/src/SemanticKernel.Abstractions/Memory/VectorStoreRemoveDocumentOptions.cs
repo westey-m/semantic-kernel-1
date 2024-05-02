@@ -3,17 +3,12 @@
 namespace Microsoft.SemanticKernel.Memory;
 
 /// <summary>
-/// Optional options when calling <see cref="IVectorStore{TDataModel}.GetAsync"/>.
+/// Optional options when calling <see cref="IVectorStore{TDataModel}.RemoveAsync"/>.
 /// </summary>
-public class VectorStoreGetDocumentOptions
+public class VectorStoreRemoveDocumentOptions
 {
     /// <summary>
     /// Get or sets an optional collection name to use for this operation that is different to the default.
     /// </summary>
     public string? CollectionName { get; init; }
-
-    /// <summary>
-    /// Get or sets a value indicating whether to include embeddings in the retrieval result.
-    /// </summary>
-    public bool IncludeEmbeddings { get; init; } = false;
 }

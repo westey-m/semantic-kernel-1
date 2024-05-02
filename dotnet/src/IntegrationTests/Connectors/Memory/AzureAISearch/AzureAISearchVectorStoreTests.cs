@@ -26,11 +26,11 @@ public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, Azur
     public async Task ItCanUpsertDocumentToVectorStoreAsync()
     {
         // Arrange
-        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, KeyFieldName);
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
 
         // Act
-        var upsertResult = await sut.UpsertAsync(fixture.TestIndexName, new AzureAISearchVectorStoreFixture.HotelShortInfo("mh5", "MyHotel5", "My Hotel is great."));
-        var getResult = await sut.GetAsync(fixture.TestIndexName, "mh5");
+        var upsertResult = await sut.UpsertAsync(new AzureAISearchVectorStoreFixture.HotelShortInfo("mh5", "MyHotel5", "My Hotel is great."));
+        var getResult = await sut.GetAsync("mh5");
 
         // Assert
         Assert.NotNull(upsertResult);
@@ -48,7 +48,7 @@ public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, Azur
     public async Task ItCanUpsertManyDocumentsToVectorStoreAsync()
     {
         // Arrange
-        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, KeyFieldName);
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
 
         // Act
         var results = sut.UpsertBatchAsync(
@@ -79,10 +79,10 @@ public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, Azur
     public async Task ItCanGetDocumentFromVectorStoreAsync()
     {
         // Arrange
-        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, KeyFieldName);
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
 
         // Act
-        var hotel1 = await sut.GetAsync(fixture.TestIndexName, "1", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true });
+        var hotel1 = await sut.GetAsync("1", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true });
 
         // Assert
         Assert.NotNull(hotel1);
@@ -96,7 +96,7 @@ public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, Azur
     {
         // Arrange
         var options = new AzureAISearchVectorStoreOptions { MaxDegreeOfGetParallelism = 3 };
-        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, KeyFieldName, options);
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName, options);
 
         // Act
         var hotels = sut.GetBatchAsync(fixture.TestIndexName, ["1", "2", "3", "4"], new VectorStoreGetDocumentOptions { IncludeEmbeddings = true });
@@ -117,31 +117,31 @@ public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, Azur
     public async Task ItCanRemoveDocumentFromVectorStoreAsync()
     {
         // Arrange
-        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, KeyFieldName);
-        await sut.UpsertAsync(fixture.TestIndexName, new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp1", "TempHotel1", "This hotel will be deleted."));
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
+        await sut.UpsertAsync(new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp1", "TempHotel1", "This hotel will be deleted."));
 
         // Act
-        await sut.RemoveAsync(fixture.TestIndexName, "tmp1");
+        await sut.RemoveAsync("tmp1");
 
         // Assert
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync(fixture.TestIndexName, "tmp1", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true }));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp1", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true }));
     }
 
     [Fact(Skip = SkipReason)]
     public async Task ItCanRemoveManyDocumentsFromVectorStoreAsync()
     {
         // Arrange
-        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, KeyFieldName);
-        await sut.UpsertAsync(fixture.TestIndexName, new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp5", "TempHotel5", "This hotel will be deleted."));
-        await sut.UpsertAsync(fixture.TestIndexName, new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp6", "TempHotel6", "This hotel will be deleted."));
-        await sut.UpsertAsync(fixture.TestIndexName, new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp7", "TempHotel7", "This hotel will be deleted."));
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
+        await sut.UpsertAsync(new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp5", "TempHotel5", "This hotel will be deleted."));
+        await sut.UpsertAsync(new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp6", "TempHotel6", "This hotel will be deleted."));
+        await sut.UpsertAsync(new AzureAISearchVectorStoreFixture.HotelShortInfo("tmp7", "TempHotel7", "This hotel will be deleted."));
 
         // Act
         await sut.RemoveBatchAsync(fixture.TestIndexName, ["tmp5", "tmp6", "tmp7"]);
 
         // Assert
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync(fixture.TestIndexName, "tmp5", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true }));
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync(fixture.TestIndexName, "tmp6", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true }));
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync(fixture.TestIndexName, "tmp7", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true }));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp5", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true }));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp6", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true }));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp7", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true }));
     }
 }

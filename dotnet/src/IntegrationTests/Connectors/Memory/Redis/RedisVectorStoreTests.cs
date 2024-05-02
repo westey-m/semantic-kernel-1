@@ -19,7 +19,7 @@ public sealed class RedisVectorStoreTests(ITestOutputHelper output, RedisVectorS
         var sut = new RedisVectorStore<RedisVectorStoreFixture.HotelShortInfo>(fixture.Database);
 
         // Act.
-        var getResult = await sut.GetAsync("hotels", "hotels:H10");
+        var getResult = await sut.GetAsync("hotels:H10");
 
         // Assert.
         Assert.Equal("hotels:H10", getResult?.HotelId);
@@ -34,14 +34,14 @@ public sealed class RedisVectorStoreTests(ITestOutputHelper output, RedisVectorS
         // Arrange.
         var sut = new RedisVectorStore<RedisVectorStoreFixture.HotelShortInfo>(fixture.Database);
         var record = new RedisVectorStoreFixture.HotelShortInfo("hotels:TMP20", "My Hotel 20", "This is a great hotel.", Array.Empty<float>());
-        await sut.UpsertAsync("hotels", record);
+        await sut.UpsertAsync(record);
 
         // Act.
-        var removeResult = await sut.RemoveAsync("hotels", "hotels:TMP20");
+        var removeResult = await sut.RemoveAsync("hotels:TMP20");
 
         // Assert.
         Assert.Equal("hotels:TMP20", removeResult);
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("hotels", "hotels:TMP20"));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("hotels:TMP20"));
 
         // Output.
         output.WriteLine(removeResult);
@@ -55,10 +55,10 @@ public sealed class RedisVectorStoreTests(ITestOutputHelper output, RedisVectorS
         var record = new RedisVectorStoreFixture.HotelShortInfo("hotels:H1", "My Hotel 1", "This is a great hotel.", null);
 
         // Act.
-        var upsertResult = await sut.UpsertAsync("hotels", record);
+        var upsertResult = await sut.UpsertAsync(record);
 
         // Assert.
-        var getResult = await sut.GetAsync("hotels", "hotels:H1");
+        var getResult = await sut.GetAsync("hotels:H1");
         Assert.Equal("hotels:H1", upsertResult);
         Assert.Equal(record, getResult);
 

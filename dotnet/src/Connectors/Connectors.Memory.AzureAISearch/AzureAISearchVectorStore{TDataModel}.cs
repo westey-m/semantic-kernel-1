@@ -24,6 +24,7 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
 {
     /// <summary>Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</summary>
     private readonly SearchIndexClient _searchIndexClient;
+    private readonly string _defaultCollectionName;
 
     /// <summary>The name of the key field for the collections that this class is used with.</summary>
     private readonly string _keyFieldName;
@@ -41,11 +42,13 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// Create a new instance of vector storage using Azure AI Search.
     /// </summary>
     /// <param name="searchIndexClient">Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</param>
+    /// <param name="defaultCollectionName">The name of the collection to use with this store if none is provided for any individual operation.</param>
     /// <param name="keyFieldName">The name of the key field for the collection that this class is used with.</param>
     /// <param name="options">Optional configuration options for this class.</param>
-    public AzureAISearchVectorStore(SearchIndexClient searchIndexClient, string keyFieldName, AzureAISearchVectorStoreOptions? options = default)
+    public AzureAISearchVectorStore(SearchIndexClient searchIndexClient, string defaultCollectionName, string keyFieldName, AzureAISearchVectorStoreOptions? options = default)
     {
         this._searchIndexClient = searchIndexClient ?? throw new ArgumentNullException(nameof(searchIndexClient));
+        this._defaultCollectionName = string.IsNullOrWhiteSpace(defaultCollectionName) ? throw new ArgumentException("Default collection name is required.", nameof(defaultCollectionName)) : defaultCollectionName;
         this._keyFieldName = string.IsNullOrWhiteSpace(keyFieldName) ? throw new ArgumentException("Key Field name is required.", nameof(keyFieldName)) : keyFieldName;
         this._options = options ?? new AzureAISearchVectorStoreOptions();
 
@@ -63,22 +66,18 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<TDataModel?> GetAsync(string collectionName, string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(collectionName))
-        {
-            throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
-        }
-
         if (key is null)
         {
             throw new ArgumentNullException(nameof(key));
         }
 
-        // Create Options
+        // Create Options.
         var innerOptions = this.ConvertGetDocumentOptions(options);
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
 
-        // Get data
+        // Get record.
         var searchClient = this.GetSearchClient(collectionName);
         return await RunOperationAsync(() => searchClient.GetDocumentAsync<TDataModel>(key, innerOptions, cancellationToken)).ConfigureAwait(false);
     }
@@ -114,18 +113,17 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<string> RemoveAsync(string collectionName, string key, CancellationToken cancellationToken = default)
+    public async Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(collectionName))
-        {
-            throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
-        }
-
         if (key is null)
         {
             throw new ArgumentNullException(nameof(key));
         }
 
+        // Create options.
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+
+        // Remove record.
         var searchClient = this.GetSearchClient(collectionName);
         var results = await RunOperationAsync(() => searchClient.DeleteDocumentsAsync(this._keyFieldName, [key], new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
         return results.Value.Results[0].Key;
@@ -149,18 +147,17 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<string> UpsertAsync(string collectionName, TDataModel record, CancellationToken cancellationToken = default)
+    public async Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(collectionName))
-        {
-            throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
-        }
-
         if (record is null)
         {
             throw new ArgumentNullException(nameof(record));
         }
 
+        // Create options.
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+
+        // Upsert record.
         var searchClient = this.GetSearchClient(collectionName);
         var results = await RunOperationAsync(() => searchClient.UploadDocumentsAsync<TDataModel>([record], new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
         return results.Value.Results[0].Key;
