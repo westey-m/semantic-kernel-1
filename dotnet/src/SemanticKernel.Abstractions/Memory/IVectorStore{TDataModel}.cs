@@ -3,7 +3,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using System.Threading;
-using System.Collections.Generic;
 
 namespace Microsoft.SemanticKernel.Memory;
 
@@ -24,15 +23,15 @@ public interface IVectorStore<TDataModel>
     /// <returns>The memory record if found, otherwise null.</returns>
     Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets a batch of memory records from the data store. Does not guarantee that the collection exists.
-    /// </summary>
-    /// <param name="collectionName">The name of the collection of records.</param>
-    /// <param name="keys">The unique ids associated with the memory record to get.</param>
-    /// <param name="options">Optional options for retrieving the records.</param>
-    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
-    /// <returns>The memory records associated with the unique keys provided.</returns>
-    IAsyncEnumerable<TDataModel> GetBatchAsync(string collectionName, IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    //// <summary>
+    //// Gets a batch of memory records from the data store. Does not guarantee that the collection exists.
+    //// </summary>
+    //// <param name="collectionName">The name of the collection of records.</param>
+    //// <param name="keys">The unique ids associated with the memory record to get.</param>
+    //// <param name="options">Optional options for retrieving the records.</param>
+    //// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    //// <returns>The memory records associated with the unique keys provided.</returns>
+    ////IAsyncEnumerable<TDataModel> GetBatchAsync(string collectionName, IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes a memory record from the data store. Does not guarantee that the collection exists.
@@ -43,13 +42,13 @@ public interface IVectorStore<TDataModel>
     /// <returns>The unique identifier for the memory record.</returns>
     Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Removes a batch of memory records from the data store. Does not guarantee that the collection exists.
-    /// </summary>
-    /// <param name="collectionName">The name of the collection of records.</param>
-    /// <param name="keys">The unique ids associated with the memory record to remove.</param>
-    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
-    Task RemoveBatchAsync(string collectionName, IEnumerable<string> keys, CancellationToken cancellationToken = default);
+    //// <summary>
+    //// Removes a batch of memory records from the data store. Does not guarantee that the collection exists.
+    //// </summary>
+    //// <param name="collectionName">The name of the collection of records.</param>
+    //// <param name="keys">The unique ids associated with the memory record to remove.</param>
+    //// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    ////Task RemoveBatchAsync(string collectionName, IEnumerable<string> keys, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Upserts a memory record into the data store. Does not guarantee that the collection exists.
@@ -62,14 +61,14 @@ public interface IVectorStore<TDataModel>
     /// <returns>The unique identifier for the memory record.</returns>
     Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Upserts a group of memory records into the data store. Does not guarantee that the collection exists.
-    ///     If the record already exists, it will be updated.
-    ///     If the record does not exist, it will be created.
-    /// </summary>
-    /// <param name="collectionName">The name of the collection of records.</param>
-    /// <param name="records">The memory records to upsert.</param>
-    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
-    /// <returns>The unique identifiers for the memory records.</returns>
-    IAsyncEnumerable<string> UpsertBatchAsync(string collectionName, IEnumerable<TDataModel> records, CancellationToken cancellationToken = default);
+    //// <summary>
+    //// Upserts a group of memory records into the data store. Does not guarantee that the collection exists.
+    ////     If the record already exists, it will be updated.
+    ////     If the record does not exist, it will be created.
+    //// </summary>
+    //// <param name="collectionName">The name of the collection of records.</param>
+    //// <param name="records">The memory records to upsert.</param>
+    //// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    //// <returns>The unique identifiers for the memory records.</returns>
+    ////IAsyncEnumerable<string> UpsertBatchAsync(string collectionName, IEnumerable<TDataModel> records, CancellationToken cancellationToken = default);
 }

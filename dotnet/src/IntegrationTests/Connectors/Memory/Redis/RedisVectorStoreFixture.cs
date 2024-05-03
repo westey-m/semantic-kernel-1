@@ -21,11 +21,16 @@ public class RedisVectorStoreFixture : IAsyncLifetime
     /// <summary>The id of the redis container that we are testing with.</summary>
     private string? _containerId = null;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RedisVectorStoreFixture"/> class.
+    /// </summary>
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     public RedisVectorStoreFixture()
     {
         using var dockerClientConfiguration = new DockerClientConfiguration();
         this._client = dockerClientConfiguration.CreateClient();
     }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
     /// <summary>Gets the redis database connection to use for tests.</summary>
     public IDatabase Database { get; private set; }
@@ -58,9 +63,10 @@ public class RedisVectorStoreFixture : IAsyncLifetime
         await this.Database.FT().CreateAsync("hotels", createParams, schema);
 
         // Create some test data.
-        await this.Database.JSON().SetAsync("hotels:H10", "$", new HotelShortInfo("hotels:H10", "My Hotel 10", "This is a great hotel.", Array.Empty<float>()));
-        await this.Database.JSON().SetAsync("hotels:H11", "$", new HotelShortInfo("hotels:H11", "My Hotel 11", "This is a great hotel.", Array.Empty<float>()));
-        await this.Database.JSON().SetAsync("hotels:H12", "$", new HotelShortInfo("hotels:H12", "My Hotel 12", "This is a great hotel.", Array.Empty<float>()));
+        await this.Database.JSON().SetAsync("hotels:H10", "$", new { HoteName = "My Hotel 10", Description = "This is a great hotel." });
+        await this.Database.JSON().SetAsync("hotels:H11", "$", new { HoteName = "My Hotel 11", Description = "This is a great hotel." });
+        await this.Database.JSON().SetAsync("hotels:H12", "$", new { HoteName = "My Hotel 12", Description = "This is a great hotel." });
+        await this.Database.JSON().SetAsync("hotels:H13-Invalid", "$", new { HotelId = "AnotherId", HoteName = "My Hotel 12", Description = "This is a great hotel." });
     }
 
     /// <summary>
@@ -127,5 +133,7 @@ public class RedisVectorStoreFixture : IAsyncLifetime
         [property: VectorStoreModelKey] string HotelId,
         [property: VectorStoreModelMetadata] string HotelName,
         [property: VectorStoreModelData] string Description,
+#pragma warning disable CA1819 // Properties should not return arrays
         [property: VectorStoreModelVector] float[]? DescriptionEmbeddings);
+#pragma warning restore CA1819 // Properties should not return arrays
 }

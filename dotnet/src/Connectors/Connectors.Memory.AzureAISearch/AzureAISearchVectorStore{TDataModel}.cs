@@ -24,6 +24,8 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
 {
     /// <summary>Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</summary>
     private readonly SearchIndexClient _searchIndexClient;
+
+    /// <summary>The name of the collection to use with this store if none is provided for any individual operation.</summary>
     private readonly string _defaultCollectionName;
 
     /// <summary>The name of the key field for the collections that this class is used with.</summary>

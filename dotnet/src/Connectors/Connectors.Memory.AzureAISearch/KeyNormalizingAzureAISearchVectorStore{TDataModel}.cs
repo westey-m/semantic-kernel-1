@@ -1,10 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Memory;
@@ -105,22 +102,22 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
         return result;
     }
 
-    /// <inheritdoc />
-    public async IAsyncEnumerable<TDataModel> GetBatchAsync(string collectionName, IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        var encodedKeys = keys.Select(this._recordKeyEncoder);
-        var results = this._vectorStore.GetBatchAsync(
-            this._indexNameEncoder(collectionName),
-            encodedKeys,
-            options,
-            cancellationToken);
+    //// <inheritdoc />
+    ////public async IAsyncEnumerable<TDataModel> GetBatchAsync(string collectionName, IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    ////{
+    ////    var encodedKeys = keys.Select(this._recordKeyEncoder);
+    ////    var results = this._vectorStore.GetBatchAsync(
+    ////        this._indexNameEncoder(collectionName),
+    ////        encodedKeys,
+    ////        options,
+    ////        cancellationToken);
 
-        await foreach (var result in results.ConfigureAwait(false))
-        {
-            this.DecodeKeyField(result);
-            yield return result;
-        }
-    }
+    ////    await foreach (var result in results.ConfigureAwait(false))
+    ////    {
+    ////        this.DecodeKeyField(result);
+    ////        yield return result;
+    ////    }
+    ////}
 
     /// <inheritdoc />
     public async Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default)
@@ -138,14 +135,14 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
         return this._recordKeyDecoder.Invoke(result);
     }
 
-    /// <inheritdoc />
-    public async Task RemoveBatchAsync(string collectionName, IEnumerable<string> keys, CancellationToken cancellationToken = default)
-    {
-        await this._vectorStore.RemoveBatchAsync(
-            this._indexNameEncoder(collectionName),
-            keys.Select(this._recordKeyEncoder),
-            cancellationToken).ConfigureAwait(false);
-    }
+    //// <inheritdoc />
+    ////public async Task RemoveBatchAsync(string collectionName, IEnumerable<string> keys, CancellationToken cancellationToken = default)
+    ////{
+    ////    await this._vectorStore.RemoveBatchAsync(
+    ////        this._indexNameEncoder(collectionName),
+    ////        keys.Select(this._recordKeyEncoder),
+    ////        cancellationToken).ConfigureAwait(false);
+    ////}
 
     /// <inheritdoc />
     public async Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default)
@@ -165,24 +162,24 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
         return this._recordKeyDecoder.Invoke(result);
     }
 
-    /// <inheritdoc />
-    public async IAsyncEnumerable<string> UpsertBatchAsync(string collectionName, IEnumerable<TDataModel> records, [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        foreach (var record in records)
-        {
-            this.EncodeKeyField(record);
-        }
+    //// <inheritdoc />
+    ////public async IAsyncEnumerable<string> UpsertBatchAsync(string collectionName, IEnumerable<TDataModel> records, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    ////{
+    ////    foreach (var record in records)
+    ////    {
+    ////        this.EncodeKeyField(record);
+    ////    }
 
-        var results = this._vectorStore.UpsertBatchAsync(
-            this._indexNameEncoder(collectionName),
-            records,
-            cancellationToken);
+    ////    var results = this._vectorStore.UpsertBatchAsync(
+    ////        this._indexNameEncoder(collectionName),
+    ////        records,
+    ////        cancellationToken);
 
-        await foreach (var result in results.ConfigureAwait(false))
-        {
-            yield return this._recordKeyDecoder.Invoke(result);
-        }
-    }
+    ////    await foreach (var result in results.ConfigureAwait(false))
+    ////    {
+    ////        yield return this._recordKeyDecoder.Invoke(result);
+    ////    }
+    ////}
 
     /// <summary>
     /// Encode the key field of the given record and update the record with the new value.

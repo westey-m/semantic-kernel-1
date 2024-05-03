@@ -379,7 +379,7 @@ Chosen option: "Option 2 - Separated index and data item management".
 #### Option 1 - Normalization in main vector store
 
 - Pros: Simple
-- Cons: The normaliation needs to vary separately from the vector store, so this will not work
+- Cons: The normalization needs to vary separately from the vector store, so this will not work
 
 ```cs
     public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
@@ -401,7 +401,7 @@ Chosen option: "Option 2 - Separated index and data item management".
 
 #### Option 2 - Normalization in decorator
 
-- Pros: Allows normaliation to vary separately from the vector store.
+- Pros: Allows normalization to vary separately from the vector store.
 - Pros: No code executed when no normalization required.
 - Pros: Easy to package matching encoders/decoders together.
 - Pros: Easier to obsolete encoding/normalization as a concept.
@@ -415,8 +415,9 @@ Chosen option: "Option 2 - Separated index and data item management".
 
 #### Option 3 - Normalization via optional function parameters to vector store constructor
 
-- Pros: Allows normaliation to vary separately from the vector store.
+- Pros: Allows normalization to vary separately from the vector store.
 - Pros: No need to implement the full VectorStore interface.
+- Pros: Can modify values on serialization without changing the incoming record.
 - Cons: Harder to package matching encoders/decoders together.
 
 ```cs
