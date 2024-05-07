@@ -35,7 +35,7 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     private readonly ConcurrentDictionary<string, SearchClient> _searchClientsByIndex = new();
 
     /// <summary>Optional configuration options for this class.</summary>
-    private readonly AzureAISearchVectorStoreOptions? _options;
+    private readonly AzureAISearchVectorStoreOptions _options;
 
     /// <summary>The names of all non vector fields on the current model.</summary>
     private readonly List<string> _nonVectorFieldNames;
@@ -47,6 +47,9 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <param name="defaultCollectionName">The name of the collection to use with this store if none is provided for any individual operation.</param>
     /// <param name="keyFieldName">The name of the key field for the collection that this class is used with.</param>
     /// <param name="options">Optional configuration options for this class.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="searchIndexClient"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="defaultCollectionName"/> or <paramref name="keyFieldName"/> is null or whitespace.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the <see cref="AzureAISearchVectorStoreOptions.MaxDegreeOfGetParallelism"/> setting is less than 1.</exception>
     public AzureAISearchVectorStore(SearchIndexClient searchIndexClient, string defaultCollectionName, string keyFieldName, AzureAISearchVectorStoreOptions? options = default)
     {
         this._searchIndexClient = searchIndexClient ?? throw new ArgumentNullException(nameof(searchIndexClient));

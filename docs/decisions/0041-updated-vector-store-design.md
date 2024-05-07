@@ -242,6 +242,7 @@ A comparison of the different ways in which stores implement storage capabilitie
 |Failure reasons when batch partially fails|Y|Y|Y|N||N|||||
 |Is Key separate from data|N|Y|Y|Y||Y||N|Y|N|
 |Can Generate Ids|N|Y|N|N||Y||Y|N|Y|
+|Can Generate Embedding|||||||||||
 |Field Differentiation|Fields|Key,Props,Vectors|Key,Fields|Key,Documents,Metadata,Vectors||Key,Metadata,SparseValues,Vectors||Fields|Key,Props(Payload),Vectors|Fields|
 |Index to Collection|1 to 1|1 to 1|1 to many|1 to 1|-|1 to 1|-|1 to 1|1 to 1|1 to 1|
 |Id Type|String|UUID|string with collection name prefix|string||string|UUID|64Bit Int / UUID / ULID|64Bit Unsigned Int / UUID|Int64 / varchar|
@@ -263,11 +264,10 @@ This means that we have to know the category of field for each field in the reco
 I'm therefore proposing that we use attributes to annotate the model indicating the category of field.
 
 ```cs
-    [VectorStoreModel]
     public record HotelShortInfo(
         [property: VectorStoreModelKey] string HotelId,
-        [property: VectorStoreModelMetadata] string HotelName,
-        [property: VectorStoreModelData] string Description,
+        [property: VectorStoreModelMetadata(PropertyName = "hotel-name")] string HotelName,
+        [property: VectorStoreModelData(PropertyName = "description")] string Description,
         [property: VectorStoreModelVector] float[] DescriptionEmbeddings);
 ```
 
@@ -362,6 +362,36 @@ interface IVectorStore<TDataModel>
 }
 
 class AzureAISearchVectorStore<TDataModel>(IndexConfig indexConfig): IVectorStore<TDataModel>;
+```
+
+#### Option 3 - Separated index and data item management with index create separate from other operations.
+
+Vector store same as option 2 so not repeated for brevity.
+
+```cs
+
+interface IVectorCollectionCreationManager
+{
+    virtual Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default);
+}
+
+class AzureAISearchChatHistoryCollectionCreationManager: IVectorCollectionCreationManager;
+class AzureAISearchSemanticCacheCollectionCreationManager: IVectorCollectionCreationManager;
+
+// Customers can create their own creation scenarios to match their schemas, but can continue to use our get, does exist and delete class.
+class CustomerChatHistoryCollectionCreationManager: IVectorCollectionCreationManager;
+
+interface IVectorCollectionsManager
+{
+    Task<IEnumerable<string>> GetCollectionsAsync(CancellationToken cancellationToken = default);
+    Task DoesCollectionExistAsync(string name, CancellationToken cancellationToken = default);
+    Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default);
+}
+
+class AzureAISearchCollectionsManager: IVectorCollectionsManager;
+class RedisCollectionsManager: IVectorCollectionsManager;
+class WeaviateCollectionsManager: IVectorCollectionsManager;
+
 ```
 
 #### Decision Outcome

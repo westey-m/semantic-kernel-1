@@ -4,6 +4,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Redis;
+using Microsoft.SemanticKernel.Memory;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -28,6 +29,27 @@ public sealed class RedisVectorStoreTests(ITestOutputHelper output, RedisVectorS
 
         // Assert.
         Assert.Equal("H10", getResult?.HotelId);
+        Assert.Equal("My Hotel 10", getResult?.HotelName);
+        Assert.Equal(10, getResult?.HotelCode);
+        Assert.Equal("This is a great hotel.", getResult?.Description);
+        Assert.Null(getResult?.DescriptionEmbeddings);
+
+        // Output.
+        output.WriteLine(getResult?.ToString());
+    }
+
+    [Fact]
+    public async Task ItCanGetDocumentFromVectorStoreWithEmbeddingsAsync()
+    {
+        // Arrange.
+        var sut = new RedisVectorStore<RedisVectorStoreFixture.HotelShortInfo>(fixture.Database, "hotels", new RedisVectorStoreOptions { PrefixCollectionNameToKeyNames = true });
+
+        // Act.
+        var getResult = await sut.GetAsync("H10", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true });
+
+        // Assert.
+        Assert.Equal("H10", getResult?.HotelId);
+        Assert.NotNull(getResult?.DescriptionEmbeddings);
 
         // Output.
         output.WriteLine(getResult?.ToString());

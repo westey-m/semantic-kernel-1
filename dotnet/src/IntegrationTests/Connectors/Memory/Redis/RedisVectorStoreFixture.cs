@@ -10,6 +10,7 @@ using NRedisStack.Search;
 using NRedisStack.RedisStackCommands;
 using StackExchange.Redis;
 using Xunit;
+using System.Linq;
 
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.Redis;
 
@@ -51,6 +52,7 @@ public class RedisVectorStoreFixture : IAsyncLifetime
         var schema = new Schema();
         schema.AddTextField("HotelId");
         schema.AddTextField("HotelName");
+        schema.AddNumericField("HotelName");
         schema.AddTextField("Description");
         schema.AddVectorField("DescriptionEmbeddings", Schema.VectorField.VectorAlgo.HNSW, new Dictionary<string, object>()
         {
@@ -63,10 +65,13 @@ public class RedisVectorStoreFixture : IAsyncLifetime
         await this.Database.FT().CreateAsync("hotels", createParams, schema);
 
         // Create some test data.
-        await this.Database.JSON().SetAsync("hotels:H10", "$", new { HoteName = "My Hotel 10", Description = "This is a great hotel." });
-        await this.Database.JSON().SetAsync("hotels:H11", "$", new { HoteName = "My Hotel 11", Description = "This is a great hotel." });
-        await this.Database.JSON().SetAsync("hotels:H12", "$", new { HoteName = "My Hotel 12", Description = "This is a great hotel." });
-        await this.Database.JSON().SetAsync("hotels:H13-Invalid", "$", new { HotelId = "AnotherId", HoteName = "My Hotel 12", Description = "This is a great hotel." });
+#pragma warning disable CA5394 // Do not use insecure randomness
+        var random = new Random();
+        await this.Database.JSON().SetAsync("hotels:H10", "$", new { HotelName = "My Hotel 10", HotelCode = 10, Description = "This is a great hotel.", DescriptionEmbeddings = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray() });
+        await this.Database.JSON().SetAsync("hotels:H11", "$", new { HotelName = "My Hotel 11", HotelCode = 11, Description = "This is a great hotel.", DescriptionEmbeddings = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray() });
+        await this.Database.JSON().SetAsync("hotels:H12", "$", new { HotelName = "My Hotel 12", HotelCode = 12, Description = "This is a great hotel.", DescriptionEmbeddings = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray() });
+        await this.Database.JSON().SetAsync("hotels:H13-Invalid", "$", new { HotelId = "AnotherId", HotelName = "My Hotel 12", HotelCode = 12, Description = "This is a great hotel.", DescriptionEmbeddings = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray() });
+#pragma warning restore CA5394 // Do not use insecure randomness
     }
 
     /// <summary>
@@ -126,14 +131,14 @@ public class RedisVectorStoreFixture : IAsyncLifetime
     /// A test model for the redis vector store.
     /// </summary>
     /// <param name="HotelId">The key of the record.</param>
-    /// <param name="HotelName">A metadata field.</param>
+    /// <param name="HotelName">A string metadata field.</param>
+    /// <param name="HotelCode">An int metadata field.</param>
     /// <param name="Description">A document field.</param>
     /// <param name="DescriptionEmbeddings">A vector field.</param>
     public record HotelShortInfo(
         [property: VectorStoreModelKey] string HotelId,
         [property: VectorStoreModelMetadata] string HotelName,
+        [property: VectorStoreModelMetadata] int HotelCode,
         [property: VectorStoreModelData] string Description,
-#pragma warning disable CA1819 // Properties should not return arrays
-        [property: VectorStoreModelVector] float[]? DescriptionEmbeddings);
-#pragma warning restore CA1819 // Properties should not return arrays
+        [property: VectorStoreModelVector] ReadOnlyMemory<float>? DescriptionEmbeddings);
 }
