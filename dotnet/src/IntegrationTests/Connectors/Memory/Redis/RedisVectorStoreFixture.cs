@@ -2,7 +2,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using System.Text.Json.Serialization;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 using Microsoft.SemanticKernel.Memory;
@@ -10,10 +12,14 @@ using NRedisStack.Search;
 using NRedisStack.RedisStackCommands;
 using StackExchange.Redis;
 using Xunit;
-using System.Linq;
 
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.Redis;
 
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+
+/// <summary>
+/// Does setup and teardown of redis docker container and associated test data.
+/// </summary>
 public class RedisVectorStoreFixture : IAsyncLifetime
 {
     /// <summary>The docker client we are using to create a redis container with.</summary>
@@ -25,13 +31,11 @@ public class RedisVectorStoreFixture : IAsyncLifetime
     /// <summary>
     /// Initializes a new instance of the <see cref="RedisVectorStoreFixture"/> class.
     /// </summary>
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     public RedisVectorStoreFixture()
     {
         using var dockerClientConfiguration = new DockerClientConfiguration();
         this._client = dockerClientConfiguration.CreateClient();
     }
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
     /// <summary>Gets the redis database connection to use for tests.</summary>
     public IDatabase Database { get; private set; }
@@ -52,7 +56,7 @@ public class RedisVectorStoreFixture : IAsyncLifetime
         var schema = new Schema();
         schema.AddTextField("HotelId");
         schema.AddTextField("HotelName");
-        schema.AddNumericField("HotelName");
+        schema.AddNumericField("hotelCode");
         schema.AddTextField("Description");
         schema.AddVectorField("DescriptionEmbeddings", Schema.VectorField.VectorAlgo.HNSW, new Dictionary<string, object>()
         {
@@ -67,10 +71,13 @@ public class RedisVectorStoreFixture : IAsyncLifetime
         // Create some test data.
 #pragma warning disable CA5394 // Do not use insecure randomness
         var random = new Random();
-        await this.Database.JSON().SetAsync("hotels:H10", "$", new { HotelName = "My Hotel 10", HotelCode = 10, Description = "This is a great hotel.", DescriptionEmbeddings = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray() });
-        await this.Database.JSON().SetAsync("hotels:H11", "$", new { HotelName = "My Hotel 11", HotelCode = 11, Description = "This is a great hotel.", DescriptionEmbeddings = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray() });
-        await this.Database.JSON().SetAsync("hotels:H12", "$", new { HotelName = "My Hotel 12", HotelCode = 12, Description = "This is a great hotel.", DescriptionEmbeddings = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray() });
-        await this.Database.JSON().SetAsync("hotels:H13-Invalid", "$", new { HotelId = "AnotherId", HotelName = "My Hotel 12", HotelCode = 12, Description = "This is a great hotel.", DescriptionEmbeddings = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray() });
+        var address = new HotelAddress("Seattle", "USA");
+        var embeddings = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray();
+
+        await this.Database.JSON().SetAsync("hotels:H10", "$", new { HotelName = "My Hotel 10", hotelCode = 10, Seafront = true, Address = address, Description = "This is a great hotel.", DescriptionEmbeddings = embeddings });
+        await this.Database.JSON().SetAsync("hotels:H11", "$", new { HotelName = "My Hotel 11", hotelCode = 11, Seafront = false, Description = "This is a great hotel.", DescriptionEmbeddings = embeddings });
+        await this.Database.JSON().SetAsync("hotels:H12", "$", new { HotelName = "My Hotel 12", hotelCode = 12, Seafront = false, Description = "This is a great hotel.", DescriptionEmbeddings = embeddings });
+        await this.Database.JSON().SetAsync("hotels:H13-Invalid", "$", new { HotelId = "AnotherId", HotelName = "My Invalid Hotel", hotelCode = 12, Seafront = false, Description = "This is an invalid hotel.", DescriptionEmbeddings = embeddings });
 #pragma warning restore CA5394 // Do not use insecure randomness
     }
 
@@ -128,17 +135,31 @@ public class RedisVectorStoreFixture : IAsyncLifetime
     }
 
     /// <summary>
-    /// A test model for the redis vector store.
+    /// A test model for the vector store.
     /// </summary>
     /// <param name="HotelId">The key of the record.</param>
     /// <param name="HotelName">A string metadata field.</param>
     /// <param name="HotelCode">An int metadata field.</param>
+    /// <param name="Seafront">A bool metadata field.</param>
+    /// <param name="Address">A complex type metadata field.</param>
     /// <param name="Description">A document field.</param>
     /// <param name="DescriptionEmbeddings">A vector field.</param>
-    public record HotelShortInfo(
+    public record HotelInfo(
         [property: VectorStoreModelKey] string HotelId,
         [property: VectorStoreModelMetadata] string HotelName,
-        [property: VectorStoreModelMetadata] int HotelCode,
+        [property: VectorStoreModelMetadata, JsonPropertyName("hotelCode")] int HotelCode,
+        [property: VectorStoreModelMetadata] bool Seafront,
+        [property: VectorStoreModelMetadata] HotelAddress Address,
         [property: VectorStoreModelData] string Description,
         [property: VectorStoreModelVector] ReadOnlyMemory<float>? DescriptionEmbeddings);
+
+    /// <summary>
+    /// A test model for the vector store to simulate a complex type.
+    /// </summary>
+    /// <param name="City">A string metadata field.</param>
+    /// <param name="Country">A string metadata field.</param>
+    public record HotelAddress(
+        string City,
+        string Country);
 }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.

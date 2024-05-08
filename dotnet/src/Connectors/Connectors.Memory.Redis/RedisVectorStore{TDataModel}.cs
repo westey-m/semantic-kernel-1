@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -31,6 +32,12 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <summary>A property info object that points at the key field for the current model, allowing easy reading and writing of this property.</summary>
     private readonly PropertyInfo _keyFieldPropertyInfo;
 
+    /// <summary>The name of the temporary json property that the key field will be serialized / parsed from.</summary>
+    private readonly string _keyFieldJsonPropertyName;
+
+    /// <summary>An array of the names of all the data and metadata properties that are part of the redis payload, i.e. all fields except the vector fields.</summary>
+    private readonly string[] _dataAndMetadataFieldNames;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="RedisVectorStore{TDataModel}"/> class.
     /// </summary>
@@ -43,7 +50,17 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
         this._database = database ?? throw new ArgumentNullException(nameof(database));
         this._defaultCollectionName = string.IsNullOrWhiteSpace(defaultCollectionName) ? throw new ArgumentException("Default collection name is required.", nameof(defaultCollectionName)) : defaultCollectionName;
         this._options = options ?? new RedisVectorStoreOptions();
-        this._keyFieldPropertyInfo = FindKeyField(typeof(TDataModel));
+
+        var fields = VectorStoreModelPropertyReader.FindFields(typeof(TDataModel), true);
+
+        this._keyFieldPropertyInfo = fields.keyField;
+        this._keyFieldJsonPropertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(this._keyFieldPropertyInfo);
+
+        this._dataAndMetadataFieldNames = fields
+            .dataFields
+            .Concat(fields.metadataFields)
+            .Select(VectorStoreModelPropertyReader.GetSerializedPropertyName)
+            .ToArray();
     }
 
     /// <inheritdoc />
@@ -56,9 +73,13 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
 
         // Get the redis value and parse the JSON stored in Redis into a JsonNode object.
         var maybePrefixedKey = this.PrefixKeyIfNeeded(key, options?.CollectionName);
-        var redisResult = await this._database
-            .JSON()
-            .GetAsync(maybePrefixedKey).ConfigureAwait(false);
+        var redisResult = options?.IncludeEmbeddings is true ?
+            await this._database
+                .JSON()
+                .GetAsync(maybePrefixedKey).ConfigureAwait(false) :
+            await this._database
+                .JSON()
+                .GetAsync(maybePrefixedKey, this._dataAndMetadataFieldNames).ConfigureAwait(false);
 
         // Check if the key was found before trying to serialize the result.
         if (redisResult.IsNull)
@@ -128,7 +149,7 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
             return keyValue;
         }
 
-        throw new HttpOperationException($"Missing key field {this._keyFieldPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.");
+        throw new ArgumentException($"Missing key field {this._keyFieldPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.", nameof(record));
     }
 
     /// <summary>
@@ -146,40 +167,5 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
         }
 
         return key;
-    }
-
-    /// <summary>
-    /// Find the field with the <see cref="VectorStoreModelKeyAttribute"/> and return the property info.
-    /// Throws if the key field is not found, if there are multiple key fields, or if the key field is not a string.
-    /// </summary>
-    /// <param name="type">The data model to find the key field on.</param>
-    /// <returns>The key field if found.</returns>
-    private static PropertyInfo FindKeyField(Type type)
-    {
-        PropertyInfo? keyField = null;
-        foreach (var property in type.GetProperties())
-        {
-            if (property.GetCustomAttribute<VectorStoreModelKeyAttribute>() is not null)
-            {
-                if (keyField is not null)
-                {
-                    throw new ArgumentException($"Multiple key fields found on type {type.FullName}.");
-                }
-
-                if (property.PropertyType != typeof(string))
-                {
-                    throw new ArgumentException($"Key field must be of type string. Type of {property.Name} is {property.PropertyType.FullName}.");
-                }
-
-                keyField = property;
-            }
-        }
-
-        if (keyField is null)
-        {
-            throw new ArgumentException($"No key field found on type {type.FullName}.");
-        }
-
-        return keyField;
     }
 }

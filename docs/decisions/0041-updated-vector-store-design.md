@@ -266,8 +266,8 @@ I'm therefore proposing that we use attributes to annotate the model indicating 
 ```cs
     public record HotelShortInfo(
         [property: VectorStoreModelKey] string HotelId,
-        [property: VectorStoreModelMetadata(PropertyName = "hotel-name")] string HotelName,
-        [property: VectorStoreModelData(PropertyName = "description")] string Description,
+        [property: VectorStoreModelMetadata, JsonPropertyName("hotel-name")] string HotelName,
+        [property: VectorStoreModelData] string Description,
         [property: VectorStoreModelVector] float[] DescriptionEmbeddings);
 ```
 

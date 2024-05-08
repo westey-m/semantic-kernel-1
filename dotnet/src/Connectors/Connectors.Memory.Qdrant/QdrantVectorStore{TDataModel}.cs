@@ -55,7 +55,14 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
         this._qdrantClient = qdrantClient ?? throw new ArgumentNullException(nameof(qdrantClient));
         this._defaultCollectionName = string.IsNullOrWhiteSpace(defaultCollectionName) ? throw new ArgumentException("Default collection name is required.", nameof(defaultCollectionName)) : defaultCollectionName;
         this._options = options ?? new QdrantVectorStoreOptions();
-        (this._keyFieldPropertyInfo, this._payloadFieldsPropertyInfo, this._vectorFieldsPropertyInfo) = FindFields(typeof(TDataModel), this._options.HasNamedVectors);
+
+        var fields = VectorStoreModelPropertyReader.FindFields(typeof(TDataModel), this._options.HasNamedVectors);
+        VectorStoreModelPropertyReader.VerifyFieldTypes(fields.dataFields, s_supportedFieldTypes, "Data");
+        VectorStoreModelPropertyReader.VerifyFieldTypes(fields.dataFields, s_supportedFieldTypes, "Metadata");
+
+        this._keyFieldPropertyInfo = fields.keyField;
+        this._payloadFieldsPropertyInfo = fields.dataFields.Concat(fields.metadataFields).ToList();
+        this._vectorFieldsPropertyInfo = fields.vectorFields;
     }
 
     /// <inheritdoc />
@@ -68,8 +75,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
 
         // Create options.
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
-        var pointId = new PointId();
-        ParseKey(this._options.IdType, key, pointId);
+        (var pointId, _) = ParseKey(this._options.IdType, key);
 
         // Retrieve data points.
         var retrievedPoints = await this._qdrantClient.RetrieveAsync(collectionName, [pointId], true, options?.IncludeEmbeddings ?? false, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -95,9 +101,11 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
         {
             foreach (var vectorFieldPropertyInfo in this._vectorFieldsPropertyInfo)
             {
+                var propertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(vectorFieldPropertyInfo);
+
                 if (this._options.HasNamedVectors)
                 {
-                    if (retrievedPoint.Vectors.Vectors_.Vectors.TryGetValue(vectorFieldPropertyInfo.Name, out Vector vectorValue))
+                    if (retrievedPoint.Vectors.Vectors_.Vectors.TryGetValue(propertyName, out Vector vectorValue))
                     {
                         vectorFieldPropertyInfo.SetValue(target, new ReadOnlyMemory<float>(vectorValue.Data.ToArray()));
                     }
@@ -112,7 +120,9 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
         // Map each payload field.
         foreach (var payloadFieldPropertyInfo in this._payloadFieldsPropertyInfo)
         {
-            if (retrievedPoint.Payload.TryGetValue(payloadFieldPropertyInfo.Name, out Value payloadValue))
+            var propertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(payloadFieldPropertyInfo);
+
+            if (retrievedPoint.Payload.TryGetValue(propertyName, out Value payloadValue))
             {
                 payloadFieldPropertyInfo.SetValue(target, ConvertFromGrpcFieldValue(payloadValue, payloadFieldPropertyInfo.PropertyType));
             }
@@ -122,32 +132,113 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = null, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        if (key is null)
+        {
+            throw new ArgumentNullException(nameof(key));
+        }
+
+        // Create options.
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        (var pointId, var guid) = ParseKey(this._options.IdType, key);
+
+        // Delete the data point using GUID.
+        if (pointId.HasUuid)
+        {
+            await this._qdrantClient.DeleteAsync(collectionName, guid!.Value, wait: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return key;
+        }
+
+        // Delete the data point using ulong.
+        await this._qdrantClient.DeleteAsync(collectionName, pointId.Num, wait: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return key;
     }
 
     /// <inheritdoc />
-    public Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = null, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        if (record is null)
+        {
+            throw new ArgumentNullException(nameof(record));
+        }
+
+        // Create options.
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var key = this._keyFieldPropertyInfo.GetValue(record)?.ToString() ?? throw new ArgumentException($"Missing key field {this._keyFieldPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.", nameof(record));
+        (var pointId, _) = ParseKey(this._options.IdType, key);
+
+        // Create point.
+        var pointStruct = new PointStruct
+        {
+            Id = pointId,
+            Vectors = new Vectors(),
+            Payload = { },
+        };
+
+        // Add point payload.
+        foreach (var payloadFieldPropertyInfo in this._payloadFieldsPropertyInfo)
+        {
+            var propertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(payloadFieldPropertyInfo);
+            var propertyValue = payloadFieldPropertyInfo.GetValue(record);
+            pointStruct.Payload.Add(propertyName, ConvertToGrpcFieldValue(propertyValue));
+        }
+
+        // Add vectors.
+        if (this._options.HasNamedVectors)
+        {
+            var namedVectors = new NamedVectors();
+            foreach (var vectorFieldPropertyInfo in this._vectorFieldsPropertyInfo)
+            {
+                var propertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(vectorFieldPropertyInfo);
+                var propertyValue = vectorFieldPropertyInfo.GetValue(record);
+                if (propertyValue is not null)
+                {
+                    var castPropertyValue = (ReadOnlyMemory<float>)propertyValue;
+                    namedVectors.Vectors.Add(propertyName, castPropertyValue.ToArray());
+                }
+            }
+
+            pointStruct.Vectors.Vectors_ = namedVectors;
+        }
+        else
+        {
+            var vectorFieldPropertyInfo = this._vectorFieldsPropertyInfo.First();
+            var propertyValue = (ReadOnlyMemory<float>)vectorFieldPropertyInfo.GetValue(record);
+            pointStruct.Vectors.Vector = propertyValue.ToArray();
+        }
+
+        // Upsert.
+        await this._qdrantClient.UpsertAsync(collectionName, [pointStruct], true, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return key;
     }
 
     /// <summary>
-    /// Parse the given key based on the provided ID type and populate the given <see cref="PointId"/> with the result.
+    /// Parse the given key based on the provided ID type and return a <see cref="PointId"/> containing the key information, plus an optional <see cref="Guid"/>.
     /// </summary>
     /// <param name="idType">The type of id to parse the string to.</param>
     /// <param name="key">The key to parse.</param>
-    /// <param name="pointId">The <see cref="PointId"/> to populate with the parsed value.</param>
     /// <exception cref="ArgumentException">Thrown if the id type could not be parsed correctly.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the id type is unknown.</exception>
-    private static void ParseKey(QdrantVectorStoreOptions.QdrantIdType idType, string key, PointId pointId)
+    /// <returns>A point id and optionally a guid from the given key.</returns>
+    private static (PointId pointId, Guid? guid) ParseKey(QdrantVectorStoreOptions.QdrantIdType idType, string key)
     {
+        var pointId = new PointId();
+        var guid = default(Guid);
         switch (idType)
         {
             case QdrantVectorStoreOptions.QdrantIdType.UUID:
                 pointId.Uuid = key;
+                try
+                {
+                    guid = Guid.Parse(key);
+                }
+                catch (Exception ex)
+                {
+                    throw new ArgumentException("Key must be a valid guid when using UUID ID type.", nameof(key), ex);
+                }
                 break;
+
             case QdrantVectorStoreOptions.QdrantIdType.Ulong:
                 try
                 {
@@ -163,94 +254,12 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
                     throw new ArgumentException("Key must be a valid ulong when using Ulong ID type.", nameof(key), ex);
                 }
                 break;
+
             default:
                 throw new InvalidOperationException($"Unknown ID type: {idType}");
         }
-    }
 
-    /// <summary>
-    /// Find the fields with <see cref="VectorStoreModelKeyAttribute"/>, <see cref="VectorStoreModelDataAttribute"/>, <see cref="VectorStoreModelMetadataAttribute"/> and <see cref="VectorStoreModelVectorAttribute"/> attributes.
-    /// Store those fields in the corresponding lists.
-    /// Throws if no key field is found, if there are multiple key fields, or if the key field is not a string.
-    /// </summary>
-    /// <param name="type">The data model to find the fields on.</param>
-    /// <param name="hasNamedVectors">A value indicating whether the qdrant collection that we are to access has named vectors or a single unnamed vector.</param>
-    /// <returns>The categorized fields.</returns>
-    private static (PropertyInfo keyField, List<PropertyInfo> payloadFields, List<PropertyInfo> vectorFields) FindFields(Type type, bool hasNamedVectors)
-    {
-        PropertyInfo? keyField = null;
-        List<PropertyInfo> payloadFields = new();
-        List<PropertyInfo> vectorFields = new();
-        bool singleVectorPropertyFound = false;
-
-        foreach (var property in type.GetProperties())
-        {
-            // Get Key property.
-            if (property.GetCustomAttribute<VectorStoreModelKeyAttribute>() is not null)
-            {
-                if (keyField is not null)
-                {
-                    throw new ArgumentException($"Multiple key fields found on type {type.FullName}.");
-                }
-
-                if (property.PropertyType != typeof(string))
-                {
-                    throw new ArgumentException($"Key field must be of type string. Type of {property.Name} is {property.PropertyType.FullName}.");
-                }
-
-                keyField = property;
-            }
-
-            // Since Data and Metadata are mapped to the same dictionary in the Qdrant client, we can store them in the same list.
-            if (property.GetCustomAttribute<VectorStoreModelDataAttribute>() is not null || property.GetCustomAttribute<VectorStoreModelMetadataAttribute>() is not null)
-            {
-                if (!s_supportedFieldTypes.Contains(property.PropertyType))
-                {
-                    throw new ArgumentException($"Data and metadata fields must be one of the supportd types (bool, string, Int32, Int64, double). Type of {property.Name} is {property.PropertyType.FullName}.");
-                }
-
-                payloadFields.Add(property);
-            }
-
-            // Get Vector properties.
-            if (property.GetCustomAttribute<VectorStoreModelVectorAttribute>() is not null)
-            {
-                if (property.PropertyType != typeof(ReadOnlyMemory<float>) && property.PropertyType != typeof(ReadOnlyMemory<float>?))
-                {
-                    throw new ArgumentException($"Vector fields must be of type ReadOnlyMemory<float> or ReadOnlyMemory<float>?. Type of {property.Name} is {property.PropertyType.FullName}.");
-                }
-
-                // If we have named vectors, we can have many vector fields.
-                if (hasNamedVectors)
-                {
-                    vectorFields.Add(property);
-                }
-                // If we don't have named vectors, we can only have one vector field.
-                else if (!singleVectorPropertyFound)
-                {
-                    vectorFields.Add(property);
-                    singleVectorPropertyFound = true;
-                }
-                else
-                {
-                    throw new ArgumentException($"Multiple vector fields found on type {type.FullName} while HasNamedVectors option is set to false.");
-                }
-            }
-        }
-
-        // Check that we have a key field.
-        if (keyField is null)
-        {
-            throw new ArgumentException($"No key field found on type {type.FullName}.");
-        }
-
-        // Check that we have one vector field if we don't have named vectors.
-        if (!hasNamedVectors && !singleVectorPropertyFound)
-        {
-            throw new ArgumentException($"No vector field found on type {type.FullName}.");
-        }
-
-        return (keyField, payloadFields, vectorFields);
+        return (pointId, guid);
     }
 
     /// <summary>
@@ -259,6 +268,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <param name="payloadValue">The value to convert to a native type.</param>
     /// <param name="targetType">The target type that we will need to consume.</param>
     /// <returns>The converted native value.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when an unsupported type is enountered.</exception>
     private static object? ConvertFromGrpcFieldValue(Value payloadValue, Type targetType)
     {
         return payloadValue.KindCase switch
@@ -271,5 +281,42 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
             Value.KindOneofCase.BoolValue => payloadValue.BoolValue,
             _ => throw new InvalidOperationException($"Unsupported grpc value kind {payloadValue.KindCase}."),
         };
+    }
+
+    /// <summary>
+    /// Convert the given <paramref name="sourceValue"/> to a <see cref="Value"/> object that can be stored in Qdrant.
+    /// </summary>
+    /// <param name="sourceValue">The object to convert.</param>
+    /// <returns>The converted Qdrant value.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when an unsupported type is enountered.</exception>
+    private static Value ConvertToGrpcFieldValue(object? sourceValue)
+    {
+        var value = new Value();
+        if (sourceValue is null)
+        {
+            value.NullValue = NullValue.NullValue;
+        }
+        else if (sourceValue is int intValue)
+        {
+            value.IntegerValue = intValue;
+        }
+        else if (sourceValue is string stringValue)
+        {
+            value.StringValue = stringValue;
+        }
+        else if (sourceValue is double doubleValue)
+        {
+            value.DoubleValue = doubleValue;
+        }
+        else if (sourceValue is bool boolValue)
+        {
+            value.BoolValue = boolValue;
+        }
+        else
+        {
+            throw new InvalidOperationException($"Unsupported source value type {sourceValue?.GetType().FullName}.");
+        }
+
+        return value;
     }
 }
