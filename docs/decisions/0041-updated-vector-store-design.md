@@ -243,7 +243,7 @@ A comparison of the different ways in which stores implement storage capabilitie
 |Is Key separate from data|N|Y|Y|Y||Y||N|Y|N|
 |Can Generate Ids|N|Y|N|N||Y||Y|N|Y|
 |Can Generate Embedding|||||||||||
-|Field Differentiation|Fields|Key,Props,Vectors|Key,Fields|Key,Documents,Metadata,Vectors||Key,Metadata,SparseValues,Vectors||Fields|Key,Props(Payload),Vectors|Fields|
+|Field Differentiation|Fields|Key, Props, Vectors|Key, Fields|Key, Documents, Metadata, Vectors||Key, Metadata, SparseValues, Vectors||Fields|Key, Props(Payload), Vectors|Fields|
 |Index to Collection|1 to 1|1 to 1|1 to many|1 to 1|-|1 to 1|-|1 to 1|1 to 1|1 to 1|
 |Id Type|String|UUID|string with collection name prefix|string||string|UUID|64Bit Int / UUID / ULID|64Bit Unsigned Int / UUID|Int64 / varchar|
 
@@ -268,7 +268,7 @@ I'm therefore proposing that we use attributes to annotate the model indicating 
         [property: VectorStoreModelKey] string HotelId,
         [property: VectorStoreModelMetadata, JsonPropertyName("hotel-name")] string HotelName,
         [property: VectorStoreModelData] string Description,
-        [property: VectorStoreModelVector] float[] DescriptionEmbeddings);
+        [property: VectorStoreModelVector] ReadOnlyMemory<float>? DescriptionEmbeddings);
 ```
 
 ## Decision Drivers
@@ -356,9 +356,9 @@ class MLIndexAzureAISearchCollectionsManager(MLIndex mlIndexSpec): AzureAISearch
 
 interface IVectorStore<TDataModel>
 {
-    Task<TDataModel?> GetAsync(string collectionName, string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
-    Task<string> RemoveAsync(string collectionName, string key, CancellationToken cancellationToken = default);
-    Task<string> UpsertAsync(string collectionName, TDataModel record, CancellationToken cancellationToken = default);
+    Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default);
 }
 
 class AzureAISearchVectorStore<TDataModel>(IndexConfig indexConfig): IVectorStore<TDataModel>;
