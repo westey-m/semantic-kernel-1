@@ -17,21 +17,21 @@ public class QdrantVectorStoreOptions
     /// Gets or sets the type of id that we are using with Qdrant.
     /// Defaults to UUID.
     /// </summary>
-    public QdrantIdType IdType { get; set; } = QdrantIdType.UUID;
+    public QdrantPointIdType PointIdType { get; set; } = QdrantPointIdType.UuidType;
 
     /// <summary>
     /// Enum describing the choice of id types that we support with Qdrant.
     /// </summary>
-    public enum QdrantIdType
+    public enum QdrantPointIdType
     {
         /// <summary>
         /// The id is a UUID stored as a string.
         /// </summary>
-        UUID,
+        UuidType,
 
         /// <summary>
         /// The id is a unsigned long stored as a ulong.
         /// </summary>
-        Ulong
+        UlongType
     }
 }

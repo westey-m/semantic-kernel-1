@@ -83,6 +83,13 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
             "singleVectorHotels",
             new VectorParams { Size = 4, Distance = Distance.Cosine });
 
+        // Create test data common to both named and unnamed vectors.
+        var tags = new ListValue();
+        tags.Values.Add("t1");
+        tags.Values.Add("t2");
+        var tagsValue = new Value();
+        tagsValue.ListValue = tags;
+
         // Create some test data using named vectors.
         var random = new Random();
 
@@ -100,19 +107,19 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
             {
                 Id = 1,
                 Vectors = new Vectors { Vectors_ = namedVectors1 },
-                Payload = { ["HotelName"] = "My Hotel 1", ["hotelCode"] = 1, ["Description"] = "This is a great hotel." }
+                Payload = { ["HotelName"] = "My Hotel 1", ["hotelCode"] = 1, ["Seafront"] = true, ["Tags"] = tagsValue, ["HotelRating"] = 4.5f, ["Description"] = "This is a great hotel." }
             },
             new PointStruct
             {
                 Id = 2,
                 Vectors = new Vectors { Vectors_ = namedVectors2 },
-                Payload = { ["HotelName"] = "My Hotel 2", ["hotelCode"] = 2, ["Description"] = "This is a great hotel." }
+                Payload = { ["HotelName"] = "My Hotel 2", ["hotelCode"] = 2, ["Seafront"] = false, ["Description"] = "This is a great hotel." }
             },
             new PointStruct
             {
                 Id = 3,
                 Vectors = new Vectors { Vectors_ = namedVectors3 },
-                Payload = { ["HotelName"] = "My Hotel 3", ["HotelCode"] = 3, ["Description"] = "This is a great hotel." }
+                Payload = { ["HotelName"] = "My Hotel 3", ["HotelCode"] = 3, ["Seafront"] = false, ["Description"] = "This is a great hotel." }
             },
         ];
 
@@ -125,19 +132,19 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
             {
                 Id = 11,
                 Vectors = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray(),
-                Payload = { ["HotelName"] = "My Hotel 11", ["hotelCode"] = 11, ["Description"] = "This is a great hotel." }
+                Payload = { ["HotelName"] = "My Hotel 11", ["hotelCode"] = 11, ["Seafront"] = true, ["Tags"] = tagsValue, ["HotelRating"] = 4.5f, ["Description"] = "This is a great hotel." }
             },
             new PointStruct
             {
                 Id = 12,
                 Vectors = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray(),
-                Payload = { ["HotelName"] = "My Hotel 12", ["hotelCode"] = 12, ["Description"] = "This is a great hotel." }
+                Payload = { ["HotelName"] = "My Hotel 12", ["hotelCode"] = 12, ["Seafront"] = false, ["Description"] = "This is a great hotel." }
             },
             new PointStruct
             {
                 Id = 13,
                 Vectors = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray(),
-                Payload = { ["HotelName"] = "My Hotel 13", ["hotelCode"] = 13, ["Description"] = "This is a great hotel." }
+                Payload = { ["HotelName"] = "My Hotel 13", ["hotelCode"] = 13, ["Seafront"] = false, ["Description"] = "This is a great hotel." }
             },
         ];
 
@@ -219,9 +226,16 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
         [VectorStoreModelMetadata, JsonPropertyName("hotelCode")]
         public int HotelCode { get; set; }
 
+        /// <summary>A  float metadata field.</summary>
+        [VectorStoreModelMetadata]
+        public float? HotelRating { get; set; }
+
         /// <summary>A bool metadata field.</summary>
         [VectorStoreModelMetadata]
         public bool Seafront { get; set; }
+
+        [VectorStoreModelMetadata]
+        public List<string> Tags { get; set; } = new List<string>();
 
         /// <summary>A data field.</summary>
         [VectorStoreModelData]
@@ -231,5 +245,5 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
         [VectorStoreModelVector]
         public ReadOnlyMemory<float>? DescriptionEmbeddings { get; set; }
     }
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.

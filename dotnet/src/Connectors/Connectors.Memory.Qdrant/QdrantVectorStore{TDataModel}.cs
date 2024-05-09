@@ -6,6 +6,8 @@ using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Memory;
@@ -22,7 +24,26 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     where TDataModel : class, new()
 {
     /// <summary>A set of types that fields on the provided model may have.</summary>
-    private static readonly HashSet<Type> s_supportedFieldTypes = new() { typeof(string), typeof(Int32), typeof(Int64), typeof(double), typeof(bool), typeof(Int32?), typeof(Int64?), typeof(double?), typeof(bool?) };
+    private static readonly HashSet<Type> s_supportedFieldTypes = new()
+    {
+        typeof(List<string>),
+        typeof(List<int>),
+        typeof(List<long>),
+        typeof(List<float>),
+        typeof(List<double>),
+        typeof(List<bool>),
+        typeof(string),
+        typeof(int),
+        typeof(long),
+        typeof(double),
+        typeof(float),
+        typeof(bool),
+        typeof(int?),
+        typeof(long?),
+        typeof(double?),
+        typeof(float?),
+        typeof(bool?)
+    };
 
     /// <summary>Qdrant client that can be used to manage the points in a Qdrant store.</summary>
     private readonly QdrantClient _qdrantClient;
@@ -75,7 +96,33 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
 
         // Create options.
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
-        (var pointId, _) = ParseKey(this._options.IdType, key);
+        (var pointId, _) = ParseKey(this._options.PointIdType, key);
+
+        // Retrieve data points.
+        var retrievedPoints = await this._qdrantClient.RetrieveAsync(collectionName, [pointId], true, options?.IncludeEmbeddings ?? false, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        // Check that we found something.
+        if (retrievedPoints.Count == 0)
+        {
+            throw new HttpOperationException(HttpStatusCode.NotFound, null, null, null);
+        }
+
+        // Map the retrieved point to the target data model.
+        var retrievedPoint = retrievedPoints[0];
+        return this.ConvertFromGrpcToDataModel(retrievedPoint, options?.IncludeEmbeddings is true);
+    }
+
+    /// <inheritdoc />
+    public async Task<TDataModel?> GetNonJsonAsync(string key, VectorStoreGetDocumentOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        if (key is null)
+        {
+            throw new ArgumentNullException(nameof(key));
+        }
+
+        // Create options.
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        (var pointId, _) = ParseKey(this._options.PointIdType, key);
 
         // Retrieve data points.
         var retrievedPoints = await this._qdrantClient.RetrieveAsync(collectionName, [pointId], true, options?.IncludeEmbeddings ?? false, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -89,9 +136,6 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
         // Map the retrieved point to the target data model.
         var retrievedPoint = retrievedPoints[0];
         var target = new TDataModel();
-
-        ////JsonFormatter formatter = new(new JsonFormatter.Settings(false));
-        ////string json = formatter.Format(retrievedPoint);
 
         // First set the key field.
         this._keyFieldPropertyInfo.SetValue(target, retrievedPoint.Id.Num.ToString(CultureInfo.InvariantCulture));
@@ -141,7 +185,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
 
         // Create options.
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
-        (var pointId, var guid) = ParseKey(this._options.IdType, key);
+        (var pointId, var guid) = ParseKey(this._options.PointIdType, key);
 
         // Delete the data point using GUID.
         if (pointId.HasUuid)
@@ -166,7 +210,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
         // Create options.
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
         var key = this._keyFieldPropertyInfo.GetValue(record)?.ToString() ?? throw new ArgumentException($"Missing key field {this._keyFieldPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.", nameof(record));
-        (var pointId, _) = ParseKey(this._options.IdType, key);
+        (var pointId, _) = ParseKey(this._options.PointIdType, key);
 
         // Create point.
         var pointStruct = new PointStruct
@@ -214,6 +258,60 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <summary>
+    /// Convert from the given <see cref="RetrievedPoint"/> to the target data model using a json conversion
+    /// so that we can easily support data models that have complex constructors and properties.
+    /// </summary>
+    /// <param name="point">The point to convert.</param>
+    /// <param name="includeEmbeddings">A value indicating whether embeddings are included in the point.</param>
+    /// <returns>The created data model.</returns>
+    private TDataModel ConvertFromGrpcToDataModel(RetrievedPoint point, bool includeEmbeddings)
+    {
+        // Get the key property name and value.
+        var keyPropertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(this._keyFieldPropertyInfo);
+        var keyPropertyValue = point.Id.HasNum ? point.Id.Num.ToString(CultureInfo.InvariantCulture) : point.Id.Uuid;
+
+        // Create a json object to represent the point.
+        var outputJsonObject = new JsonObject
+        {
+            { keyPropertyName, keyPropertyValue },
+        };
+
+        // Add each vector field if embeddings are included in the point.
+        if (includeEmbeddings)
+        {
+            foreach (var vectorProperty in this._vectorFieldsPropertyInfo)
+            {
+                var propertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(vectorProperty);
+
+                if (this._options.HasNamedVectors)
+                {
+                    if (point.Vectors.Vectors_.Vectors.TryGetValue(propertyName, out var vector))
+                    {
+                        outputJsonObject.Add(propertyName, new JsonArray(vector.Data.Select(x => JsonValue.Create(x)).ToArray()));
+                    }
+                }
+                else
+                {
+                    outputJsonObject.Add(propertyName, new JsonArray(point.Vectors.Vector.Data.Select(x => JsonValue.Create(x)).ToArray()));
+                }
+            }
+        }
+
+        // Add each payload field.
+        foreach (var payloadProperty in this._payloadFieldsPropertyInfo)
+        {
+            var propertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(payloadProperty);
+            if (point.Payload.TryGetValue(propertyName, out var value))
+            {
+                outputJsonObject.Add(propertyName, ConvertFromGrpcFieldValueToJsonNode(value));
+            }
+        }
+
+        // Convert from json object to the target data model.
+        return JsonSerializer.Deserialize<TDataModel>(outputJsonObject)!;
+    }
+
+    /// <summary>
     /// Parse the given key based on the provided ID type and return a <see cref="PointId"/> containing the key information, plus an optional <see cref="Guid"/>.
     /// </summary>
     /// <param name="idType">The type of id to parse the string to.</param>
@@ -221,13 +319,13 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <exception cref="ArgumentException">Thrown if the id type could not be parsed correctly.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the id type is unknown.</exception>
     /// <returns>A point id and optionally a guid from the given key.</returns>
-    private static (PointId pointId, Guid? guid) ParseKey(QdrantVectorStoreOptions.QdrantIdType idType, string key)
+    private static (PointId pointId, Guid? guid) ParseKey(QdrantVectorStoreOptions.QdrantPointIdType idType, string key)
     {
         var pointId = new PointId();
         var guid = default(Guid);
         switch (idType)
         {
-            case QdrantVectorStoreOptions.QdrantIdType.UUID:
+            case QdrantVectorStoreOptions.QdrantPointIdType.UuidType:
                 pointId.Uuid = key;
                 try
                 {
@@ -239,7 +337,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
                 }
                 break;
 
-            case QdrantVectorStoreOptions.QdrantIdType.Ulong:
+            case QdrantVectorStoreOptions.QdrantPointIdType.UlongType:
                 try
                 {
                     var parsedULongKey = ulong.Parse(key, CultureInfo.InvariantCulture);
@@ -266,6 +364,27 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// Convert the given <paramref name="payloadValue"/> to the correct native type based on its properties.
     /// </summary>
     /// <param name="payloadValue">The value to convert to a native type.</param>
+    /// <returns>The converted native value.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when an unsupported type is enountered.</exception>
+    private static JsonNode? ConvertFromGrpcFieldValueToJsonNode(Value payloadValue)
+    {
+        return payloadValue.KindCase switch
+        {
+            Value.KindOneofCase.NullValue => null,
+            Value.KindOneofCase.IntegerValue => JsonValue.Create(payloadValue.IntegerValue),
+            Value.KindOneofCase.StringValue => JsonValue.Create(payloadValue.StringValue),
+            Value.KindOneofCase.DoubleValue => JsonValue.Create(payloadValue.DoubleValue),
+            Value.KindOneofCase.BoolValue => JsonValue.Create(payloadValue.BoolValue),
+            Value.KindOneofCase.ListValue => new JsonArray(payloadValue.ListValue.Values.Select(x => ConvertFromGrpcFieldValueToJsonNode(x)).ToArray()),
+            Value.KindOneofCase.StructValue => new JsonObject(payloadValue.StructValue.Fields.ToDictionary(x => x.Key, x => ConvertFromGrpcFieldValueToJsonNode(x.Value))),
+            _ => throw new InvalidOperationException($"Unsupported grpc value kind {payloadValue.KindCase}."),
+        };
+    }
+
+    /// <summary>
+    /// Convert the given <paramref name="payloadValue"/> to the correct native type based on its properties.
+    /// </summary>
+    /// <param name="payloadValue">The value to convert to a native type.</param>
     /// <param name="targetType">The target type that we will need to consume.</param>
     /// <returns>The converted native value.</returns>
     /// <exception cref="InvalidOperationException">Thrown when an unsupported type is enountered.</exception>
@@ -274,11 +393,13 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
         return payloadValue.KindCase switch
         {
             Value.KindOneofCase.NullValue => null,
-            // Cast to object to avoid both values being implicitly cast back to Int64 again.
+            // Cast to object to avoid both values being implicitly cast back to long again.
             Value.KindOneofCase.IntegerValue => targetType == typeof(int) || targetType == typeof(int?) ? (object)(int)payloadValue.IntegerValue : (object)payloadValue.IntegerValue,
+            // Cast to object to avoid both values being implicitly cast back to double again.
+            Value.KindOneofCase.DoubleValue => targetType == typeof(float) || targetType == typeof(float?) ? (object)(float)payloadValue.DoubleValue : (object)payloadValue.DoubleValue,
             Value.KindOneofCase.StringValue => payloadValue.StringValue,
-            Value.KindOneofCase.DoubleValue => payloadValue.DoubleValue,
             Value.KindOneofCase.BoolValue => payloadValue.BoolValue,
+            Value.KindOneofCase.ListValue => payloadValue.ListValue.Values.Select(x => ConvertFromGrpcFieldValue(x, targetType.GetElementType()!)).ToArray(),
             _ => throw new InvalidOperationException($"Unsupported grpc value kind {payloadValue.KindCase}."),
         };
     }
@@ -300,9 +421,17 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
         {
             value.IntegerValue = intValue;
         }
+        else if (sourceValue is long longValue)
+        {
+            value.IntegerValue = longValue;
+        }
         else if (sourceValue is string stringValue)
         {
             value.StringValue = stringValue;
+        }
+        else if (sourceValue is float floatValue)
+        {
+            value.DoubleValue = floatValue;
         }
         else if (sourceValue is double doubleValue)
         {
@@ -311,6 +440,20 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
         else if (sourceValue is bool boolValue)
         {
             value.BoolValue = boolValue;
+        }
+        else if (sourceValue is IEnumerable<int> ||
+            sourceValue is IEnumerable<long> ||
+            sourceValue is IEnumerable<string> ||
+            sourceValue is IEnumerable<float> ||
+            sourceValue is IEnumerable<double> ||
+            sourceValue is IEnumerable<bool>)
+        {
+            var listValue = sourceValue as IEnumerable<object>;
+            value.ListValue = new ListValue();
+            foreach (var item in listValue!)
+            {
+                value.ListValue.Values.Add(ConvertToGrpcFieldValue(item));
+            }
         }
         else
         {
