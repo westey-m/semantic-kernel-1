@@ -517,3 +517,28 @@ document the team agreement on the decision and/or
 define when this decision when and how the decision should be realized and if/when it should be re-visited and/or
 how the decision is validated.
 Links to other decisions and resources might appear here as well.}
+
+## Roadmap
+
+### Vector Store
+
+1. Release Vector Store public interface and implementations for Azure AI Search, Qdrant and Redis.
+2. Add support for registering vector stores with SK container to allow automatic dependency injection.
+3. Add Vector Store implementations for remaining stores.
+
+### Collection Management
+
+4. Release Collection Management public interface and implementations for Azure AI Search, Qdrant and Redis.
+5. Add support for registering collection management with SK container to allow automatic dependency injection.
+6. Add Collection Management implementations for remaining stores.
+
+### Collection Creation
+
+7. Release Collection Creation public interface.
+8. Add support for registering collection creation with SK container to allow automatic dependency injection.
+
+### First Party Memory Features
+
+9. Add first party implementations and storage models for chat history with Collection Creation for supported stores.
+10. Add first party implementations and storage models for semantic caching with Collection Creation for supported stores.
+11. Add samples showing how to map between first party implementations and custom models.
