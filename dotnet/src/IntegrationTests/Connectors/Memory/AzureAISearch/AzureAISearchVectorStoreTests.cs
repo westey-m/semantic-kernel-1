@@ -82,7 +82,7 @@ public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, Azur
         var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
 
         // Act
-        var hotel1 = await sut.GetAsync("1", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true });
+        var hotel1 = await sut.GetAsync("1", new VectorStoreGetDocumentOptions { IncludeVectors = true });
 
         // Assert
         Assert.NotNull(hotel1);
@@ -99,7 +99,7 @@ public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, Azur
         var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName, options);
 
         // Act
-        var hotels = sut.GetBatchAsync(fixture.TestIndexName, ["1", "2", "3", "4"], new VectorStoreGetDocumentOptions { IncludeEmbeddings = true });
+        var hotels = sut.GetBatchAsync(fixture.TestIndexName, ["1", "2", "3", "4"], new VectorStoreGetDocumentOptions { IncludeVectors = true });
 
         // Assert
         Assert.NotNull(hotels);
@@ -124,7 +124,7 @@ public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, Azur
         await sut.RemoveAsync("tmp1");
 
         // Assert
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp1", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true }));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp1", new VectorStoreGetDocumentOptions { IncludeVectors = true }));
     }
 
     [Fact(Skip = SkipReason)]
@@ -140,8 +140,8 @@ public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, Azur
         await sut.RemoveBatchAsync(fixture.TestIndexName, ["tmp5", "tmp6", "tmp7"]);
 
         // Assert
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp5", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true }));
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp6", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true }));
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp7", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true }));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp5", new VectorStoreGetDocumentOptions { IncludeVectors = true }));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp6", new VectorStoreGetDocumentOptions { IncludeVectors = true }));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp7", new VectorStoreGetDocumentOptions { IncludeVectors = true }));
     }
 }

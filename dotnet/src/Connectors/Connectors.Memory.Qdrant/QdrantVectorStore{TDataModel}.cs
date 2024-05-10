@@ -79,7 +79,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
 
         var fields = VectorStoreModelPropertyReader.FindFields(typeof(TDataModel), this._options.HasNamedVectors);
         VectorStoreModelPropertyReader.VerifyFieldTypes(fields.dataFields, s_supportedFieldTypes, "Data");
-        VectorStoreModelPropertyReader.VerifyFieldTypes(fields.dataFields, s_supportedFieldTypes, "Metadata");
+        VectorStoreModelPropertyReader.VerifyFieldTypes(fields.metadataFields, s_supportedFieldTypes, "Metadata");
 
         this._keyFieldPropertyInfo = fields.keyField;
         this._payloadFieldsPropertyInfo = fields.dataFields.Concat(fields.metadataFields).ToList();
@@ -99,7 +99,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
         (var pointId, _) = ParseKey(this._options.PointIdType, key);
 
         // Retrieve data points.
-        var retrievedPoints = await this._qdrantClient.RetrieveAsync(collectionName, [pointId], true, options?.IncludeEmbeddings ?? false, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var retrievedPoints = await this._qdrantClient.RetrieveAsync(collectionName, [pointId], true, options?.IncludeVectors ?? false, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         // Check that we found something.
         if (retrievedPoints.Count == 0)
@@ -109,7 +109,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
 
         // Map the retrieved point to the target data model.
         var retrievedPoint = retrievedPoints[0];
-        return this.ConvertFromGrpcToDataModel(retrievedPoint, options?.IncludeEmbeddings is true);
+        return this.ConvertFromGrpcToDataModel(retrievedPoint, options?.IncludeVectors is true);
     }
 
     /// <inheritdoc />
@@ -125,7 +125,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
         (var pointId, _) = ParseKey(this._options.PointIdType, key);
 
         // Retrieve data points.
-        var retrievedPoints = await this._qdrantClient.RetrieveAsync(collectionName, [pointId], true, options?.IncludeEmbeddings ?? false, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var retrievedPoints = await this._qdrantClient.RetrieveAsync(collectionName, [pointId], true, options?.IncludeVectors ?? false, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         // Check that we found something.
         if (retrievedPoints.Count == 0)
@@ -141,7 +141,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
         this._keyFieldPropertyInfo.SetValue(target, retrievedPoint.Id.Num.ToString(CultureInfo.InvariantCulture));
 
         // Map each embedding (vector) field.
-        if (options?.IncludeEmbeddings is true)
+        if (options?.IncludeVectors is true)
         {
             foreach (var vectorFieldPropertyInfo in this._vectorFieldsPropertyInfo)
             {

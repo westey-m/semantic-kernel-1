@@ -48,7 +48,7 @@ public sealed class QdrantVectorStoreTests(ITestOutputHelper output, QdrantVecto
         var sut = new QdrantVectorStore<QdrantVectorStoreFixture.HotelInfo>(fixture.QdrantClient, "singleVectorHotels", new QdrantVectorStoreOptions { PointIdType = QdrantVectorStoreOptions.QdrantPointIdType.UlongType });
 
         // Act.
-        var getResult = await sut.GetAsync("11", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true });
+        var getResult = await sut.GetAsync("11", new VectorStoreGetDocumentOptions { IncludeVectors = true });
 
         // Assert.
         Assert.Equal("11", getResult?.HotelId);
@@ -96,7 +96,7 @@ public sealed class QdrantVectorStoreTests(ITestOutputHelper output, QdrantVecto
         var sut = new QdrantVectorStore<QdrantVectorStoreFixture.HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorStoreOptions { PointIdType = QdrantVectorStoreOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
 
         // Act.
-        var getResult = await sut.GetAsync("1", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true });
+        var getResult = await sut.GetAsync("1", new VectorStoreGetDocumentOptions { IncludeVectors = true });
 
         // Assert.
         Assert.Equal("1", getResult?.HotelId);
@@ -162,7 +162,7 @@ public sealed class QdrantVectorStoreTests(ITestOutputHelper output, QdrantVecto
         var upsertResult = await sut.UpsertAsync(record);
 
         // Assert.
-        var getResult = await sut.GetAsync("20", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true });
+        var getResult = await sut.GetAsync("20", new VectorStoreGetDocumentOptions { IncludeVectors = true });
         Assert.Equal("20", upsertResult);
         Assert.Equal(record.HotelId, getResult?.HotelId);
         Assert.Equal(record.HotelName, getResult?.HotelName);

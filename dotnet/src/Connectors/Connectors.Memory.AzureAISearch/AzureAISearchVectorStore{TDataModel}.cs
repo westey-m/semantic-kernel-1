@@ -223,7 +223,7 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     private GetDocumentOptions ConvertGetDocumentOptions(VectorStoreGetDocumentOptions? options)
     {
         var innerOptions = new GetDocumentOptions();
-        if (options?.IncludeEmbeddings is false)
+        if (options?.IncludeVectors is false)
         {
             innerOptions.SelectedFields.AddRange(this._nonVectorFieldNames);
         }

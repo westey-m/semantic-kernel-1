@@ -47,7 +47,7 @@ public sealed class RedisVectorStoreTests(ITestOutputHelper output, RedisVectorS
         var sut = new RedisVectorStore<RedisVectorStoreFixture.HotelInfo>(fixture.Database, "hotels", new RedisVectorStoreOptions { PrefixCollectionNameToKeyNames = true });
 
         // Act.
-        var getResult = await sut.GetAsync("H10", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true });
+        var getResult = await sut.GetAsync("H10", new VectorStoreGetDocumentOptions { IncludeVectors = true });
 
         // Assert.
         Assert.Equal("H10", getResult?.HotelId);
@@ -69,7 +69,7 @@ public sealed class RedisVectorStoreTests(ITestOutputHelper output, RedisVectorS
         var sut = new RedisVectorStore<RedisVectorStoreFixture.HotelInfo>(fixture.Database, "hotels", new RedisVectorStoreOptions { PrefixCollectionNameToKeyNames = true });
 
         // Act & Assert.
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("H13-Invalid", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true }));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("H13-Invalid", new VectorStoreGetDocumentOptions { IncludeVectors = true }));
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public sealed class RedisVectorStoreTests(ITestOutputHelper output, RedisVectorS
         var upsertResult = await sut.UpsertAsync(record);
 
         // Assert.
-        var getResult = await sut.GetAsync("H1", new VectorStoreGetDocumentOptions { IncludeEmbeddings = true });
+        var getResult = await sut.GetAsync("H1", new VectorStoreGetDocumentOptions { IncludeVectors = true });
         Assert.Equal("H1", upsertResult);
         Assert.Equal(record.HotelId, getResult?.HotelId);
         Assert.Equal(record.HotelName, getResult?.HotelName);

@@ -85,7 +85,7 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     {
         var innerOptions = options == null ? null : new VectorStoreGetDocumentOptions
         {
-            IncludeEmbeddings = options.IncludeEmbeddings,
+            IncludeVectors = options.IncludeVectors,
             CollectionName = options.CollectionName == null ? null : this._indexNameEncoder(options.CollectionName)
         };
 

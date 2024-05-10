@@ -73,7 +73,7 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
 
         // Get the redis value and parse the JSON stored in Redis into a JsonNode object.
         var maybePrefixedKey = this.PrefixKeyIfNeeded(key, options?.CollectionName);
-        var redisResult = options?.IncludeEmbeddings is true ?
+        var redisResult = options?.IncludeVectors is true ?
             await this._database
                 .JSON()
                 .GetAsync(maybePrefixedKey).ConfigureAwait(false) :

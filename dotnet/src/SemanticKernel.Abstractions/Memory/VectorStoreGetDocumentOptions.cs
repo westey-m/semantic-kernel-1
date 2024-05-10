@@ -13,7 +13,7 @@ public class VectorStoreGetDocumentOptions
     public string? CollectionName { get; init; }
 
     /// <summary>
-    /// Get or sets a value indicating whether to include embeddings in the retrieval result.
+    /// Get or sets a value indicating whether to include vectors in the retrieval result.
     /// </summary>
-    public bool IncludeEmbeddings { get; init; } = false;
+    public bool IncludeVectors { get; init; } = false;
 }
