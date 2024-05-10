@@ -300,6 +300,7 @@ Additional:
 1. Combined collection and record management vs separated.
 2. Collection name and key value normalization in decorator or main class.
 3. Collection name as method param or constructor param.
+4. How to normalize ids across different vector stores where different types are supported.
 
 ### Question 1: Combined collection and record management vs separated.
 
@@ -568,6 +569,107 @@ public class VectorDBRecordsServiceGetDocumentOptions
     public string CollectionName { get; init; };
 }
 ```
+
+### Question 4: How to normalize ids across different vector stores where different types are supported.
+
+#### Option 1 - Take a string and convert to a type that was specified on the constructor
+
+```cs
+public async Task<TDataModel?> GetAsync(string key, VectorDBRecordsServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+{
+    var convertedKey = this.keyType switch
+    {
+        KeyType.Int => int.parse(key),
+        KeyType.GUID => Guid.parse(key)
+    }
+
+    ...
+}
+```
+
+- No additional overloads are required over time so no breaking changes.
+- Most data types can easily be represented in string form and converted to/from it.
+
+#### Option 2 - Take an object and cast to a type that was specified on the constructor.
+
+```cs
+public async Task<TDataModel?> GetAsync(object key, VectorDBRecordsServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+{
+    var convertedKey = this.keyType switch
+    {
+        KeyType.Int => key as int,
+        KeyType.GUID => key as Guid
+    }
+
+    if (convertedKey is null)
+    {
+        throw new InvalidOperationException($"The provided key must be of type {this.keyType}")
+    }
+
+    ...
+}
+
+```
+
+- No additional overloads are required over time so no breaking changes.
+- Any data types can be represented as object.
+
+#### Option 3 - Multiple overloads where we convert where possible, throw when not possible.
+
+```cs
+public async Task<TDataModel?> GetAsync(string key, VectorDBRecordsServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+{
+    var convertedKey = this.keyType switch
+    {
+        KeyType.Int => int.Parse(key),
+        KeyType.String => key,
+        KeyType.GUID => Guid.Parse(key)
+    }
+}
+public async Task<TDataModel?> GetAsync(int key, VectorDBRecordsServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+{
+    var convertedKey = this.keyType switch
+    {
+        KeyType.Int => key,
+        KeyType.String => key.ToString(),
+        KeyType.GUID => throw new InvalidOperationException($"The provided key must be convertable to a GUID.")
+    }
+}
+public async Task<TDataModel?> GetAsync(GUID key, VectorDBRecordsServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+{
+    var convertedKey = this.keyType switch
+    {
+        KeyType.Int => throw new InvalidOperationException($"The provided key must be convertable to an int.")
+        KeyType.String => key.ToString(),
+        KeyType.GUID => key
+    }
+}
+```
+
+- Additional overloads are required over time if new key types are found on new connectors, causing breaking changes.
+- You can still call a method that causes a runtime error, when the type isn't supported.
+
+#### Option 4 - Add key type as generic to interface
+
+```cs
+interface IVectorDBRecordsService<TDataModel, TKeyType>
+{
+    Task<TDataModel?> GetAsync(TKeyType key, VectorDBRecordsServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
+}
+
+class AzureAISearchVectorDBRecordsService<TDataModel, TKeyType>: IVectorDBRecordsService<TDataModel, TKeyType>
+{
+    public AzureAISearchVectorDBRecordsService()
+    {
+        // Check if TKeyType matches the type of the field marked as a key on TDataModel and throw if they don't match.
+        // Also check if keytype is one of the allowed types for Azure AI Search and throw if it isn't.
+    }
+}
+
+```
+
+- No runtime issues after construction.
+- More cumbersome interface.
 
 #### Decision Outcome
 
