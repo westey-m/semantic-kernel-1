@@ -409,32 +409,36 @@ interface IVectorDBCollectionCreationService
     virtual Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default);
 }
 
-interface IVectorDBCollectionsService : IVectorDBCollectionCreationService
+interface IVectorDBCollectionsUpdateService
 {
     Task<IEnumerable<string>> GetCollectionsAsync(CancellationToken cancellationToken = default);
     Task<bool> DoesCollectionExistAsync(string name, CancellationToken cancellationToken = default);
     Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default);
 }
 
-class AzureAISearchChatHistoryVectorDBCollectionCreationService: IVectorDBCollectionCreationService;
-class AzureAISearchSemanticCacheVectorDBCollectionCreationService: IVectorDBCollectionCreationService;
+// DB Specific Update implementations
+class AzureAISearchVectorDBCollectionUpdateService: IVectorDBCollectionsUpdateService;
+class RedisVectorDBCollectionUpdateService: IVectorDBCollectionsUpdateService;
 
-// Base abstract class that forwards create operation to provided creation service.
-abstract class VectorDBCollectionsService(IVectorDBCollectionCreationService creationService): IVectorDBCollectionsService
+// Combined Create + Update Interface
+interface IVectorDBCollectionsService: IVectorDBCollectionCreationService, IVectorDBCollectionsUpdateService {}
+
+// Base abstract class that forwards non-create operations to provided service.
+abstract class VectorDBCollectionsService(IVectorDBCollectionsUpdateService collectionsUpdateService): IVectorDBCollectionsService
 {
-    public Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default) { return creationService.CreateCollectionAsync(name, cancellationToken); }
-    public abstract Task<IEnumerable<string>> GetCollectionsAsync(CancellationToken cancellationToken = default);
-    public abstract Task<bool> DoesCollectionExistAsync(string name, CancellationToken cancellationToken = default);
-    public abstract Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default);
+    public abstract Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default);
+    public Task<IEnumerable<string>> GetCollectionsAsync(CancellationToken cancellationToken = default) { return collectionsUpdateService.GetCollectionsAsync(cancellationToken); }
+    public Task<bool> DoesCollectionExistAsync(string name, CancellationToken cancellationToken = default) { return collectionsUpdateService.DoesCollectionExistAsync(name, cancellationToken); }
+    public Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default) { return collectionsUpdateService.DeleteCollectionAsync(name, cancellationToken); }
 }
 
-// Collections service implementations, that can work with different creation implementations.
-class AzureAISearchVectorDBCollectionsService(IVectorDBCollectionCreationService creationService): VectorDBCollectionsService(creationService);
-class RedisVectorDBCollectionsService(IVectorDBCollectionCreationService creationService): VectorDBCollectionsService(creationService);
-class WeaviateVectorDBCollectionsService(IVectorDBCollectionCreationService creationService): VectorDBCollectionsService(creationService);
+// Collections service implementations, that inherit from base class, and just adds the different creation implementations.
+class AzureAISearchChatHistoryVectorDBService(AzureAISearchVectorDBCollectionUpdateService updateService): VectorDBCollectionsService(updateService);
+class AzureAISearchSemanticCacheVectorDBService(AzureAISearchVectorDBCollectionUpdateService updateService): VectorDBCollectionsService(updateService);
+class AzureAISearchMLIndexVectorDBService(AzureAISearchVectorDBCollectionUpdateService updateService): VectorDBCollectionsService(updateService);
 
-// Collections service implementation, that has it's own built in creation implementation.
-class ContosoProductsVectorDBCollectionsService(): IVectorDBCollectionsService;
+// Customer collections service implementation, that uses the base Azure AI Search implementation for get, doesExist and delete, but adds it's own creation.
+class ContosoProductsVectorDBCollectionsService(AzureAISearchVectorDBCollectionUpdateService updateService): VectorDBCollectionsService(updateService);
 
 ```
 
@@ -448,8 +452,10 @@ interface IVectorService : IVectorDBCollectionCreationService, IVectorDBCollecti
 {    
 }
 
-class AzureAISearchChatHistoryVectorService: IVectorService;
-class AzureAISearchSemanticCacheVectorService: IVectorService;
+// Create a static factory that produces one of these, so only the interface is public, not the class.
+internal class CombinedVectorService<TDataModel>(IVectorDBCollectionCreationService creation, IVectorDBCollectionsService collections, IVectorDBRecordsService<TDataModel> records): IVectorService
+{
+}
 
 ```
 
