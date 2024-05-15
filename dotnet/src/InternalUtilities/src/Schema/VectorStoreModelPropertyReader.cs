@@ -18,7 +18,7 @@ namespace Microsoft.SemanticKernel;
 internal static class VectorStoreModelPropertyReader
 {
     /// <summary>
-    /// Find the fields with <see cref="VectorStoreModelKeyAttribute"/>, <see cref="VectorStoreModelDataAttribute"/>, <see cref="VectorStoreModelMetadataAttribute"/> and <see cref="VectorStoreModelVectorAttribute"/> attributes.
+    /// Find the fields with <see cref="KeyAttribute"/>, <see cref="DataAttribute"/>, <see cref="MetadataAttribute"/> and <see cref="VectorAttribute"/> attributes.
     /// Return those fields in separate categories.
     /// Throws if no key field is found, if there are multiple key fields, or if the key field is not a string.
     /// </summary>
@@ -36,7 +36,7 @@ internal static class VectorStoreModelPropertyReader
         foreach (var property in type.GetProperties())
         {
             // Get Key property.
-            if (property.GetCustomAttribute<VectorStoreModelKeyAttribute>() is not null)
+            if (property.GetCustomAttribute<KeyAttribute>() is not null)
             {
                 if (keyField is not null)
                 {
@@ -52,19 +52,19 @@ internal static class VectorStoreModelPropertyReader
             }
 
             // Get data properties.
-            if (property.GetCustomAttribute<VectorStoreModelDataAttribute>() is not null)
+            if (property.GetCustomAttribute<DataAttribute>() is not null)
             {
                 dataProperties.Add(property);
             }
 
             // Get metadata properties.
-            if (property.GetCustomAttribute<VectorStoreModelMetadataAttribute>() is not null)
+            if (property.GetCustomAttribute<MetadataAttribute>() is not null)
             {
                 metadataProperties.Add(property);
             }
 
             // Get Vector properties.
-            if (property.GetCustomAttribute<VectorStoreModelVectorAttribute>() is not null)
+            if (property.GetCustomAttribute<VectorAttribute>() is not null)
             {
                 if (property.PropertyType != typeof(ReadOnlyMemory<float>) && property.PropertyType != typeof(ReadOnlyMemory<float>?))
                 {

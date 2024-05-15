@@ -3,9 +3,9 @@
 namespace Microsoft.SemanticKernel.Connectors.Redis;
 
 /// <summary>
-/// Options when creating a <see cref="RedisVectorStore{TDataModel}"/>.
+/// Options when creating a <see cref="RedisVectorDBRecordService{TDataModel}"/>.
 /// </summary>
-public class RedisVectorStoreOptions
+public class RedisVectorDBRecordServiceOptions
 {
     /// <summary>
     /// Gets or sets a value indicating whether the collection name should be prefixed to the

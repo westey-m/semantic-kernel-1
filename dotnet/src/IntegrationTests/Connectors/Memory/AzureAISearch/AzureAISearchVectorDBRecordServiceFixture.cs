@@ -20,7 +20,7 @@ namespace SemanticKernel.IntegrationTests.Connectors.Memory.AzureAISearch;
 /// <summary>
 /// Helper class for setting up and tearing down Azure AI Search indexes for testing purposes.
 /// </summary>
-public class AzureAISearchVectorStoreFixture : IAsyncLifetime
+public class AzureAISearchVectorDBRecordServiceFixture : IAsyncLifetime
 {
     /// <summary>
     /// Test index name which consists out of "hotels-" and the machine name with any non-alphanumeric characters removed.
@@ -36,13 +36,13 @@ public class AzureAISearchVectorStoreFixture : IAsyncLifetime
             .AddJsonFile(path: "testsettings.json", optional: false, reloadOnChange: true)
             .AddJsonFile(path: "testsettings.development.json", optional: true, reloadOnChange: true)
             .AddEnvironmentVariables()
-            .AddUserSecrets<AzureAISearchVectorStoreTests>()
+            .AddUserSecrets<AzureAISearchVectorDBRecordServiceTests>()
             .Build();
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="AzureAISearchVectorStoreFixture"/> class.
+    /// Initializes a new instance of the <see cref="AzureAISearchVectorDBRecordServiceFixture"/> class.
     /// </summary>
-    public AzureAISearchVectorStoreFixture()
+    public AzureAISearchVectorDBRecordServiceFixture()
     {
         var config = this._configuration.GetSection("AzureAISearch").Get<AzureAISearchConfiguration>();
         Assert.NotNull(config);
@@ -65,9 +65,9 @@ public class AzureAISearchVectorStoreFixture : IAsyncLifetime
     /// <returns>An async task.</returns>
     public async Task InitializeAsync()
     {
-        await AzureAISearchVectorStoreFixture.DeleteIndexIfExistsAsync(this._testIndexName, this.SearchIndexClient);
-        await AzureAISearchVectorStoreFixture.CreateIndexAsync(this._testIndexName, this.SearchIndexClient);
-        AzureAISearchVectorStoreFixture.UploadDocuments(this.SearchIndexClient.GetSearchClient(this._testIndexName));
+        await AzureAISearchVectorDBRecordServiceFixture.DeleteIndexIfExistsAsync(this._testIndexName, this.SearchIndexClient);
+        await AzureAISearchVectorDBRecordServiceFixture.CreateIndexAsync(this._testIndexName, this.SearchIndexClient);
+        AzureAISearchVectorDBRecordServiceFixture.UploadDocuments(this.SearchIndexClient.GetSearchClient(this._testIndexName));
     }
 
     /// <summary>
@@ -76,7 +76,7 @@ public class AzureAISearchVectorStoreFixture : IAsyncLifetime
     /// <returns>An async task.</returns>
     public async Task DisposeAsync()
     {
-        await AzureAISearchVectorStoreFixture.DeleteIndexIfExistsAsync(this._testIndexName, this.SearchIndexClient);
+        await AzureAISearchVectorDBRecordServiceFixture.DeleteIndexIfExistsAsync(this._testIndexName, this.SearchIndexClient);
     }
 
     /// <summary>
@@ -209,9 +209,9 @@ public class AzureAISearchVectorStoreFixture : IAsyncLifetime
     }
 
     public record HotelShortInfo(
-        [property: VectorStoreModelKey] string HotelId,
-        [property: VectorStoreModelMetadata] string HotelName,
-        [property: VectorStoreModelData] string Description);
+        [property: Key] string HotelId,
+        [property: Metadata] string HotelName,
+        [property: Data] string Description);
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     public partial record Hotel

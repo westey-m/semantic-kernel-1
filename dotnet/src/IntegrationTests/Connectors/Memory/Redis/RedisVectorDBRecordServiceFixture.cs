@@ -20,7 +20,7 @@ namespace SemanticKernel.IntegrationTests.Connectors.Memory.Redis;
 /// <summary>
 /// Does setup and teardown of redis docker container and associated test data.
 /// </summary>
-public class RedisVectorStoreFixture : IAsyncLifetime
+public class RedisVectorDBRecordServiceFixture : IAsyncLifetime
 {
     /// <summary>The docker client we are using to create a redis container with.</summary>
     private readonly DockerClient _client;
@@ -29,9 +29,9 @@ public class RedisVectorStoreFixture : IAsyncLifetime
     private string? _containerId = null;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="RedisVectorStoreFixture"/> class.
+    /// Initializes a new instance of the <see cref="RedisVectorDBRecordServiceFixture"/> class.
     /// </summary>
-    public RedisVectorStoreFixture()
+    public RedisVectorDBRecordServiceFixture()
     {
         using var dockerClientConfiguration = new DockerClientConfiguration();
         this._client = dockerClientConfiguration.CreateClient();
@@ -145,13 +145,13 @@ public class RedisVectorStoreFixture : IAsyncLifetime
     /// <param name="Description">A document field.</param>
     /// <param name="DescriptionEmbeddings">A vector field.</param>
     public record HotelInfo(
-        [property: VectorStoreModelKey] string HotelId,
-        [property: VectorStoreModelMetadata] string HotelName,
-        [property: VectorStoreModelMetadata, JsonPropertyName("hotelCode")] int HotelCode,
-        [property: VectorStoreModelMetadata] bool Seafront,
-        [property: VectorStoreModelMetadata] HotelAddress Address,
-        [property: VectorStoreModelData] string Description,
-        [property: VectorStoreModelVector] ReadOnlyMemory<float>? DescriptionEmbeddings);
+        [property: Key] string HotelId,
+        [property: Metadata] string HotelName,
+        [property: Metadata, JsonPropertyName("hotelCode")] int HotelCode,
+        [property: Metadata] bool Seafront,
+        [property: Metadata] HotelAddress Address,
+        [property: Data] string Description,
+        [property: Vector] ReadOnlyMemory<float>? DescriptionEmbeddings);
 
     /// <summary>
     /// A test model for the vector store to simulate a complex type.

@@ -3,9 +3,9 @@
 namespace Microsoft.SemanticKernel.Memory;
 
 /// <summary>
-/// Optional options when calling <see cref="IVectorStore{TDataModel}.RemoveAsync"/>.
+/// Optional options when calling <see cref="IVectorDBRecordService{TDataModel}.RemoveAsync"/>.
 /// </summary>
-public class VectorStoreRemoveDocumentOptions
+public class RemoveRecordOptions
 {
     /// <summary>
     /// Get or sets an optional collection name to use for this operation that is different to the default.

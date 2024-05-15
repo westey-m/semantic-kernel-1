@@ -5,9 +5,9 @@ using System;
 namespace Microsoft.SemanticKernel.Memory;
 
 /// <summary>
-/// Attribute to mark a property on a class as the key under which data is stored in a vector store.
+/// Attribute to mark a property on a vector model class as metadata about the record.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-public sealed class VectorStoreModelKeyAttribute : Attribute
+public sealed class MetadataAttribute : Attribute
 {
 }

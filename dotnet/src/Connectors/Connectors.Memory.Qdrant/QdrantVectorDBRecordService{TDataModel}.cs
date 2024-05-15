@@ -21,7 +21,7 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 /// Vector store that uses Qdrant as the underlying storage.
 /// </summary>
 /// <typeparam name="TDataModel">The data model to use for adding, updating and retrieving data from storage.</typeparam>
-public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
+public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<TDataModel>
     where TDataModel : class, new()
 {
     /// <summary>A set of types that fields on the provided model may have.</summary>
@@ -53,7 +53,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     private readonly string _defaultCollectionName;
 
     /// <summary>Optional configuration options for this class.</summary>
-    private readonly QdrantVectorStoreOptions _options;
+    private readonly QdrantVectorDBRecordServiceOptions _options;
 
     /// <summary>A list of property info objects that point at the payload fields in the current model, and allows easy reading and writing of these properties.</summary>
     private readonly List<PropertyInfo> _payloadFieldsPropertyInfo = new();
@@ -65,14 +65,14 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     private readonly PropertyInfo _keyFieldPropertyInfo;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="QdrantVectorStore{TDataModel}"/> class.
+    /// Initializes a new instance of the <see cref="QdrantVectorDBRecordService{TDataModel}"/> class.
     /// </summary>
     /// <param name="qdrantClient">Qdrant client that can be used to manage the points in a Qdrant store.</param>
     /// <param name="defaultCollectionName">The name of the collection to use with this store if none is provided for any individual operation.</param>
     /// <param name="options">Optional configuration options for this class.</param>
     /// <exception cref="ArgumentNullException"></exception>
     /// <exception cref="ArgumentException"></exception>
-    public QdrantVectorStore(QdrantClient qdrantClient, string defaultCollectionName, QdrantVectorStoreOptions? options)
+    public QdrantVectorDBRecordService(QdrantClient qdrantClient, string defaultCollectionName, QdrantVectorDBRecordServiceOptions? options)
     {
         // Verify.
         Verify.NotNull(qdrantClient);
@@ -81,7 +81,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
         // Assign.
         this._qdrantClient = qdrantClient;
         this._defaultCollectionName = defaultCollectionName;
-        this._options = options ?? new QdrantVectorStoreOptions();
+        this._options = options ?? new QdrantVectorDBRecordServiceOptions();
 
         // Enumerate public properties/fields on model and store for later use.
         var fields = VectorStoreModelPropertyReader.FindFields(typeof(TDataModel), this._options.HasNamedVectors);
@@ -94,7 +94,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<TDataModel?> GetAsync(string key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         Verify.NotNullOrWhiteSpace(key);
 
@@ -103,7 +103,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<string> keys, GetRecordOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         Verify.NotNull(keys);
 
@@ -129,7 +129,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<TDataModel?> GetNonJsonAsync(string key, VectorStoreGetDocumentOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<TDataModel?> GetNonJsonAsync(string key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         Verify.NotNullOrWhiteSpace(key);
 
@@ -189,7 +189,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<string> RemoveAsync(string key, RemoveRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         Verify.NotNullOrWhiteSpace(key);
 
@@ -210,7 +210,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<string> UpsertAsync(TDataModel record, UpsertRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(record);
 
@@ -326,13 +326,13 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <exception cref="ArgumentException">Thrown if the id type could not be parsed correctly.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the id type is unknown.</exception>
     /// <returns>A point id and optionally a guid from the given key.</returns>
-    private static (PointId pointId, Guid? guid) ParseKey(QdrantVectorStoreOptions.QdrantPointIdType idType, string key)
+    private static (PointId pointId, Guid? guid) ParseKey(QdrantVectorDBRecordServiceOptions.QdrantPointIdType idType, string key)
     {
         var pointId = new PointId();
         var guid = default(Guid);
         switch (idType)
         {
-            case QdrantVectorStoreOptions.QdrantPointIdType.UuidType:
+            case QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UuidType:
                 pointId.Uuid = key;
                 try
                 {
@@ -344,7 +344,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
                 }
                 break;
 
-            case QdrantVectorStoreOptions.QdrantPointIdType.UlongType:
+            case QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType:
                 try
                 {
                     var parsedULongKey = ulong.Parse(key, CultureInfo.InvariantCulture);

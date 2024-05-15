@@ -8,6 +8,6 @@ namespace Microsoft.SemanticKernel.Memory;
 /// Attribute to mark a property on a vector model class as the vector.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-public sealed class VectorStoreModelVectorAttribute : Attribute
+public sealed class VectorAttribute : Attribute
 {
 }

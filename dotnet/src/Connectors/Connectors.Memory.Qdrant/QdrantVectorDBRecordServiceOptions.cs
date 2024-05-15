@@ -3,9 +3,9 @@
 namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 
 /// <summary>
-/// Options when creating a <see cref="QdrantVectorStore{TDataModel}"/>.
+/// Options when creating a <see cref="QdrantVectorDBRecordService{TDataModel}"/>.
 /// </summary>
-public class QdrantVectorStoreOptions
+public class QdrantVectorDBRecordServiceOptions
 {
     /// <summary>
     /// Gets or sets a value indicating whether the vectors in the store are named, or whether there is just a single vector per qdrant point.

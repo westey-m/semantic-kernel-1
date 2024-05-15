@@ -20,7 +20,7 @@ namespace Microsoft.SemanticKernel.Connectors.Redis;
 /// Vector store that uses Redis as the underlying storage.
 /// </summary>
 /// <typeparam name="TDataModel">The data model to use for adding, updating and retrieving data from storage.</typeparam>
-public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
+public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<TDataModel>
     where TDataModel : class
 {
     /// <summary>The redis database to read/write records from.</summary>
@@ -30,7 +30,7 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
     private readonly string _defaultCollectionName;
 
     /// <summary>Optional configuration options for this class.</summary>
-    private readonly RedisVectorStoreOptions _options;
+    private readonly RedisVectorDBRecordServiceOptions _options;
 
     /// <summary>A property info object that points at the key field for the current model, allowing easy reading and writing of this property.</summary>
     private readonly PropertyInfo _keyFieldPropertyInfo;
@@ -45,13 +45,13 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
     private readonly string[] _dataAndMetadataAndVectorFieldNames;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="RedisVectorStore{TDataModel}"/> class.
+    /// Initializes a new instance of the <see cref="RedisVectorDBRecordService{TDataModel}"/> class.
     /// </summary>
     /// <param name="database">The redis database to read/write records from.</param>
     /// <param name="defaultCollectionName">The name of the collection to use with this store if none is provided for any individual operation.</param>
     /// <param name="options">Optional configuration options for this class.</param>
     /// <exception cref="ArgumentNullException">Throw when parameters are invalid.</exception>
-    public RedisVectorStore(IDatabase database, string defaultCollectionName, RedisVectorStoreOptions? options)
+    public RedisVectorDBRecordService(IDatabase database, string defaultCollectionName, RedisVectorDBRecordServiceOptions? options)
     {
         // Verify.
         Verify.NotNull(database);
@@ -60,7 +60,7 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
         // Assign.
         this._database = database;
         this._defaultCollectionName = defaultCollectionName;
-        this._options = options ?? new RedisVectorStoreOptions();
+        this._options = options ?? new RedisVectorDBRecordServiceOptions();
 
         // Enumerate public properties/fields on model and store for later use.
         var fields = VectorStoreModelPropertyReader.FindFields(typeof(TDataModel), true);
@@ -80,7 +80,7 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<TDataModel?> GetAsync(string key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         Verify.NotNullOrWhiteSpace(key);
 
@@ -118,7 +118,7 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<string> keys, GetRecordOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         Verify.NotNull(keys);
 
@@ -161,7 +161,7 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task<string> RemoveAsync(string key, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNullOrWhiteSpace(key);
 
@@ -174,7 +174,7 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task<string> UpsertAsync(TDataModel record, UpsertRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(record);
 

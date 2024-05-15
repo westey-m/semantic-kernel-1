@@ -12,7 +12,7 @@ namespace Microsoft.SemanticKernel.Memory;
 /// </summary>
 /// <typeparam name="TDataModel">The data model to use for adding, updating and retrieving data from storage.</typeparam>
 [Experimental("SKEXP0001")]
-public interface IVectorStore<TDataModel>
+public interface IVectorDBRecordService<TDataModel>
     where TDataModel : class
 {
     /// <summary>
@@ -22,7 +22,7 @@ public interface IVectorStore<TDataModel>
     /// <param name="options">Optional options for retrieving the record.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>The memory record if found, otherwise null.</returns>
-    Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    Task<TDataModel?> GetAsync(string key, GetRecordOptions? options = default, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets a batch of memory records from the data store. Does not guarantee that the collection exists.
@@ -31,7 +31,7 @@ public interface IVectorStore<TDataModel>
     /// <param name="options">Optional options for retrieving the records.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>The memory records associated with the unique keys provided.</returns>
-    IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<string> keys, GetRecordOptions? options = default, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes a memory record from the data store. Does not guarantee that the collection exists.
@@ -40,7 +40,7 @@ public interface IVectorStore<TDataModel>
     /// <param name="options">Optional options for removing the record.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>The unique identifier for the memory record.</returns>
-    Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    Task<string> RemoveAsync(string key, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default);
 
     //// <summary>
     //// Removes a batch of memory records from the data store. Does not guarantee that the collection exists.
@@ -59,7 +59,7 @@ public interface IVectorStore<TDataModel>
     /// <param name="options">Optional options for upserting the record.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>The unique identifier for the memory record.</returns>
-    Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    Task<string> UpsertAsync(TDataModel record, UpsertRecordOptions? options = default, CancellationToken cancellationToken = default);
 
     //// <summary>
     //// Upserts a group of memory records into the data store. Does not guarantee that the collection exists.

@@ -12,18 +12,18 @@ using Microsoft.SemanticKernel.Memory;
 namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 
 /// <summary>
-/// Decorator class for <see cref="IVectorStore{TDataModel}"/> that normalizes the index names and encodes and decodes the record keys so that any values
+/// Decorator class for <see cref="IVectorDBRecordService{TDataModel}"/> that normalizes the index names and encodes and decodes the record keys so that any values
 /// can be stored in Azure AI Search without violating the constraints of the service.
 /// </summary>
 /// <typeparam name="TDataModel">The data model to use for adding, updating and retrieving data from storage.</typeparam>
 /// <remarks>
 /// NOTE: This class mutates the data objects that are passed to it during encoding.
 /// </remarks>
-public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
+public class KeyNormalizingAzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordService<TDataModel>
     where TDataModel : class
 {
     /// <summary>The vector store instance that is being decorated.</summary>
-    private readonly IVectorStore<TDataModel> _vectorStore;
+    private readonly IVectorDBRecordService<TDataModel> _vectorStore;
 
     /// <summary>The name of the collection to use with this store if none is provided for any individual operation.</summary>
     private readonly string _defaultCollectionName;
@@ -59,7 +59,7 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     private readonly Func<string, string> _indexNameEncoder;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="KeyNormalizingAzureAISearchVectorStore{TDataModel}"/> class.
+    /// Initializes a new instance of the <see cref="KeyNormalizingAzureAISearchVectorDBRecordService{TDataModel}"/> class.
     /// </summary>
     /// <param name="vectorStore">The vector store instance that is being decorated.</param>
     /// <param name="defaultCollectionName">The name of the collection to use with this store if none is provided for any individual operation. This should already be encoded when passed in.</param>
@@ -67,8 +67,8 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     /// <param name="recordKeyEncoder">The function that is used to encode the azure ai search record id before it is sent to Azure AI Search.</param>
     /// <param name="recordKeyDecoder">The function that is used to decode the azure ai search record id after it is retrieved from Azure AI Search.</param>
     /// <param name="indexNameEncoder">The function that is used to encode the azure ai search index name (collection name parameter).</param>
-    public KeyNormalizingAzureAISearchVectorStore(
-        IVectorStore<TDataModel> vectorStore,
+    public KeyNormalizingAzureAISearchVectorDBRecordService(
+        IVectorDBRecordService<TDataModel> vectorStore,
         string defaultCollectionName,
         string keyFieldName,
         Func<string, string> recordKeyEncoder,
@@ -90,10 +90,10 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     }
 
     /// <inheritdoc />
-    public async Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<TDataModel?> GetAsync(string key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         var collectionName = options?.CollectionName == null ? this._defaultCollectionName : this._indexNameEncoder(options.CollectionName);
-        var innerOptions = new VectorStoreGetDocumentOptions
+        var innerOptions = new GetRecordOptions
         {
             IncludeVectors = options?.IncludeVectors ?? false,
             CollectionName = collectionName
@@ -113,10 +113,10 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<string> keys, GetRecordOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var collectionName = options?.CollectionName == null ? this._defaultCollectionName : this._indexNameEncoder(options.CollectionName);
-        var innerOptions = new VectorStoreGetDocumentOptions
+        var innerOptions = new GetRecordOptions
         {
             IncludeVectors = options?.IncludeVectors ?? false,
             CollectionName = collectionName
@@ -143,10 +143,10 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     }
 
     /// <inheritdoc />
-    public async Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task<string> RemoveAsync(string key, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         var collectionName = options?.CollectionName == null ? this._defaultCollectionName : this._indexNameEncoder(options.CollectionName);
-        var innerOptions = new VectorStoreRemoveDocumentOptions
+        var innerOptions = new RemoveRecordOptions
         {
             CollectionName = collectionName
         };
@@ -169,10 +169,10 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     ////}
 
     /// <inheritdoc />
-    public async Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task<string> UpsertAsync(TDataModel record, UpsertRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         var collectionName = options?.CollectionName == null ? this._defaultCollectionName : this._indexNameEncoder(options.CollectionName);
-        var innerOptions = new VectorStoreUpsertDocumentOptions
+        var innerOptions = new UpsertRecordOptions
         {
             CollectionName = collectionName
         };

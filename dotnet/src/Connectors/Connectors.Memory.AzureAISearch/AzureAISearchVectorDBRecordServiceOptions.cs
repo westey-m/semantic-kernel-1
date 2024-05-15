@@ -3,9 +3,9 @@
 namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 
 /// <summary>
-/// Options when creating a <see cref="AzureAISearchVectorStore{TDataModel}"/>.
+/// Options when creating a <see cref="AzureAISearchVectorDBRecordService{TDataModel}"/>.
 /// </summary>
-public class AzureAISearchVectorStoreOptions
+public class AzureAISearchVectorDBRecordServiceOptions
 {
     /// <summary>
     /// Gets the maximum number of items to retrieve in paraellel when getting records in a batch.

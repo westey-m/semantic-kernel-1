@@ -15,7 +15,7 @@ using Xunit;
 
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.Qdrant;
 
-public class QdrantVectorStoreFixture : IAsyncLifetime
+public class QdrantVectorDBRecordServiceFixture : IAsyncLifetime
 {
     /// <summary>The docker client we are using to create a qdrant container with.</summary>
     private readonly DockerClient _client;
@@ -26,9 +26,9 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="QdrantVectorStoreFixture"/> class.
+    /// Initializes a new instance of the <see cref="QdrantVectorDBRecordServiceFixture"/> class.
     /// </summary>
-    public QdrantVectorStoreFixture()
+    public QdrantVectorDBRecordServiceFixture()
     {
         using var dockerClientConfiguration = new DockerClientConfiguration();
         this._client = dockerClientConfiguration.CreateClient();
@@ -215,34 +215,34 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
     public record HotelInfo()
     {
         /// <summary>The key of the record.</summary>
-        [VectorStoreModelKey]
+        [Key]
         public string HotelId { get; init; }
 
         /// <summary>A string metadata field.</summary>
-        [VectorStoreModelMetadata]
+        [Metadata]
         public string? HotelName { get; set; }
 
         /// <summary>An int metadata field.</summary>
-        [VectorStoreModelMetadata, JsonPropertyName("hotelCode")]
+        [Metadata, JsonPropertyName("hotelCode")]
         public int HotelCode { get; set; }
 
         /// <summary>A  float metadata field.</summary>
-        [VectorStoreModelMetadata]
+        [Metadata]
         public float? HotelRating { get; set; }
 
         /// <summary>A bool metadata field.</summary>
-        [VectorStoreModelMetadata]
+        [Metadata]
         public bool Seafront { get; set; }
 
-        [VectorStoreModelMetadata]
+        [Metadata]
         public List<string> Tags { get; set; } = new List<string>();
 
         /// <summary>A data field.</summary>
-        [VectorStoreModelData]
+        [Data]
         public string Description { get; set; }
 
         /// <summary>A vector field.</summary>
-        [VectorStoreModelVector]
+        [Vector]
         public ReadOnlyMemory<float>? DescriptionEmbeddings { get; set; }
     }
 }

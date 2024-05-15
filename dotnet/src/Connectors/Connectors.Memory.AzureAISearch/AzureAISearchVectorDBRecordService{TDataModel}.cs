@@ -19,7 +19,7 @@ namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 /// Vector store that uses Azure AI Search as the underlying storage.
 /// </summary>
 /// <typeparam name="TDataModel">The data model to use for adding, updating and retrieving data from storage.</typeparam>
-public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
+public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordService<TDataModel>
     where TDataModel : class
 {
     /// <summary>Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</summary>
@@ -35,7 +35,7 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     private readonly ConcurrentDictionary<string, SearchClient> _searchClientsByIndex = new();
 
     /// <summary>Optional configuration options for this class.</summary>
-    private readonly AzureAISearchVectorStoreOptions _options;
+    private readonly AzureAISearchVectorDBRecordServiceOptions _options;
 
     /// <summary>The names of all non vector fields on the current model.</summary>
     private readonly List<string> _nonVectorFieldNames;
@@ -49,8 +49,8 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <param name="options">Optional configuration options for this class.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="searchIndexClient"/> is null.</exception>
     /// <exception cref="ArgumentException">Thrown when <paramref name="defaultCollectionName"/> or <paramref name="keyFieldName"/> is null or whitespace.</exception>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when the <see cref="AzureAISearchVectorStoreOptions.MaxDegreeOfGetParallelism"/> setting is less than 1.</exception>
-    public AzureAISearchVectorStore(SearchIndexClient searchIndexClient, string defaultCollectionName, string keyFieldName, AzureAISearchVectorStoreOptions? options = default)
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the <see cref="AzureAISearchVectorDBRecordServiceOptions.MaxDegreeOfGetParallelism"/> setting is less than 1.</exception>
+    public AzureAISearchVectorDBRecordService(SearchIndexClient searchIndexClient, string defaultCollectionName, string keyFieldName, AzureAISearchVectorDBRecordServiceOptions? options = default)
     {
         Verify.NotNull(searchIndexClient);
         Verify.NotNullOrWhiteSpace(defaultCollectionName);
@@ -59,7 +59,7 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
         this._searchIndexClient = searchIndexClient;
         this._defaultCollectionName = defaultCollectionName;
         this._keyFieldName = keyFieldName;
-        this._options = options ?? new AzureAISearchVectorStoreOptions();
+        this._options = options ?? new AzureAISearchVectorDBRecordServiceOptions();
 
         if (this._options.MaxDegreeOfGetParallelism is < 1)
         {
@@ -69,13 +69,13 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
         // Build the list of field names on the curent model that don't have the VectorStoreModelVectorAtrribute but has
         // the VectorStoreModelKeyAttribute or VectorStoreModelDataAtrribute or VectorStoreModelMetadataAtrribute attributes.
         this._nonVectorFieldNames = typeof(TDataModel).GetProperties()
-            .Where(x => x.GetCustomAttributes(true).Select(x => x.GetType()).Intersect([typeof(VectorStoreModelKeyAttribute), typeof(VectorStoreModelDataAttribute), typeof(VectorStoreModelMetadataAttribute)]).Any())
+            .Where(x => x.GetCustomAttributes(true).Select(x => x.GetType()).Intersect([typeof(KeyAttribute), typeof(DataAttribute), typeof(MetadataAttribute)]).Any())
             .Select(x => x.Name)
             .ToList();
     }
 
     /// <inheritdoc />
-    public async Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task<TDataModel?> GetAsync(string key, Memory.GetRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNullOrWhiteSpace(key);
 
@@ -89,7 +89,7 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<TDataModel> GetBatchAsync(IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<TDataModel> GetBatchAsync(IEnumerable<string> keys, Memory.GetRecordOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         Verify.NotNull(keys);
 
@@ -112,7 +112,7 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task<string> RemoveAsync(string key, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNullOrWhiteSpace(key);
 
@@ -140,7 +140,7 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task<string> UpsertAsync(TDataModel record, UpsertRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(record);
 
@@ -198,13 +198,13 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <summary>
-    /// Convert the public <see cref="VectorStoreGetDocumentOptions"/> options model to the azure ai search <see cref="GetDocumentOptions"/> options model.
+    /// Convert the public <see cref="Memory.GetRecordOptions"/> options model to the azure ai search <see cref="Azure.Search.Documents.GetDocumentOptions"/> options model.
     /// </summary>
     /// <param name="options">The public options model.</param>
     /// <returns>The azure ai search options model.</returns>
-    private GetDocumentOptions ConvertGetDocumentOptions(VectorStoreGetDocumentOptions? options)
+    private Azure.Search.Documents.GetDocumentOptions ConvertGetDocumentOptions(Memory.GetRecordOptions? options)
     {
-        var innerOptions = new GetDocumentOptions();
+        var innerOptions = new Azure.Search.Documents.GetDocumentOptions();
         if (options?.IncludeVectors is false)
         {
             innerOptions.SelectedFields.AddRange(this._nonVectorFieldNames);
