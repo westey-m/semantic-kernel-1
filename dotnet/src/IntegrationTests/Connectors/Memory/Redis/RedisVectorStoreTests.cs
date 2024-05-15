@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Redis;
@@ -70,6 +71,37 @@ public sealed class RedisVectorStoreTests(ITestOutputHelper output, RedisVectorS
 
         // Act & Assert.
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("H13-Invalid", new VectorStoreGetDocumentOptions { IncludeVectors = true }));
+    }
+
+    [Fact]
+    public async Task ItCanGetManyDocumentsFromVectorStoreAsync()
+    {
+        // Arrange
+        var sut = new RedisVectorStore<RedisVectorStoreFixture.HotelInfo>(fixture.Database, "hotels", new RedisVectorStoreOptions { PrefixCollectionNameToKeyNames = true });
+
+        // Act
+        var hotels = sut.GetBatchAsync(["H10", "H11"], new VectorStoreGetDocumentOptions { IncludeVectors = true });
+
+        // Assert
+        Assert.NotNull(hotels);
+        var hotelsList = await hotels.ToListAsync();
+        Assert.Equal(2, hotelsList.Count);
+
+        // Output
+        foreach (var hotel in hotelsList)
+        {
+            output.WriteLine(hotel?.ToString() ?? "Null");
+        }
+    }
+
+    [Fact]
+    public async Task ItThrowsForPartialBatchResultAsync()
+    {
+        // Arrange.
+        var sut = new RedisVectorStore<RedisVectorStoreFixture.HotelInfo>(fixture.Database, "hotels", new RedisVectorStoreOptions { PrefixCollectionNameToKeyNames = true });
+
+        // Act & Assert.
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetBatchAsync(["H10", "H15", "H11"], new VectorStoreGetDocumentOptions { IncludeVectors = true }).ToListAsync());
     }
 
     [Fact]

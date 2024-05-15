@@ -1,7 +1,10 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Memory;
@@ -21,6 +24,9 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
 {
     /// <summary>The vector store instance that is being decorated.</summary>
     private readonly IVectorStore<TDataModel> _vectorStore;
+
+    /// <summary>The name of the collection to use with this store if none is provided for any individual operation.</summary>
+    private readonly string _defaultCollectionName;
 
     /// <summary>The name of the key field for the collections that this class is used with.</summary>
     private readonly string _keyFieldName;
@@ -56,18 +62,21 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     /// Initializes a new instance of the <see cref="KeyNormalizingAzureAISearchVectorStore{TDataModel}"/> class.
     /// </summary>
     /// <param name="vectorStore">The vector store instance that is being decorated.</param>
+    /// <param name="defaultCollectionName">The name of the collection to use with this store if none is provided for any individual operation. This should already be encoded when passed in.</param>
     /// <param name="keyFieldName">The name of the key field for the collections that this class is used with.</param>
     /// <param name="recordKeyEncoder">The function that is used to encode the azure ai search record id before it is sent to Azure AI Search.</param>
     /// <param name="recordKeyDecoder">The function that is used to decode the azure ai search record id after it is retrieved from Azure AI Search.</param>
     /// <param name="indexNameEncoder">The function that is used to encode the azure ai search index name (collection name parameter).</param>
     public KeyNormalizingAzureAISearchVectorStore(
         IVectorStore<TDataModel> vectorStore,
+        string defaultCollectionName,
         string keyFieldName,
         Func<string, string> recordKeyEncoder,
         Func<string, string> recordKeyDecoder,
         Func<string, string> indexNameEncoder)
     {
         this._vectorStore = vectorStore ?? throw new ArgumentNullException(nameof(vectorStore));
+        this._defaultCollectionName = string.IsNullOrWhiteSpace(defaultCollectionName) ? throw new ArgumentException("Default collection name is required.", nameof(defaultCollectionName)) : defaultCollectionName;
         this._keyFieldName = string.IsNullOrWhiteSpace(keyFieldName) ? throw new ArgumentException("Key Field name is required.", nameof(keyFieldName)) : keyFieldName;
         this._recordKeyEncoder = recordKeyEncoder ?? throw new ArgumentNullException(nameof(recordKeyEncoder));
         this._recordKeyDecoder = recordKeyDecoder ?? throw new ArgumentNullException(nameof(recordKeyDecoder));
@@ -83,10 +92,11 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     /// <inheritdoc />
     public async Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = null, CancellationToken cancellationToken = default)
     {
-        var innerOptions = options == null ? null : new VectorStoreGetDocumentOptions
+        var collectionName = options?.CollectionName == null ? this._defaultCollectionName : this._indexNameEncoder(options.CollectionName);
+        var innerOptions = new VectorStoreGetDocumentOptions
         {
-            IncludeVectors = options.IncludeVectors,
-            CollectionName = options.CollectionName == null ? null : this._indexNameEncoder(options.CollectionName)
+            IncludeVectors = options?.IncludeVectors ?? false,
+            CollectionName = collectionName
         };
 
         var result = await this._vectorStore.GetAsync(
@@ -102,29 +112,43 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
         return result;
     }
 
-    //// <inheritdoc />
-    ////public async IAsyncEnumerable<TDataModel> GetBatchAsync(string collectionName, IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    ////{
-    ////    var encodedKeys = keys.Select(this._recordKeyEncoder);
-    ////    var results = this._vectorStore.GetBatchAsync(
-    ////        this._indexNameEncoder(collectionName),
-    ////        encodedKeys,
-    ////        options,
-    ////        cancellationToken);
+    /// <inheritdoc />
+    public async IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var collectionName = options?.CollectionName == null ? this._defaultCollectionName : this._indexNameEncoder(options.CollectionName);
+        var innerOptions = new VectorStoreGetDocumentOptions
+        {
+            IncludeVectors = options?.IncludeVectors ?? false,
+            CollectionName = collectionName
+        };
 
-    ////    await foreach (var result in results.ConfigureAwait(false))
-    ////    {
-    ////        this.DecodeKeyField(result);
-    ////        yield return result;
-    ////    }
-    ////}
+        var encodedKeys = keys.Select(this._recordKeyEncoder);
+        var results = this._vectorStore.GetBatchAsync(
+            encodedKeys,
+            innerOptions,
+            cancellationToken);
+
+        await foreach (var result in results.ConfigureAwait(false))
+        {
+            if (result != null)
+            {
+                this.DecodeKeyField(result);
+                yield return result;
+            }
+            else
+            {
+                yield return null;
+            }
+        }
+    }
 
     /// <inheritdoc />
     public async Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default)
     {
-        var innerOptions = options == null ? null : new VectorStoreRemoveDocumentOptions
+        var collectionName = options?.CollectionName == null ? this._defaultCollectionName : this._indexNameEncoder(options.CollectionName);
+        var innerOptions = new VectorStoreRemoveDocumentOptions
         {
-            CollectionName = options.CollectionName == null ? null : this._indexNameEncoder(options.CollectionName)
+            CollectionName = collectionName
         };
 
         var result = await this._vectorStore.RemoveAsync(
@@ -147,9 +171,10 @@ public class KeyNormalizingAzureAISearchVectorStore<TDataModel> : IVectorStore<T
     /// <inheritdoc />
     public async Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default)
     {
-        var innerOptions = options == null ? null : new VectorStoreUpsertDocumentOptions
+        var collectionName = options?.CollectionName == null ? this._defaultCollectionName : this._indexNameEncoder(options.CollectionName);
+        var innerOptions = new VectorStoreUpsertDocumentOptions
         {
-            CollectionName = options.CollectionName == null ? null : this._indexNameEncoder(options.CollectionName)
+            CollectionName = collectionName
         };
 
         this.EncodeKeyField(record);

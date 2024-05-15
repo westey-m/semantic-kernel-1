@@ -1,8 +1,11 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -38,6 +41,9 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <summary>An array of the names of all the data and metadata properties that are part of the redis payload, i.e. all fields except the vector fields.</summary>
     private readonly string[] _dataAndMetadataFieldNames;
 
+    /// <summary>An array of the names of all the data, metadata and vector properties that are part of the redis payload.</summary>
+    private readonly string[] _dataAndMetadataAndVectorFieldNames;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="RedisVectorStore{TDataModel}"/> class.
     /// </summary>
@@ -47,10 +53,16 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <exception cref="ArgumentNullException">Throw when parameters are invalid.</exception>
     public RedisVectorStore(IDatabase database, string defaultCollectionName, RedisVectorStoreOptions? options)
     {
-        this._database = database ?? throw new ArgumentNullException(nameof(database));
-        this._defaultCollectionName = string.IsNullOrWhiteSpace(defaultCollectionName) ? throw new ArgumentException("Default collection name is required.", nameof(defaultCollectionName)) : defaultCollectionName;
+        // Verify.
+        Verify.NotNull(database);
+        Verify.NotNullOrWhiteSpace(defaultCollectionName);
+
+        // Assign.
+        this._database = database;
+        this._defaultCollectionName = defaultCollectionName;
         this._options = options ?? new RedisVectorStoreOptions();
 
+        // Enumerate public properties/fields on model and store for later use.
         var fields = VectorStoreModelPropertyReader.FindFields(typeof(TDataModel), true);
 
         this._keyFieldPropertyInfo = fields.keyField;
@@ -61,15 +73,16 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
             .Concat(fields.metadataFields)
             .Select(VectorStoreModelPropertyReader.GetSerializedPropertyName)
             .ToArray();
+
+        this._dataAndMetadataAndVectorFieldNames = this._dataAndMetadataFieldNames
+            .Concat(fields.vectorFields.Select(VectorStoreModelPropertyReader.GetSerializedPropertyName))
+            .ToArray();
     }
 
     /// <inheritdoc />
     public async Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = null, CancellationToken cancellationToken = default)
     {
-        if (key is null)
-        {
-            throw new ArgumentNullException(nameof(key));
-        }
+        Verify.NotNullOrWhiteSpace(key);
 
         // Get the redis value and parse the JSON stored in Redis into a JsonNode object.
         var maybePrefixedKey = this.PrefixKeyIfNeeded(key, options?.CollectionName);
@@ -105,12 +118,52 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
+    public async IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        Verify.NotNull(keys);
+
+        var keysList = keys.ToList();
+
+        // Get the list of redis results.
+        var maybePrefixedKeys = keysList.Select(key => this.PrefixKeyIfNeeded(key, options?.CollectionName));
+        var redisResults = await this._database
+            .JSON()
+            .MGetAsync(maybePrefixedKeys.Select(x => new RedisKey(x)).ToArray(), "$").ConfigureAwait(false);
+
+        // Loop through each key and result and convert to the caller's data model.
+        for (int i = 0; i < keysList.Count; i++)
+        {
+            var key = keysList[i];
+            var redisResult = redisResults[i];
+
+            // Check if the key was found before trying to serialize the result.
+            if (redisResult.IsNull)
+            {
+                throw new HttpOperationException(HttpStatusCode.NotFound, null, null, null);
+            }
+
+            var node = JsonSerializer.Deserialize<JsonNode>(redisResult.ToString());
+
+            // Since the key is not stored in the redis value, add it back in before deserializing into the data model.
+            if (node is JsonObject jsonObject)
+            {
+                if (jsonObject.ContainsKey(this._keyFieldPropertyInfo.Name))
+                {
+                    throw new HttpOperationException($"Invalid data format for document with key '{key}'");
+                }
+
+                jsonObject.Add(this._keyFieldPropertyInfo.Name, key);
+                yield return JsonSerializer.Deserialize<TDataModel>(jsonObject);
+            }
+
+            yield return null;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default)
     {
-        if (key is null)
-        {
-            throw new ArgumentNullException(nameof(key));
-        }
+        Verify.NotNullOrWhiteSpace(key);
 
         var maybePrefixedKey = this.PrefixKeyIfNeeded(key, options?.CollectionName);
         await this._database
@@ -123,10 +176,7 @@ public class RedisVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <inheritdoc />
     public async Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default)
     {
-        if (record is null)
-        {
-            throw new ArgumentNullException(nameof(record));
-        }
+        Verify.NotNull(record);
 
         // Convert the provided record into a JsonNode object and try to get the key field for it.
         // Since we aleady checked that the key field is a string in the constructor, and that it exists on the model,

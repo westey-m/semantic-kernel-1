@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -73,10 +74,16 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <exception cref="ArgumentException"></exception>
     public QdrantVectorStore(QdrantClient qdrantClient, string defaultCollectionName, QdrantVectorStoreOptions? options)
     {
-        this._qdrantClient = qdrantClient ?? throw new ArgumentNullException(nameof(qdrantClient));
-        this._defaultCollectionName = string.IsNullOrWhiteSpace(defaultCollectionName) ? throw new ArgumentException("Default collection name is required.", nameof(defaultCollectionName)) : defaultCollectionName;
+        // Verify.
+        Verify.NotNull(qdrantClient);
+        Verify.NotNullOrWhiteSpace(defaultCollectionName);
+
+        // Assign.
+        this._qdrantClient = qdrantClient;
+        this._defaultCollectionName = defaultCollectionName;
         this._options = options ?? new QdrantVectorStoreOptions();
 
+        // Enumerate public properties/fields on model and store for later use.
         var fields = VectorStoreModelPropertyReader.FindFields(typeof(TDataModel), this._options.HasNamedVectors);
         VectorStoreModelPropertyReader.VerifyFieldTypes(fields.dataFields, s_supportedFieldTypes, "Data");
         VectorStoreModelPropertyReader.VerifyFieldTypes(fields.metadataFields, s_supportedFieldTypes, "Metadata");
@@ -89,36 +96,42 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <inheritdoc />
     public async Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = null, CancellationToken cancellationToken = default)
     {
-        if (key is null)
-        {
-            throw new ArgumentNullException(nameof(key));
-        }
+        Verify.NotNullOrWhiteSpace(key);
+
+        var retrievedPoints = await this.GetBatchAsync([key], options, cancellationToken).ToListAsync(cancellationToken).ConfigureAwait(false);
+        return retrievedPoints[0];
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        Verify.NotNull(keys);
+
+        var keysList = keys.ToList();
 
         // Create options.
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
-        (var pointId, _) = ParseKey(this._options.PointIdType, key);
+        var pointsIds = keysList.Select(key => ParseKey(this._options.PointIdType, key).pointId).ToArray();
 
         // Retrieve data points.
-        var retrievedPoints = await this._qdrantClient.RetrieveAsync(collectionName, [pointId], true, options?.IncludeVectors ?? false, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var retrievedPoints = await this._qdrantClient.RetrieveAsync(collectionName, pointsIds, true, options?.IncludeVectors ?? false, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-        // Check that we found something.
-        if (retrievedPoints.Count == 0)
+        // Check that we found the required number of values.
+        if (retrievedPoints.Count != keysList.Count)
         {
             throw new HttpOperationException(HttpStatusCode.NotFound, null, null, null);
         }
 
-        // Map the retrieved point to the target data model.
-        var retrievedPoint = retrievedPoints[0];
-        return this.ConvertFromGrpcToDataModel(retrievedPoint, options?.IncludeVectors is true);
+        foreach (var point in retrievedPoints)
+        {
+            yield return this.ConvertFromGrpcToDataModel(point, options?.IncludeVectors is true);
+        }
     }
 
     /// <inheritdoc />
     public async Task<TDataModel?> GetNonJsonAsync(string key, VectorStoreGetDocumentOptions? options = null, CancellationToken cancellationToken = default)
     {
-        if (key is null)
-        {
-            throw new ArgumentNullException(nameof(key));
-        }
+        Verify.NotNullOrWhiteSpace(key);
 
         // Create options.
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
@@ -178,10 +191,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <inheritdoc />
     public async Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = null, CancellationToken cancellationToken = default)
     {
-        if (key is null)
-        {
-            throw new ArgumentNullException(nameof(key));
-        }
+        Verify.NotNullOrWhiteSpace(key);
 
         // Create options.
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
@@ -202,10 +212,7 @@ public class QdrantVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <inheritdoc />
     public async Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = null, CancellationToken cancellationToken = default)
     {
-        if (record is null)
-        {
-            throw new ArgumentNullException(nameof(record));
-        }
+        Verify.NotNull(record);
 
         // Create options.
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;

@@ -1,9 +1,12 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Qdrant;
+using Microsoft.SemanticKernel.Connectors.Redis;
 using Microsoft.SemanticKernel.Memory;
+using SemanticKernel.IntegrationTests.Connectors.Memory.Redis;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -112,6 +115,37 @@ public sealed class QdrantVectorStoreTests(ITestOutputHelper output, QdrantVecto
 
         // Output.
         output.WriteLine(getResult?.ToString());
+    }
+
+    [Fact]
+    public async Task ItCanGetManyDocumentsFromVectorStoreAsync()
+    {
+        // Arrange
+        var sut = new QdrantVectorStore<QdrantVectorStoreFixture.HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorStoreOptions { PointIdType = QdrantVectorStoreOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
+
+        // Act
+        var hotels = sut.GetBatchAsync(["1", "2"], new VectorStoreGetDocumentOptions { IncludeVectors = true });
+
+        // Assert
+        Assert.NotNull(hotels);
+        var hotelsList = await hotels.ToListAsync();
+        Assert.Equal(2, hotelsList.Count);
+
+        // Output
+        foreach (var hotel in hotelsList)
+        {
+            output.WriteLine(hotel?.ToString() ?? "Null");
+        }
+    }
+
+    [Fact]
+    public async Task ItThrowsForPartialBatchResultAsync()
+    {
+        // Arrange.
+        var sut = new QdrantVectorStore<QdrantVectorStoreFixture.HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorStoreOptions { PointIdType = QdrantVectorStoreOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
+
+        // Act.
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetBatchAsync(["1", "5", "2"]).ToListAsync());
     }
 
     [Fact]

@@ -52,9 +52,13 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the <see cref="AzureAISearchVectorStoreOptions.MaxDegreeOfGetParallelism"/> setting is less than 1.</exception>
     public AzureAISearchVectorStore(SearchIndexClient searchIndexClient, string defaultCollectionName, string keyFieldName, AzureAISearchVectorStoreOptions? options = default)
     {
-        this._searchIndexClient = searchIndexClient ?? throw new ArgumentNullException(nameof(searchIndexClient));
-        this._defaultCollectionName = string.IsNullOrWhiteSpace(defaultCollectionName) ? throw new ArgumentException("Default collection name is required.", nameof(defaultCollectionName)) : defaultCollectionName;
-        this._keyFieldName = string.IsNullOrWhiteSpace(keyFieldName) ? throw new ArgumentException("Key Field name is required.", nameof(keyFieldName)) : keyFieldName;
+        Verify.NotNull(searchIndexClient);
+        Verify.NotNullOrWhiteSpace(defaultCollectionName);
+        Verify.NotNullOrWhiteSpace(keyFieldName);
+
+        this._searchIndexClient = searchIndexClient;
+        this._defaultCollectionName = defaultCollectionName;
+        this._keyFieldName = keyFieldName;
         this._options = options ?? new AzureAISearchVectorStoreOptions();
 
         if (this._options.MaxDegreeOfGetParallelism is < 1)
@@ -73,10 +77,7 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <inheritdoc />
     public async Task<TDataModel?> GetAsync(string key, VectorStoreGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
     {
-        if (key is null)
-        {
-            throw new ArgumentNullException(nameof(key));
-        }
+        Verify.NotNullOrWhiteSpace(key);
 
         // Create Options.
         var innerOptions = this.ConvertGetDocumentOptions(options);
@@ -88,20 +89,13 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<TDataModel> GetBatchAsync(string collectionName, IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<TDataModel> GetBatchAsync(IEnumerable<string> keys, VectorStoreGetDocumentOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(collectionName))
-        {
-            throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
-        }
-
-        if (keys is null)
-        {
-            throw new ArgumentNullException(nameof(keys));
-        }
+        Verify.NotNull(keys);
 
         // Create Options
         var innerOptions = this.ConvertGetDocumentOptions(options);
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
 
         // Split keys into batches
         var maxDegreeOfGetParallelism = this._options?.MaxDegreeOfGetParallelism ?? 50;
@@ -120,10 +114,7 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <inheritdoc />
     public async Task<string> RemoveAsync(string key, VectorStoreRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default)
     {
-        if (key is null)
-        {
-            throw new ArgumentNullException(nameof(key));
-        }
+        Verify.NotNullOrWhiteSpace(key);
 
         // Create options.
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
@@ -142,10 +133,7 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
             throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
         }
 
-        if (keys is null)
-        {
-            throw new ArgumentNullException(nameof(keys));
-        }
+        Verify.NotNull(keys);
 
         var searchClient = this.GetSearchClient(collectionName);
         var results = await RunOperationAsync(() => searchClient.DeleteDocumentsAsync(this._keyFieldName, keys, new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
@@ -154,10 +142,7 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
     /// <inheritdoc />
     public async Task<string> UpsertAsync(TDataModel record, VectorStoreUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default)
     {
-        if (record is null)
-        {
-            throw new ArgumentNullException(nameof(record));
-        }
+        Verify.NotNull(record);
 
         // Create options.
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
@@ -176,10 +161,7 @@ public class AzureAISearchVectorStore<TDataModel> : IVectorStore<TDataModel>
             throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
         }
 
-        if (records is null)
-        {
-            throw new ArgumentNullException(nameof(records));
-        }
+        Verify.NotNull(records);
 
         // Create Options
         var innerOptions = new IndexDocumentsOptions { ThrowOnAnyError = true };

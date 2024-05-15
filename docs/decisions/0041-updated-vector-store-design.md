@@ -268,11 +268,11 @@ This means that we have to know the category of field for each field in the reco
 I'm therefore proposing that we use attributes to annotate the model indicating the category of field.
 
 ```cs
-    public record HotelShortInfo(
-        [property: VectorDBRecordModelKey, JsonPropertyName("hotel-id")] string HotelId,
-        [property: VectorDBRecordModelMetadata, JsonPropertyName("hotel-name")] string HotelName,
-        [property: VectorDBRecordModelData, JsonPropertyName("description")] string Description,
-        [property: VectorDBRecordModelVector(DataField = "Description"), JsonPropertyName("description-embeddings")] ReadOnlyMemory<float>? DescriptionEmbeddings);
+    public record HotelInfo(
+        [property: Key, JsonPropertyName("hotel-id")] string HotelId,
+        [property: Metadata, JsonPropertyName("hotel-name")] string HotelName,
+        [property: Data, JsonPropertyName("description")] string Description,
+        [property: Vector(DataField = "Description"), JsonPropertyName("description-embeddings")] ReadOnlyMemory<float>? DescriptionEmbeddings);
 ```
 
 ## Decision Drivers
@@ -375,16 +375,16 @@ Vector store same as option 2 so not repeated for brevity.
 
 ```cs
 
-interface IVectorDBCollectionCreationService
+interface IVectorDBCollectionCreateService
 {
     virtual Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default);
 }
 
-class AzureAISearchChatHistoryCollectionCreationService: IVectorDBCollectionCreationService;
-class AzureAISearchSemanticCacheCollectionCreationService: IVectorDBCollectionCreationService;
+class AzureAISearchChatHistoryCollectionCreateService: IVectorDBCollectionCreateService;
+class AzureAISearchSemanticCacheCollectionCreateService: IVectorDBCollectionCreateService;
 
 // Customers can create their own creation scenarios to match their schemas, but can continue to use our get, does exist and delete class.
-class CustomerChatHistoryCollectionCreationService: IVectorDBCollectionCreationService;
+class CustomerChatHistoryCollectionCreateService: IVectorDBCollectionCreateService;
 
 interface IVectorDBCollectionsService
 {
@@ -405,7 +405,7 @@ Variation on option 3.
 
 ```cs
 
-interface IVectorDBCollectionCreationService
+interface IVectorDBCollectionCreateService
 {
     virtual Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default);
 }
@@ -422,7 +422,7 @@ class AzureAISearchVectorDBCollectionUpdateService: IVectorDBCollectionsUpdateSe
 class RedisVectorDBCollectionUpdateService: IVectorDBCollectionsUpdateService;
 
 // Combined Create + Update Interface
-interface IVectorDBCollectionsService: IVectorDBCollectionCreationService, IVectorDBCollectionsUpdateService {}
+interface IVectorDBCollectionsService: IVectorDBCollectionCreateService, IVectorDBCollectionsUpdateService {}
 
 // Base abstract class that forwards non-create operations to provided service.
 abstract class VectorDBCollectionsService(IVectorDBCollectionsUpdateService collectionsUpdateService): IVectorDBCollectionsService
@@ -449,12 +449,12 @@ Same as option 3 / 4, plus:
 
 ```cs
 
-interface IVectorService : IVectorDBCollectionCreationService, IVectorDBCollectionsService, IVectorDBRecordsService
+interface IVectorService : IVectorDBCollectionCreateService, IVectorDBCollectionsService, IVectorDBRecordsService
 {    
 }
 
 // Create a static factory that produces one of these, so only the interface is public, not the class.
-internal class CombinedVectorService<TDataModel>(IVectorDBCollectionCreationService creation, IVectorDBCollectionsService collections, IVectorDBRecordsService<TDataModel> records): IVectorService
+internal class CombinedVectorService<TDataModel>(IVectorDBCollectionCreateService creation, IVectorDBCollectionsService collections, IVectorDBRecordsService<TDataModel> records): IVectorService
 {
 }
 

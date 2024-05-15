@@ -99,7 +99,7 @@ public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, Azur
         var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName, options);
 
         // Act
-        var hotels = sut.GetBatchAsync(fixture.TestIndexName, ["1", "2", "3", "4"], new VectorStoreGetDocumentOptions { IncludeVectors = true });
+        var hotels = sut.GetBatchAsync(["1", "2", "3", "4"], new VectorStoreGetDocumentOptions { IncludeVectors = true });
 
         // Assert
         Assert.NotNull(hotels);
@@ -111,6 +111,16 @@ public sealed class AzureAISearchVectorStoreTests(ITestOutputHelper output, Azur
         {
             output.WriteLine(hotel.ToString());
         }
+    }
+
+    [Fact]
+    public async Task ItThrowsForPartialBatchResultAsync()
+    {
+        // Arrange.
+        var sut = new AzureAISearchVectorStore<AzureAISearchVectorStoreFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
+
+        // Act.
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetBatchAsync(["1", "5", "2"]).ToListAsync());
     }
 
     [Fact(Skip = SkipReason)]
