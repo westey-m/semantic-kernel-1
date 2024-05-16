@@ -12,26 +12,4 @@ public class QdrantVectorDBRecordServiceOptions
     /// Defaults to single vector per point.
     /// </summary>
     public bool HasNamedVectors { get; set; } = false;
-
-    /// <summary>
-    /// Gets or sets the type of id that we are using with Qdrant.
-    /// Defaults to UUID.
-    /// </summary>
-    public QdrantPointIdType PointIdType { get; set; } = QdrantPointIdType.UuidType;
-
-    /// <summary>
-    /// Enum describing the choice of id types that we support with Qdrant.
-    /// </summary>
-    public enum QdrantPointIdType
-    {
-        /// <summary>
-        /// The id is a UUID stored as a string.
-        /// </summary>
-        UuidType,
-
-        /// <summary>
-        /// The id is a unsigned long stored as a ulong.
-        /// </summary>
-        UlongType
-    }
 }

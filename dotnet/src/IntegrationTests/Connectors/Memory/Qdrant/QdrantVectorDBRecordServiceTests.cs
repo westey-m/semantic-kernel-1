@@ -25,7 +25,9 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
     public async Task ItCanGetDocumentFromVectorStoreAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "singleVectorHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType });
+        var options = new QdrantVectorDBRecordServiceOptions { HasNamedVectors = false };
+        var mapper = new QdrantVectorDBRecordJsonMapper<HotelInfo>(options);
+        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "singleVectorHotels", mapper, options);
 
         // Act.
         var getResult = await sut.GetAsync(11);
@@ -49,7 +51,9 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
     public async Task ItCanGetDocumentWithGuidIdFromVectorStoreAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorDBRecordService<HotelInfoWithGuidId>(fixture.QdrantClient, "singleVectorGuidIdHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType });
+        var options = new QdrantVectorDBRecordServiceOptions { HasNamedVectors = false };
+        var mapper = new QdrantVectorDBRecordJsonMapper<HotelInfoWithGuidId>(options);
+        var sut = new QdrantVectorDBRecordService<HotelInfoWithGuidId>(fixture.QdrantClient, "singleVectorGuidIdHotels", mapper, options);
 
         // Act.
         var getResult = await sut.GetAsync(Guid.Parse("11111111-1111-1111-1111-111111111111"));
@@ -68,7 +72,9 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
     public async Task ItCanGetDocumentFromVectorStoreWithEmbeddingsAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "singleVectorHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType });
+        var options = new QdrantVectorDBRecordServiceOptions { HasNamedVectors = false };
+        var mapper = new QdrantVectorDBRecordJsonMapper<HotelInfo>(options);
+        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "singleVectorHotels", mapper, options);
 
         // Act.
         var getResult = await sut.GetAsync(11, new GetRecordOptions { IncludeVectors = true });
@@ -92,7 +98,9 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
     public async Task ItCanGetDocumentWithNamedVectorsFromVectorStoreAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
+        var options = new QdrantVectorDBRecordServiceOptions { HasNamedVectors = true };
+        var mapper = new QdrantVectorDBRecordJsonMapper<HotelInfo>(options);
+        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", mapper, options);
 
         // Act.
         var getResult = await sut.GetAsync(1);
@@ -116,7 +124,9 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
     public async Task ItCanGetDocumentWithNamedVectorsFromVectorStoreWithEmbeddingsAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
+        var options = new QdrantVectorDBRecordServiceOptions { HasNamedVectors = true };
+        var mapper = new QdrantVectorDBRecordJsonMapper<HotelInfo>(options);
+        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", mapper, options);
 
         // Act.
         var getResult = await sut.GetAsync(1, new GetRecordOptions { IncludeVectors = true });
@@ -141,7 +151,9 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
     public async Task ItCanGetManyDocumentsFromVectorStoreAsync()
     {
         // Arrange
-        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
+        var options = new QdrantVectorDBRecordServiceOptions { HasNamedVectors = true };
+        var mapper = new QdrantVectorDBRecordJsonMapper<HotelInfo>(options);
+        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", mapper, options);
 
         // Act
         var hotels = sut.GetBatchAsync([1, 2], new GetRecordOptions { IncludeVectors = true });
@@ -162,7 +174,9 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
     public async Task ItThrowsForPartialBatchResultAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
+        var options = new QdrantVectorDBRecordServiceOptions { HasNamedVectors = true };
+        var mapper = new QdrantVectorDBRecordJsonMapper<HotelInfo>(options);
+        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", mapper, options);
 
         // Act.
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetBatchAsync([1, 5, 2]).ToListAsync());
@@ -172,7 +186,10 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
     public async Task ItCanRemoveDocumentFromVectorStoreAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
+        var options = new QdrantVectorDBRecordServiceOptions { HasNamedVectors = true };
+        var mapper = new QdrantVectorDBRecordJsonMapper<HotelInfo>(options);
+        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", mapper, options);
+
         var record = new HotelInfo
         {
             HotelId = 20,
@@ -189,7 +206,7 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
 
         // Assert.
         Assert.Equal(20ul, removeResult);
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("20"));
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync(20));
 
         // Output.
         output.WriteLine(removeResult.ToString(CultureInfo.InvariantCulture));
@@ -199,7 +216,10 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
     public async Task ItCanUpsertDocumentToVectorStoreAsync()
     {
         // Arrange.
-        IVectorDBRecordService<ulong, HotelInfo> sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
+        var options = new QdrantVectorDBRecordServiceOptions { HasNamedVectors = true };
+        var mapper = new QdrantVectorDBRecordJsonMapper<HotelInfo>(options);
+        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", mapper, options);
+
         var record = new HotelInfo
         {
             HotelId = 20,
@@ -238,7 +258,10 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
     public async Task ItCanUpsertAndRemoveDocumentWithGuidIdToVectorStoreAsync()
     {
         // Arrange.
-        IVectorDBRecordService<Guid, HotelInfoWithGuidId> sut = new QdrantVectorDBRecordService<HotelInfoWithGuidId>(fixture.QdrantClient, "singleVectorGuidIdHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = false });
+        var options = new QdrantVectorDBRecordServiceOptions { HasNamedVectors = false };
+        var mapper = new QdrantVectorDBRecordJsonMapper<HotelInfoWithGuidId>(options);
+        IVectorDBRecordService<Guid, HotelInfoWithGuidId> sut = new QdrantVectorDBRecordService<HotelInfoWithGuidId>(fixture.QdrantClient, "singleVectorGuidIdHotels", mapper, options);
+
         var record = new HotelInfoWithGuidId
         {
             HotelId = Guid.Parse("55555555-5555-5555-5555-555555555555"),
