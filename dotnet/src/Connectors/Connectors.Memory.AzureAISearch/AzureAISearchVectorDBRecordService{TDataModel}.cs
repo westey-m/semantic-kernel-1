@@ -19,7 +19,7 @@ namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 /// Vector store that uses Azure AI Search as the underlying storage.
 /// </summary>
 /// <typeparam name="TDataModel">The data model to use for adding, updating and retrieving data from storage.</typeparam>
-public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordService<TDataModel>
+public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordService<string, TDataModel>
     where TDataModel : class
 {
     /// <summary>Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</summary>

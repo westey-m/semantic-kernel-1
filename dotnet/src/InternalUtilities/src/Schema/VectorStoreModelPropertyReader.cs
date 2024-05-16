@@ -43,11 +43,6 @@ internal static class VectorStoreModelPropertyReader
                     throw new ArgumentException($"Multiple key fields found on type {type.FullName}.");
                 }
 
-                if (property.PropertyType != typeof(string))
-                {
-                    throw new ArgumentException($"Key field must be of type string. Type of {property.Name} is {property.PropertyType.FullName}.");
-                }
-
                 keyField = property;
             }
 

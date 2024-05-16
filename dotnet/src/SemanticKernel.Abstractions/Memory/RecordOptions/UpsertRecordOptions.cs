@@ -3,7 +3,7 @@
 namespace Microsoft.SemanticKernel.Memory;
 
 /// <summary>
-/// Optional options when calling <see cref="IVectorDBRecordService{TDataModel}.UpsertAsync"/>.
+/// Optional options when calling <see cref="IVectorDBRecordService{TKey, TDataModel}.UpsertAsync"/>.
 /// </summary>
 public class UpsertRecordOptions
 {

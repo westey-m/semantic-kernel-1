@@ -3,7 +3,7 @@
 namespace Microsoft.SemanticKernel.Memory;
 
 /// <summary>
-/// Optional options when calling <see cref="IVectorDBRecordService{TDataModel}.RemoveAsync"/>.
+/// Optional options when calling <see cref="IVectorDBRecordService{TKey, TDataModel}.RemoveAsync"/>.
 /// </summary>
 public class RemoveRecordOptions
 {

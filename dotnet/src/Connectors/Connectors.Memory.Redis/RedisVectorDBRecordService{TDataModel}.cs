@@ -20,9 +20,15 @@ namespace Microsoft.SemanticKernel.Connectors.Redis;
 /// Vector store that uses Redis as the underlying storage.
 /// </summary>
 /// <typeparam name="TDataModel">The data model to use for adding, updating and retrieving data from storage.</typeparam>
-public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<TDataModel>
+public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<string, TDataModel>
     where TDataModel : class
 {
+    /// <summary>A set of types that a key on the provided model may have.</summary>
+    private static readonly HashSet<Type> s_supportedKeyTypes = new()
+    {
+        typeof(string)
+    };
+
     /// <summary>The redis database to read/write records from.</summary>
     private readonly IDatabase _database;
 
@@ -64,6 +70,7 @@ public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<TDa
 
         // Enumerate public properties/fields on model and store for later use.
         var fields = VectorStoreModelPropertyReader.FindFields(typeof(TDataModel), true);
+        VectorStoreModelPropertyReader.VerifyFieldTypes([fields.keyField], s_supportedKeyTypes, "Key");
 
         this._keyFieldPropertyInfo = fields.keyField;
         this._keyFieldJsonPropertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(this._keyFieldPropertyInfo);

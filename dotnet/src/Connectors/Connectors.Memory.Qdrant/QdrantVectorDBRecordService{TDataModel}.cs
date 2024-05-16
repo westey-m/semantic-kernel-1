@@ -21,9 +21,17 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 /// Vector store that uses Qdrant as the underlying storage.
 /// </summary>
 /// <typeparam name="TDataModel">The data model to use for adding, updating and retrieving data from storage.</typeparam>
-public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<TDataModel>
+public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<string, TDataModel>, IVectorDBRecordService<ulong, TDataModel>, IVectorDBRecordService<Guid, TDataModel>
     where TDataModel : class, new()
 {
+    /// <summary>A set of types that a key on the provided model may have.</summary>
+    private static readonly HashSet<Type> s_supportedKeyTypes = new()
+    {
+        typeof(string),
+        typeof(ulong),
+        typeof(Guid)
+    };
+
     /// <summary>A set of types that fields on the provided model may have.</summary>
     private static readonly HashSet<Type> s_supportedFieldTypes = new()
     {
@@ -85,6 +93,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<TD
 
         // Enumerate public properties/fields on model and store for later use.
         var fields = VectorStoreModelPropertyReader.FindFields(typeof(TDataModel), this._options.HasNamedVectors);
+        VectorStoreModelPropertyReader.VerifyFieldTypes([fields.keyField], s_supportedKeyTypes, "Key");
         VectorStoreModelPropertyReader.VerifyFieldTypes(fields.dataFields, s_supportedFieldTypes, "Data");
         VectorStoreModelPropertyReader.VerifyFieldTypes(fields.metadataFields, s_supportedFieldTypes, "Metadata");
 
@@ -103,29 +112,39 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<TD
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<string> keys, GetRecordOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async Task<TDataModel?> GetAsync(ulong key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
-        Verify.NotNull(keys);
+        Verify.NotNull(key);
 
-        var keysList = keys.ToList();
+        var retrievedPoints = await this.GetBatchAsync([key], options, cancellationToken).ToListAsync(cancellationToken).ConfigureAwait(false);
+        return retrievedPoints[0];
+    }
 
-        // Create options.
-        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
-        var pointsIds = keysList.Select(key => ParseKey(this._options.PointIdType, key).pointId).ToArray();
+    /// <inheritdoc />
+    public async Task<TDataModel?> GetAsync(Guid key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        Verify.NotNull(key);
 
-        // Retrieve data points.
-        var retrievedPoints = await this._qdrantClient.RetrieveAsync(collectionName, pointsIds, true, options?.IncludeVectors ?? false, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var retrievedPoints = await this.GetBatchAsync([key], options, cancellationToken).ToListAsync(cancellationToken).ConfigureAwait(false);
+        return retrievedPoints[0];
+    }
 
-        // Check that we found the required number of values.
-        if (retrievedPoints.Count != keysList.Count)
-        {
-            throw new HttpOperationException(HttpStatusCode.NotFound, null, null, null);
-        }
+    /// <inheritdoc />
+    public IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<string> keys, GetRecordOptions? options = default, CancellationToken cancellationToken = default)
+    {
+        return this.GetBatchByPointIdAsync(keys, key => ParseKey(this._options.PointIdType, key).pointId, options, cancellationToken);
+    }
 
-        foreach (var point in retrievedPoints)
-        {
-            yield return this.ConvertFromGrpcToDataModel(point, options?.IncludeVectors is true);
-        }
+    /// <inheritdoc />
+    public IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<ulong> keys, GetRecordOptions? options = default, CancellationToken cancellationToken = default)
+    {
+        return this.GetBatchByPointIdAsync(keys, key => new PointId { Num = key }, options, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<Guid> keys, GetRecordOptions? options = default, CancellationToken cancellationToken = default)
+    {
+        return this.GetBatchByPointIdAsync(keys, key => new PointId { Uuid = key.ToString("D") }, options, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -210,6 +229,36 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<TD
     }
 
     /// <inheritdoc />
+    public async Task<ulong> RemoveAsync(ulong key, RemoveRecordOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        Verify.NotNull(key);
+
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        await this._qdrantClient.DeleteAsync(
+            collectionName,
+            key,
+            wait: true,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        return key;
+    }
+
+    /// <inheritdoc />
+    public async Task<Guid> RemoveAsync(Guid key, RemoveRecordOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        Verify.NotNull(key);
+
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        await this._qdrantClient.DeleteAsync(
+            collectionName,
+            key,
+            wait: true,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        return key;
+    }
+
+    /// <inheritdoc />
     public async Task<string> UpsertAsync(TDataModel record, UpsertRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(record);
@@ -219,6 +268,88 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<TD
         var key = this._keyFieldPropertyInfo.GetValue(record)?.ToString() ?? throw new ArgumentException($"Missing key field {this._keyFieldPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.", nameof(record));
         (var pointId, _) = ParseKey(this._options.PointIdType, key);
 
+        // Create point from record.
+        var pointStruct = this.ConvertFromDataModelToGrpc(record, pointId);
+
+        // Upsert.
+        await this._qdrantClient.UpsertAsync(collectionName, [pointStruct], true, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return key;
+    }
+
+    /// <inheritdoc />
+    async Task<ulong> IVectorDBRecordService<ulong, TDataModel>.UpsertAsync(TDataModel record, UpsertRecordOptions? options, CancellationToken cancellationToken)
+    {
+        Verify.NotNull(record);
+
+        // Create options.
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var key = this._keyFieldPropertyInfo.GetValue(record) as ulong? ?? throw new ArgumentException($"Missing key field {this._keyFieldPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.", nameof(record));
+        var pointId = new PointId { Num = key };
+
+        // Create point from record.
+        var pointStruct = this.ConvertFromDataModelToGrpc(record, pointId);
+
+        // Upsert.
+        await this._qdrantClient.UpsertAsync(collectionName, [pointStruct], true, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return key;
+    }
+
+    /// <inheritdoc />
+    async Task<Guid> IVectorDBRecordService<Guid, TDataModel>.UpsertAsync(TDataModel record, UpsertRecordOptions? options, CancellationToken cancellationToken)
+    {
+        Verify.NotNull(record);
+
+        // Create options.
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var key = this._keyFieldPropertyInfo.GetValue(record) as Guid? ?? throw new ArgumentException($"Missing key field {this._keyFieldPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.", nameof(record));
+        var pointId = new PointId { Uuid = key.ToString("D") };
+
+        // Create point from record.
+        var pointStruct = this.ConvertFromDataModelToGrpc(record, pointId);
+
+        // Upsert.
+        await this._qdrantClient.UpsertAsync(collectionName, [pointStruct], true, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return key;
+    }
+
+    /// <summary>
+    /// Get the requested records from the Qdrant store using the provided keys.
+    /// </summary>
+    /// <param name="keys">The keys of the points to retrieve.</param>
+    /// <param name="keyConverter">Function to convert the provided keys to point ids.</param>
+    /// <param name="options">The retrieval options.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    /// <returns>The retrieved points.</returns>
+    private async IAsyncEnumerable<TDataModel?> GetBatchByPointIdAsync<TKey>(
+        IEnumerable<TKey> keys,
+        Func<TKey, PointId> keyConverter,
+        GetRecordOptions? options = default,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        Verify.NotNull(keys);
+
+        // Create options.
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var pointsIds = keys.Select(key => keyConverter(key)).ToArray();
+
+        // Retrieve data points.
+        var retrievedPoints = await this._qdrantClient.RetrieveAsync(collectionName, pointsIds, true, options?.IncludeVectors ?? false, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        // Check that we found the required number of values.
+        if (retrievedPoints.Count != pointsIds.Length)
+        {
+            throw new HttpOperationException(HttpStatusCode.NotFound, null, null, null);
+        }
+
+        // Convert the retrieved points to the target data model.
+        foreach (var retrievedPoint in retrievedPoints)
+        {
+            yield return this.ConvertFromGrpcToDataModel(retrievedPoint, options?.IncludeVectors is true);
+        }
+    }
+
+    private PointStruct ConvertFromDataModelToGrpc(TDataModel record, PointId pointId)
+    {
         // Create point.
         var pointStruct = new PointStruct
         {
@@ -259,9 +390,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<TD
             pointStruct.Vectors.Vector = propertyValue.ToArray();
         }
 
-        // Upsert.
-        await this._qdrantClient.UpsertAsync(collectionName, [pointStruct], true, cancellationToken: cancellationToken).ConfigureAwait(false);
-        return key;
+        return pointStruct;
     }
 
     /// <summary>
@@ -275,12 +404,12 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<TD
     {
         // Get the key property name and value.
         var keyPropertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(this._keyFieldPropertyInfo);
-        var keyPropertyValue = point.Id.HasNum ? point.Id.Num.ToString(CultureInfo.InvariantCulture) : point.Id.Uuid;
+        var keyPropertyValue = point.Id.HasNum ? point.Id.Num as object : point.Id.Uuid as object;
 
         // Create a json object to represent the point.
         var outputJsonObject = new JsonObject
         {
-            { keyPropertyName, keyPropertyValue },
+            { keyPropertyName, JsonValue.Create(keyPropertyValue) },
         };
 
         // Add each vector field if embeddings are included in the point.

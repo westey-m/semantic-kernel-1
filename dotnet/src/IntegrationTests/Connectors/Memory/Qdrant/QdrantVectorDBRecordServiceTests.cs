@@ -1,5 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
@@ -7,6 +9,7 @@ using Microsoft.SemanticKernel.Connectors.Qdrant;
 using Microsoft.SemanticKernel.Memory;
 using Xunit;
 using Xunit.Abstractions;
+using static SemanticKernel.IntegrationTests.Connectors.Memory.Qdrant.QdrantVectorDBRecordServiceFixture;
 
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.Qdrant;
 
@@ -22,13 +25,13 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
     public async Task ItCanGetDocumentFromVectorStoreAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorDBRecordService<QdrantVectorDBRecordServiceFixture.HotelInfo>(fixture.QdrantClient, "singleVectorHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType });
+        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "singleVectorHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType });
 
         // Act.
-        var getResult = await sut.GetAsync("11");
+        var getResult = await sut.GetAsync(11);
 
         // Assert.
-        Assert.Equal("11", getResult?.HotelId);
+        Assert.Equal(11ul, getResult?.HotelId);
         Assert.Equal("My Hotel 11", getResult?.HotelName);
         Assert.Equal(11, getResult?.HotelCode);
         Assert.Equal(4.5f, getResult?.HotelRating);
@@ -43,16 +46,35 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
     }
 
     [Fact]
+    public async Task ItCanGetDocumentWithGuidIdFromVectorStoreAsync()
+    {
+        // Arrange.
+        var sut = new QdrantVectorDBRecordService<HotelInfoWithGuidId>(fixture.QdrantClient, "singleVectorGuidIdHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType });
+
+        // Act.
+        var getResult = await sut.GetAsync(Guid.Parse("11111111-1111-1111-1111-111111111111"));
+
+        // Assert.
+        Assert.Equal(Guid.Parse("11111111-1111-1111-1111-111111111111"), getResult?.HotelId);
+        Assert.Equal("My Hotel 11", getResult?.HotelName);
+        Assert.Equal("This is a great hotel.", getResult?.Description);
+        Assert.Null(getResult?.DescriptionEmbeddings);
+
+        // Output.
+        output.WriteLine(getResult?.ToString());
+    }
+
+    [Fact]
     public async Task ItCanGetDocumentFromVectorStoreWithEmbeddingsAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorDBRecordService<QdrantVectorDBRecordServiceFixture.HotelInfo>(fixture.QdrantClient, "singleVectorHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType });
+        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "singleVectorHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType });
 
         // Act.
-        var getResult = await sut.GetAsync("11", new GetRecordOptions { IncludeVectors = true });
+        var getResult = await sut.GetAsync(11, new GetRecordOptions { IncludeVectors = true });
 
         // Assert.
-        Assert.Equal("11", getResult?.HotelId);
+        Assert.Equal(11ul, getResult?.HotelId);
         Assert.Equal("My Hotel 11", getResult?.HotelName);
         Assert.Equal(11, getResult?.HotelCode);
         Assert.Equal(4.5f, getResult?.HotelRating);
@@ -70,13 +92,13 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
     public async Task ItCanGetDocumentWithNamedVectorsFromVectorStoreAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorDBRecordService<QdrantVectorDBRecordServiceFixture.HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
+        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
 
         // Act.
-        var getResult = await sut.GetAsync("1");
+        var getResult = await sut.GetAsync(1);
 
         // Assert.
-        Assert.Equal("1", getResult?.HotelId);
+        Assert.Equal(1ul, getResult?.HotelId);
         Assert.Equal("My Hotel 1", getResult?.HotelName);
         Assert.Equal(1, getResult?.HotelCode);
         Assert.Equal(4.5f, getResult?.HotelRating);
@@ -94,13 +116,13 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
     public async Task ItCanGetDocumentWithNamedVectorsFromVectorStoreWithEmbeddingsAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorDBRecordService<QdrantVectorDBRecordServiceFixture.HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
+        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
 
         // Act.
-        var getResult = await sut.GetAsync("1", new GetRecordOptions { IncludeVectors = true });
+        var getResult = await sut.GetAsync(1, new GetRecordOptions { IncludeVectors = true });
 
         // Assert.
-        Assert.Equal("1", getResult?.HotelId);
+        Assert.Equal(1ul, getResult?.HotelId);
         Assert.Equal("My Hotel 1", getResult?.HotelName);
         Assert.Equal(1, getResult?.HotelCode);
         Assert.Equal(4.5f, getResult?.HotelRating);
@@ -119,10 +141,10 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
     public async Task ItCanGetManyDocumentsFromVectorStoreAsync()
     {
         // Arrange
-        var sut = new QdrantVectorDBRecordService<QdrantVectorDBRecordServiceFixture.HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
+        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
 
         // Act
-        var hotels = sut.GetBatchAsync(["1", "2"], new GetRecordOptions { IncludeVectors = true });
+        var hotels = sut.GetBatchAsync([1, 2], new GetRecordOptions { IncludeVectors = true });
 
         // Assert
         Assert.NotNull(hotels);
@@ -140,20 +162,20 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
     public async Task ItThrowsForPartialBatchResultAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorDBRecordService<QdrantVectorDBRecordServiceFixture.HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
+        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
 
         // Act.
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetBatchAsync(["1", "5", "2"]).ToListAsync());
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetBatchAsync([1, 5, 2]).ToListAsync());
     }
 
     [Fact]
     public async Task ItCanRemoveDocumentFromVectorStoreAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorDBRecordService<QdrantVectorDBRecordServiceFixture.HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
-        var record = new QdrantVectorDBRecordServiceFixture.HotelInfo
+        var sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
+        var record = new HotelInfo
         {
-            HotelId = "20",
+            HotelId = 20,
             HotelName = "My Hotel 20",
             HotelCode = 20,
             Seafront = true,
@@ -163,24 +185,24 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
         await sut.UpsertAsync(record);
 
         // Act.
-        var removeResult = await sut.RemoveAsync("20");
+        var removeResult = await sut.RemoveAsync(20);
 
         // Assert.
-        Assert.Equal("20", removeResult);
+        Assert.Equal(20ul, removeResult);
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("20"));
 
         // Output.
-        output.WriteLine(removeResult);
+        output.WriteLine(removeResult.ToString(CultureInfo.InvariantCulture));
     }
 
     [Fact]
     public async Task ItCanUpsertDocumentToVectorStoreAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorDBRecordService<QdrantVectorDBRecordServiceFixture.HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
-        var record = new QdrantVectorDBRecordServiceFixture.HotelInfo
+        IVectorDBRecordService<ulong, HotelInfo> sut = new QdrantVectorDBRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = true });
+        var record = new HotelInfo
         {
-            HotelId = "20",
+            HotelId = 20,
             HotelName = "My Hotel 20",
             HotelCode = 20,
             HotelRating = 4.3f,
@@ -194,8 +216,8 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
         var upsertResult = await sut.UpsertAsync(record);
 
         // Assert.
-        var getResult = await sut.GetAsync("20", new GetRecordOptions { IncludeVectors = true });
-        Assert.Equal("20", upsertResult);
+        var getResult = await sut.GetAsync(20, new GetRecordOptions { IncludeVectors = true });
+        Assert.Equal(20ul, upsertResult);
         Assert.Equal(record.HotelId, getResult?.HotelId);
         Assert.Equal(record.HotelName, getResult?.HotelName);
         Assert.Equal(record.HotelCode, getResult?.HotelCode);
@@ -208,7 +230,43 @@ public sealed class QdrantVectorDBRecordServiceTests(ITestOutputHelper output, Q
         //Assert.Equal(record.DescriptionEmbeddings?.ToArray(), getResult?.DescriptionEmbeddings?.ToArray());
 
         // Output.
-        output.WriteLine(upsertResult);
+        output.WriteLine(upsertResult.ToString(CultureInfo.InvariantCulture));
         output.WriteLine(getResult?.ToString());
+    }
+
+    [Fact]
+    public async Task ItCanUpsertAndRemoveDocumentWithGuidIdToVectorStoreAsync()
+    {
+        // Arrange.
+        IVectorDBRecordService<Guid, HotelInfoWithGuidId> sut = new QdrantVectorDBRecordService<HotelInfoWithGuidId>(fixture.QdrantClient, "singleVectorGuidIdHotels", new QdrantVectorDBRecordServiceOptions { PointIdType = QdrantVectorDBRecordServiceOptions.QdrantPointIdType.UlongType, HasNamedVectors = false });
+        var record = new HotelInfoWithGuidId
+        {
+            HotelId = Guid.Parse("55555555-5555-5555-5555-555555555555"),
+            HotelName = "My Hotel 5",
+            Description = "This is a great hotel.",
+            DescriptionEmbeddings = new[] { 30f, 31f, 32f, 33f },
+        };
+
+        // Act.
+        var upsertResult = await sut.UpsertAsync(record);
+
+        // Assert.
+        var getResult = await sut.GetAsync(Guid.Parse("55555555-5555-5555-5555-555555555555"), new GetRecordOptions { IncludeVectors = true });
+        Assert.Equal(Guid.Parse("55555555-5555-5555-5555-555555555555"), upsertResult);
+        Assert.Equal(record.HotelId, getResult?.HotelId);
+        Assert.Equal(record.HotelName, getResult?.HotelName);
+        Assert.Equal(record.Description, getResult?.Description);
+
+        // Act.
+        var removeResult = await sut.RemoveAsync(Guid.Parse("55555555-5555-5555-5555-555555555555"));
+
+        // Assert.
+        Assert.Equal(Guid.Parse("55555555-5555-5555-5555-555555555555"), removeResult);
+        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync(Guid.Parse("55555555-5555-5555-5555-555555555555")));
+
+        // Output.
+        output.WriteLine(upsertResult.ToString("D"));
+        output.WriteLine(getResult?.ToString());
+        output.WriteLine(removeResult.ToString("D"));
     }
 }

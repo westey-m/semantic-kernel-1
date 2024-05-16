@@ -3,7 +3,7 @@
 namespace Microsoft.SemanticKernel.Memory;
 
 /// <summary>
-/// Optional options when calling <see cref="IVectorDBRecordService{TDataModel}.GetAsync"/>.
+/// Optional options when calling <see cref="IVectorDBRecordService{TKey, TDataModel}.GetAsync"/>.
 /// </summary>
 public class GetRecordOptions
 {

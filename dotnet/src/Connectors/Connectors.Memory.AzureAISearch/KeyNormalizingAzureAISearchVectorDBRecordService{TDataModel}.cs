@@ -12,18 +12,18 @@ using Microsoft.SemanticKernel.Memory;
 namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 
 /// <summary>
-/// Decorator class for <see cref="IVectorDBRecordService{TDataModel}"/> that normalizes the index names and encodes and decodes the record keys so that any values
+/// Decorator class for <see cref="IVectorDBRecordService{TKey, TDataModel}"/> that normalizes the index names and encodes and decodes the record keys so that any values
 /// can be stored in Azure AI Search without violating the constraints of the service.
 /// </summary>
 /// <typeparam name="TDataModel">The data model to use for adding, updating and retrieving data from storage.</typeparam>
 /// <remarks>
 /// NOTE: This class mutates the data objects that are passed to it during encoding.
 /// </remarks>
-public class KeyNormalizingAzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordService<TDataModel>
+public class KeyNormalizingAzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordService<string, TDataModel>
     where TDataModel : class
 {
     /// <summary>The vector store instance that is being decorated.</summary>
-    private readonly IVectorDBRecordService<TDataModel> _vectorStore;
+    private readonly IVectorDBRecordService<string, TDataModel> _vectorStore;
 
     /// <summary>The name of the collection to use with this store if none is provided for any individual operation.</summary>
     private readonly string _defaultCollectionName;
@@ -68,7 +68,7 @@ public class KeyNormalizingAzureAISearchVectorDBRecordService<TDataModel> : IVec
     /// <param name="recordKeyDecoder">The function that is used to decode the azure ai search record id after it is retrieved from Azure AI Search.</param>
     /// <param name="indexNameEncoder">The function that is used to encode the azure ai search index name (collection name parameter).</param>
     public KeyNormalizingAzureAISearchVectorDBRecordService(
-        IVectorDBRecordService<TDataModel> vectorStore,
+        IVectorDBRecordService<string, TDataModel> vectorStore,
         string defaultCollectionName,
         string keyFieldName,
         Func<string, string> recordKeyEncoder,

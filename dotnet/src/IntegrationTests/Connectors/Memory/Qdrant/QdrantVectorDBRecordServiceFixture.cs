@@ -83,6 +83,10 @@ public class QdrantVectorDBRecordServiceFixture : IAsyncLifetime
             "singleVectorHotels",
             new VectorParams { Size = 4, Distance = Distance.Cosine });
 
+        await this.QdrantClient.CreateCollectionAsync(
+            "singleVectorGuidIdHotels",
+            new VectorParams { Size = 4, Distance = Distance.Cosine });
+
         // Create test data common to both named and unnamed vectors.
         var tags = new ListValue();
         tags.Values.Add("t1");
@@ -149,6 +153,31 @@ public class QdrantVectorDBRecordServiceFixture : IAsyncLifetime
         ];
 
         await this.QdrantClient.UpsertAsync("singleVectorHotels", unnamedVectorPoints);
+
+        // Create some test data using a single unnamed vector and a guid id.
+        List<PointStruct> unnamedVectorGuidIdPoints =
+        [
+            new PointStruct
+            {
+                Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                Vectors = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray(),
+                Payload = { ["HotelName"] = "My Hotel 11", ["Description"] = "This is a great hotel." }
+            },
+            new PointStruct
+            {
+                Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+                Vectors = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray(),
+                Payload = { ["HotelName"] = "My Hotel 12", ["Description"] = "This is a great hotel." }
+            },
+            new PointStruct
+            {
+                Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+                Vectors = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray(),
+                Payload = { ["HotelName"] = "My Hotel 13", ["Description"] = "This is a great hotel." }
+            },
+        ];
+
+        await this.QdrantClient.UpsertAsync("singleVectorGuidIdHotels", unnamedVectorGuidIdPoints);
     }
 
 #pragma warning restore CA5394 // Do not use insecure randomness
@@ -216,7 +245,7 @@ public class QdrantVectorDBRecordServiceFixture : IAsyncLifetime
     {
         /// <summary>The key of the record.</summary>
         [Key]
-        public string HotelId { get; init; }
+        public ulong HotelId { get; init; }
 
         /// <summary>A string metadata field.</summary>
         [Metadata]
@@ -236,6 +265,29 @@ public class QdrantVectorDBRecordServiceFixture : IAsyncLifetime
 
         [Metadata]
         public List<string> Tags { get; set; } = new List<string>();
+
+        /// <summary>A data field.</summary>
+        [Data]
+        public string Description { get; set; }
+
+        /// <summary>A vector field.</summary>
+        [Vector]
+        public ReadOnlyMemory<float>? DescriptionEmbeddings { get; set; }
+    }
+
+    /// <summary>
+    /// A test model for the qdrant vector store.
+    /// </summary>
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+    public record HotelInfoWithGuidId()
+    {
+        /// <summary>The key of the record.</summary>
+        [Key]
+        public Guid HotelId { get; init; }
+
+        /// <summary>A string metadata field.</summary>
+        [Metadata]
+        public string? HotelName { get; set; }
 
         /// <summary>A data field.</summary>
         [Data]
