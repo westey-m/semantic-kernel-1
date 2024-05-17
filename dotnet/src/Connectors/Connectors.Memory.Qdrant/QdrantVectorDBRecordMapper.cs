@@ -17,7 +17,7 @@ public class QdrantVectorDBRecordMapper : IQdrantVectorDBRecordMapper<VectorDBRe
     private readonly QdrantVectorDBRecordMapperOptions _options;
 
     /// <summary>The names of fields that contain the string fragments that are used to create embeddings.</summary>
-    private readonly HashSet<string> _dataFieldNames;
+    private readonly HashSet<string> _stringDataFieldNames;
 
     /// <summary>The names of fields that contain additional data. This can be any data that the embedding is not based on.</summary>
     private readonly HashSet<string> _metadataFieldNames;
@@ -29,7 +29,7 @@ public class QdrantVectorDBRecordMapper : IQdrantVectorDBRecordMapper<VectorDBRe
     public QdrantVectorDBRecordMapper(QdrantVectorDBRecordMapperOptions options)
     {
         this._options = options ?? new QdrantVectorDBRecordMapperOptions();
-        this._dataFieldNames = new HashSet<string>(this._options.DataFieldNames);
+        this._stringDataFieldNames = new HashSet<string>(this._options.StringDataFieldNames);
         this._metadataFieldNames = new HashSet<string>(this._options.MetadataFieldNames);
     }
 
@@ -60,7 +60,7 @@ public class QdrantVectorDBRecordMapper : IQdrantVectorDBRecordMapper<VectorDBRe
         };
 
         // Add data fields.
-        foreach (var item in record.Data)
+        foreach (var item in record.StringData)
         {
             if (item.Value is null)
             {
@@ -141,21 +141,21 @@ public class QdrantVectorDBRecordMapper : IQdrantVectorDBRecordMapper<VectorDBRe
             throw new InvalidOperationException("Point id must have either a Num or Uuid value.");
         }
 
-        // Convert data and metadata fields.
-        var data = new Dictionary<string, string?>();
+        // Convert string data and metadata fields.
+        var stringData = new Dictionary<string, string?>();
         var metadata = new Dictionary<string, object?>();
         foreach (var item in point.Payload)
         {
-            // Convert the data fields.
-            if (this._dataFieldNames.Contains(item.Key))
+            // Convert the string data fields.
+            if (this._stringDataFieldNames.Contains(item.Key))
             {
                 if (item.Value is null)
                 {
-                    data.Add(item.Key, null);
+                    stringData.Add(item.Key, null);
                 }
                 else if (item.Value.HasStringValue)
                 {
-                    data.Add(item.Key, item.Value.StringValue);
+                    stringData.Add(item.Key, item.Value.StringValue);
                 }
                 else
                 {
@@ -203,7 +203,7 @@ public class QdrantVectorDBRecordMapper : IQdrantVectorDBRecordMapper<VectorDBRe
         // Create the record.
         var record = new VectorDBRecord(key)
         {
-            Data = data,
+            StringData = stringData,
             Metadata = metadata,
             Vectors = vectors,
         };

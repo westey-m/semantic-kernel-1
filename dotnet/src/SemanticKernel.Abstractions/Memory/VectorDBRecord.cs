@@ -17,7 +17,7 @@ public class VectorDBRecord
     private static readonly Dictionary<string, object?> s_emptyMetadata = new();
 
     /// <summary>Empty static dictionary for initialization purposes.</summary>
-    private static readonly Dictionary<string, string?> s_emptyData = new();
+    private static readonly Dictionary<string, string?> s_emptyStringData = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="VectorDBRecord"/> class.
@@ -45,7 +45,7 @@ public class VectorDBRecord
     public IReadOnlyDictionary<string, object?> Metadata { get; init; } = s_emptyMetadata;
 
     /// <summary>
-    /// Gets or sets the data that the vectors are associated with.
+    /// Gets or sets the string data that the vectors are associated with.
     /// </summary>
-    public IReadOnlyDictionary<string, string?> Data { get; init; } = s_emptyData;
+    public IReadOnlyDictionary<string, string?> StringData { get; init; } = s_emptyStringData;
 }

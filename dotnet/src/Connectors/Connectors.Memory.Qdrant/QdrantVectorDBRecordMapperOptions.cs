@@ -21,7 +21,7 @@ public class QdrantVectorDBRecordMapperOptions
     /// <summary>
     /// Gets or sets the names of fields that contain the string fragments that are used to create embeddings.
     /// </summary>
-    public IReadOnlyList<string> DataFieldNames { get; init; } = s_emptyStringList;
+    public IReadOnlyList<string> StringDataFieldNames { get; init; } = s_emptyStringList;
 
     /// <summary>
     /// Gets or sets the names of fields that contain additional data. This can be any data that the embedding is not based on.

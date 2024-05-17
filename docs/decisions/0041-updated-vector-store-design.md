@@ -275,6 +275,26 @@ I'm therefore proposing that we use attributes to annotate the model indicating 
         [property: Vector(DataField = "Description"), JsonPropertyName("description-embeddings")] ReadOnlyMemory<float>? DescriptionEmbeddings);
 ```
 
+### Support for standard SK vector db data model
+
+For users who don't want to implement their own data model, we should also support a default built in
+data model, that allows mapping to and from all the different store schemas.
+
+It contains a key, which is an object, since allowed key types can vary by vector store, and some vector stores allow more than one key type.
+Vectors are a dictionary of `ReadOnlyMemory<object>`, since different types of vector values are supported by some vector stores.
+StringData here means the text snippets that have been embedded using the Vectors dictionary.
+Metadata here means any other data associated stored in the record.
+
+```cs
+public class VectorDBRecord
+{
+    public object Key { get; init; }
+    public IReadOnlyDictionary<string, ReadOnlyMemory<object>?> Vectors { get; init; };
+    public IReadOnlyDictionary<string, object?> Metadata { get; init; };
+    public IReadOnlyDictionary<string, string?> StringData { get; init; };
+}
+```
+
 ## Decision Drivers
 
 From GitHub Issue:

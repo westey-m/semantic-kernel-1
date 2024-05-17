@@ -21,13 +21,13 @@ public sealed class QdrantVectorDBRecordServiceDefaultModelTests(ITestOutputHelp
 {
     private readonly List<string> _metadataFieldNames = ["HotelName", "hotelCode", "Seafront", "HotelRating", "Tags"];
 
-    private readonly List<string> _dataFieldNames = ["Description"];
+    private readonly List<string> _stringDataFieldNames = ["Description"];
 
     [Fact]
     public async Task ItCanGetDocumentFromVectorStoreAsync()
     {
         // Arrange.
-        var options = new QdrantVectorDBRecordMapperOptions { HasNamedVectors = false, DataFieldNames = this._dataFieldNames, MetadataFieldNames = this._metadataFieldNames };
+        var options = new QdrantVectorDBRecordMapperOptions { HasNamedVectors = false, StringDataFieldNames = this._stringDataFieldNames, MetadataFieldNames = this._metadataFieldNames };
         var mapper = new QdrantVectorDBRecordMapper(options);
         var sut = new QdrantVectorDBRecordService<VectorDBRecord>(fixture.QdrantClient, "singleVectorHotels", mapper);
 
@@ -44,7 +44,7 @@ public sealed class QdrantVectorDBRecordServiceDefaultModelTests(ITestOutputHelp
         Assert.Equal(2, tags?.Length);
         Assert.Equal("t1", tags?[0]);
         Assert.Equal("t2", tags?[1]);
-        Assert.Equal("This is a great hotel.", getResult?.Data["Description"]);
+        Assert.Equal("This is a great hotel.", getResult?.StringData["Description"]);
         Assert.Equal(0, getResult?.Vectors.Count);
 
         // Output.
@@ -55,7 +55,7 @@ public sealed class QdrantVectorDBRecordServiceDefaultModelTests(ITestOutputHelp
     public async Task ItCanGetDocumentWithGuidIdFromVectorStoreAsync()
     {
         // Arrange.
-        var options = new QdrantVectorDBRecordMapperOptions { HasNamedVectors = false, DataFieldNames = this._dataFieldNames, MetadataFieldNames = this._metadataFieldNames };
+        var options = new QdrantVectorDBRecordMapperOptions { HasNamedVectors = false, StringDataFieldNames = this._stringDataFieldNames, MetadataFieldNames = this._metadataFieldNames };
         var mapper = new QdrantVectorDBRecordMapper(options);
         var sut = new QdrantVectorDBRecordService<VectorDBRecord>(fixture.QdrantClient, "singleVectorGuidIdHotels", mapper);
 
@@ -65,7 +65,7 @@ public sealed class QdrantVectorDBRecordServiceDefaultModelTests(ITestOutputHelp
         // Assert.
         Assert.Equal(Guid.Parse("11111111-1111-1111-1111-111111111111"), getResult?.Key);
         Assert.Equal("My Hotel 11", getResult?.Metadata["HotelName"]);
-        Assert.Equal("This is a great hotel.", getResult?.Data["Description"]);
+        Assert.Equal("This is a great hotel.", getResult?.StringData["Description"]);
         Assert.Equal(0, getResult?.Vectors.Count);
 
         // Output.
@@ -76,7 +76,7 @@ public sealed class QdrantVectorDBRecordServiceDefaultModelTests(ITestOutputHelp
     public async Task ItCanGetDocumentFromVectorStoreWithEmbeddingsAsync()
     {
         // Arrange.
-        var options = new QdrantVectorDBRecordMapperOptions { HasNamedVectors = false, DataFieldNames = this._dataFieldNames, MetadataFieldNames = this._metadataFieldNames };
+        var options = new QdrantVectorDBRecordMapperOptions { HasNamedVectors = false, StringDataFieldNames = this._stringDataFieldNames, MetadataFieldNames = this._metadataFieldNames };
         var mapper = new QdrantVectorDBRecordMapper(options);
         var sut = new QdrantVectorDBRecordService<VectorDBRecord>(fixture.QdrantClient, "singleVectorHotels", mapper);
 
@@ -93,7 +93,7 @@ public sealed class QdrantVectorDBRecordServiceDefaultModelTests(ITestOutputHelp
         Assert.Equal(2, tags?.Length);
         Assert.Equal("t1", tags?[0]);
         Assert.Equal("t2", tags?[1]);
-        Assert.Equal("This is a great hotel.", getResult?.Data["Description"]);
+        Assert.Equal("This is a great hotel.", getResult?.StringData["Description"]);
         Assert.NotNull(getResult?.Vectors[string.Empty]);
 
         // Output.
@@ -104,7 +104,7 @@ public sealed class QdrantVectorDBRecordServiceDefaultModelTests(ITestOutputHelp
     public async Task ItCanGetDocumentWithNamedVectorsFromVectorStoreAsync()
     {
         // Arrange.
-        var options = new QdrantVectorDBRecordMapperOptions { HasNamedVectors = true, DataFieldNames = this._dataFieldNames, MetadataFieldNames = this._metadataFieldNames };
+        var options = new QdrantVectorDBRecordMapperOptions { HasNamedVectors = true, StringDataFieldNames = this._stringDataFieldNames, MetadataFieldNames = this._metadataFieldNames };
         var mapper = new QdrantVectorDBRecordMapper(options);
         var sut = new QdrantVectorDBRecordService<VectorDBRecord>(fixture.QdrantClient, "namedVectorsHotels", mapper);
 
@@ -121,7 +121,7 @@ public sealed class QdrantVectorDBRecordServiceDefaultModelTests(ITestOutputHelp
         Assert.Equal(2, tags?.Length);
         Assert.Equal("t1", tags?[0]);
         Assert.Equal("t2", tags?[1]);
-        Assert.Equal("This is a great hotel.", getResult?.Data["Description"]);
+        Assert.Equal("This is a great hotel.", getResult?.StringData["Description"]);
         Assert.Equal(0, getResult?.Vectors.Count);
 
         // Output.
@@ -132,7 +132,7 @@ public sealed class QdrantVectorDBRecordServiceDefaultModelTests(ITestOutputHelp
     public async Task ItCanGetDocumentWithNamedVectorsFromVectorStoreWithEmbeddingsAsync()
     {
         // Arrange.
-        var options = new QdrantVectorDBRecordMapperOptions { HasNamedVectors = true, DataFieldNames = this._dataFieldNames, MetadataFieldNames = this._metadataFieldNames };
+        var options = new QdrantVectorDBRecordMapperOptions { HasNamedVectors = true, StringDataFieldNames = this._stringDataFieldNames, MetadataFieldNames = this._metadataFieldNames };
         var mapper = new QdrantVectorDBRecordMapper(options);
         var sut = new QdrantVectorDBRecordService<VectorDBRecord>(fixture.QdrantClient, "namedVectorsHotels", mapper);
 
@@ -149,7 +149,7 @@ public sealed class QdrantVectorDBRecordServiceDefaultModelTests(ITestOutputHelp
         Assert.Equal(2, tags?.Length);
         Assert.Equal("t1", tags?[0]);
         Assert.Equal("t2", tags?[1]);
-        Assert.Equal("This is a great hotel.", getResult?.Data["Description"]);
+        Assert.Equal("This is a great hotel.", getResult?.StringData["Description"]);
         Assert.NotNull(getResult?.Vectors["DescriptionEmbeddings"]);
 
         // Output.
@@ -160,13 +160,13 @@ public sealed class QdrantVectorDBRecordServiceDefaultModelTests(ITestOutputHelp
     public async Task ItCanUpsertDocumentToVectorStoreAsync()
     {
         // Arrange.
-        var options = new QdrantVectorDBRecordMapperOptions { HasNamedVectors = true, DataFieldNames = this._dataFieldNames, MetadataFieldNames = this._metadataFieldNames };
+        var options = new QdrantVectorDBRecordMapperOptions { HasNamedVectors = true, StringDataFieldNames = this._stringDataFieldNames, MetadataFieldNames = this._metadataFieldNames };
         var mapper = new QdrantVectorDBRecordMapper(options);
         var sut = new QdrantVectorDBRecordService<VectorDBRecord>(fixture.QdrantClient, "namedVectorsHotels", mapper);
 
         var record = new VectorDBRecord(20ul)
         {
-            Data = new Dictionary<string, string?> { ["Description"] = "This is a great hotel." },
+            StringData = new Dictionary<string, string?> { ["Description"] = "This is a great hotel." },
             Metadata = new Dictionary<string, object?> { ["HotelName"] = "My Hotel 20", ["hotelCode"] = 20, ["HotelRating"] = 4.3d, ["Seafront"] = true, ["Tags"] = new List<string> { "t1", "t2" } },
             Vectors = new Dictionary<string, ReadOnlyMemory<object>?> { ["DescriptionEmbeddings"] = new ReadOnlyMemory<object>([30f, 31f, 32f, 33f]) },
         };
@@ -186,7 +186,7 @@ public sealed class QdrantVectorDBRecordServiceDefaultModelTests(ITestOutputHelp
         Assert.Equal(2, tags?.Length);
         Assert.Equal("t1", tags?[0]);
         Assert.Equal("t2", tags?[1]);
-        Assert.Equal("This is a great hotel.", getResult?.Data["Description"]);
+        Assert.Equal("This is a great hotel.", getResult?.StringData["Description"]);
         Assert.NotNull(getResult?.Vectors["DescriptionEmbeddings"]);
 
         // Output.
