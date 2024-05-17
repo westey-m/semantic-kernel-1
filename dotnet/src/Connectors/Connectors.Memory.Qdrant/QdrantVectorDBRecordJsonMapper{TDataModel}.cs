@@ -58,15 +58,15 @@ public class QdrantVectorDBRecordJsonMapper<TDataModel> : IQdrantVectorDBRecordM
     private readonly PropertyInfo _keyFieldPropertyInfo;
 
     /// <summary>Optional configuration options for this class.</summary>
-    private readonly QdrantVectorDBRecordServiceOptions _options;
+    private readonly QdrantVectorDBRecordJsonMapperOptions _options;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="QdrantVectorDBRecordJsonMapper{TDataModel}"/> class.
     /// </summary>
     /// <param name="options">Optional options to use when doing the model conversion.</param>
-    public QdrantVectorDBRecordJsonMapper(QdrantVectorDBRecordServiceOptions? options)
+    public QdrantVectorDBRecordJsonMapper(QdrantVectorDBRecordJsonMapperOptions? options)
     {
-        this._options = options ?? new QdrantVectorDBRecordServiceOptions();
+        this._options = options ?? new QdrantVectorDBRecordJsonMapperOptions();
 
         // Enumerate/verify public properties/fields on model.
         var fields = VectorStoreModelPropertyReader.FindFields(typeof(TDataModel), this._options.HasNamedVectors);

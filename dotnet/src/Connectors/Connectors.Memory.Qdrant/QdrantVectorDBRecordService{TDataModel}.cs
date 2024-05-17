@@ -29,19 +29,15 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
     /// <summary>A mapper to use for converting between qdrant point and consumer models.</summary>
     private readonly IQdrantVectorDBRecordMapper<TDataModel> _recordMapper;
 
-    /// <summary>Optional configuration options for this class.</summary>
-    private readonly QdrantVectorDBRecordServiceOptions _options;
-
     /// <summary>
     /// Initializes a new instance of the <see cref="QdrantVectorDBRecordService{TDataModel}"/> class.
     /// </summary>
     /// <param name="qdrantClient">Qdrant client that can be used to manage the points in a Qdrant store.</param>
     /// <param name="defaultCollectionName">The name of the collection to use with this store if none is provided for any individual operation.</param>
     /// <param name="recordMapper">A mapper to use for converting between qdrant point and consumer models.</param>
-    /// <param name="options">Optional configuration options for this class.</param>
     /// <exception cref="ArgumentNullException"></exception>
     /// <exception cref="ArgumentException"></exception>
-    public QdrantVectorDBRecordService(QdrantClient qdrantClient, string defaultCollectionName, IQdrantVectorDBRecordMapper<TDataModel> recordMapper, QdrantVectorDBRecordServiceOptions? options)
+    public QdrantVectorDBRecordService(QdrantClient qdrantClient, string defaultCollectionName, IQdrantVectorDBRecordMapper<TDataModel> recordMapper)
     {
         // Verify.
         Verify.NotNull(qdrantClient);
@@ -52,7 +48,6 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
         this._qdrantClient = qdrantClient;
         this._defaultCollectionName = defaultCollectionName;
         this._recordMapper = recordMapper;
-        this._options = options ?? new QdrantVectorDBRecordServiceOptions();
     }
 
     /// <inheritdoc />
