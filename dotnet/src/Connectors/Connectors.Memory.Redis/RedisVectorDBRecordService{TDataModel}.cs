@@ -149,7 +149,7 @@ public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<str
     }
 
     /// <inheritdoc />
-    public async Task<string> RemoveAsync(string key, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task RemoveAsync(string key, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNullOrWhiteSpace(key);
 
@@ -161,8 +161,6 @@ public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<str
         await this._database
             .JSON()
             .DelAsync(maybePrefixedKey).ConfigureAwait(false);
-
-        return key;
     }
 
     /// <inheritdoc />

@@ -81,7 +81,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
     }
 
     /// <inheritdoc />
-    public async Task<ulong> RemoveAsync(ulong key, RemoveRecordOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task RemoveAsync(ulong key, RemoveRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(key);
 
@@ -91,12 +91,10 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
             key,
             wait: true,
             cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        return key;
     }
 
     /// <inheritdoc />
-    public async Task<Guid> RemoveAsync(Guid key, RemoveRecordOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task RemoveAsync(Guid key, RemoveRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(key);
 
@@ -106,8 +104,6 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
             key,
             wait: true,
             cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        return key;
     }
 
     /// <inheritdoc />

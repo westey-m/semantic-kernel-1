@@ -112,7 +112,7 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
     }
 
     /// <inheritdoc />
-    public async Task<string> RemoveAsync(string key, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task RemoveAsync(string key, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNullOrWhiteSpace(key);
 
@@ -122,7 +122,6 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
         // Remove record.
         var searchClient = this.GetSearchClient(collectionName);
         var results = await RunOperationAsync(() => searchClient.DeleteDocumentsAsync(this._keyFieldName, [key], new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
-        return results.Value.Results[0].Key;
     }
 
     /// <inheritdoc />

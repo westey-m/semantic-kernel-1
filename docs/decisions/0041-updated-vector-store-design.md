@@ -372,7 +372,7 @@ class MLIndexAzureAISearchVectorDBCollectionService(MLIndex mlIndexSpec): AzureA
 interface IVectorDBRecordService<TDataModel>
 {
     Task<TDataModel?> GetAsync(string key, VectorDBRecordServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
-    Task<string> RemoveAsync(string key, VectorDBRecordServiceRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    Task RemoveAsync(string key, VectorDBRecordServiceRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default);
     Task<string> UpsertAsync(TDataModel record, VectorDBRecordServiceUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default);
 }
 

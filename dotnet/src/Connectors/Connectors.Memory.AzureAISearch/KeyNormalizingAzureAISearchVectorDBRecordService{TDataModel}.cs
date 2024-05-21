@@ -133,16 +133,14 @@ public class KeyNormalizingAzureAISearchVectorDBRecordService<TDataModel> : IVec
     }
 
     /// <inheritdoc />
-    public async Task<string> RemoveAsync(string key, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task RemoveAsync(string key, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         var innerOptions = this.EncodeCollectionName(options);
 
-        var result = await this._vectorStore.RemoveAsync(
+        await this._vectorStore.RemoveAsync(
             this._recordKeyEncoder.Invoke(key),
             innerOptions,
             cancellationToken).ConfigureAwait(false);
-
-        return this._recordKeyDecoder.Invoke(result);
     }
 
     /// <inheritdoc />

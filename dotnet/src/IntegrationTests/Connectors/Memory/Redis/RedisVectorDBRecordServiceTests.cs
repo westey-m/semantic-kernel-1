@@ -114,14 +114,10 @@ public sealed class RedisVectorDBRecordServiceTests(ITestOutputHelper output, Re
         await sut.UpsertAsync(record);
 
         // Act.
-        var removeResult = await sut.RemoveAsync("TMP20");
+        await sut.RemoveAsync("TMP20");
 
         // Assert.
-        Assert.Equal("TMP20", removeResult);
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("TMP20"));
-
-        // Output.
-        output.WriteLine(removeResult);
     }
 
     [Fact]

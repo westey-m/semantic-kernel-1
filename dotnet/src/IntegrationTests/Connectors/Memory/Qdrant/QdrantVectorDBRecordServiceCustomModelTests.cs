@@ -205,14 +205,10 @@ public sealed class QdrantVectorDBRecordServiceCustomModelTests(ITestOutputHelpe
         await sut.UpsertAsync(record);
 
         // Act.
-        var removeResult = await sut.RemoveAsync(20);
+        await sut.RemoveAsync(20);
 
         // Assert.
-        Assert.Equal(20ul, removeResult);
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync(20));
-
-        // Output.
-        output.WriteLine(removeResult.ToString(CultureInfo.InvariantCulture));
     }
 
     [Fact]
@@ -284,15 +280,13 @@ public sealed class QdrantVectorDBRecordServiceCustomModelTests(ITestOutputHelpe
         Assert.Equal(record.Description, getResult?.Description);
 
         // Act.
-        var removeResult = await sut.RemoveAsync(Guid.Parse("55555555-5555-5555-5555-555555555555"));
+        await sut.RemoveAsync(Guid.Parse("55555555-5555-5555-5555-555555555555"));
 
         // Assert.
-        Assert.Equal(Guid.Parse("55555555-5555-5555-5555-555555555555"), removeResult);
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync(Guid.Parse("55555555-5555-5555-5555-555555555555")));
 
         // Output.
         output.WriteLine(upsertResult.ToString("D"));
         output.WriteLine(getResult?.ToString());
-        output.WriteLine(removeResult.ToString("D"));
     }
 }
