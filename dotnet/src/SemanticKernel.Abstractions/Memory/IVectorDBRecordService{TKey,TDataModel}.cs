@@ -18,6 +18,7 @@ public interface IVectorDBRecordService<TKey, TDataModel>
 {
     /// <summary>
     /// Gets a vector record from the data store. Does not guarantee that the collection exists.
+    /// Throws if the record is not found.
     /// </summary>
     /// <param name="key">The unique id associated with the vector record to get.</param>
     /// <param name="options">Optional options for retrieving the record.</param>
@@ -44,13 +45,13 @@ public interface IVectorDBRecordService<TKey, TDataModel>
     /// <returns>The unique identifier for the vector record.</returns>
     Task<TKey> RemoveAsync(TKey key, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default);
 
-    //// <summary>
-    //// Removes a batch of vector records from the data store. Does not guarantee that the collection exists.
-    //// </summary>
-    //// <param name="collectionName">The name of the collection of records.</param>
-    //// <param name="keys">The unique ids associated with the vector record to remove.</param>
-    //// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
-    ////Task RemoveBatchAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Removes a batch of vector records from the data store. Does not guarantee that the collection exists.
+    /// </summary>
+    /// <param name="keys">The unique ids associated with the vector records to remove.</param>
+    /// <param name="options">Optional options for removing the records.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    Task RemoveBatchAsync(IEnumerable<TKey> keys, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Upserts a vector record into the data store. Does not guarantee that the collection exists.
@@ -63,14 +64,14 @@ public interface IVectorDBRecordService<TKey, TDataModel>
     /// <returns>The unique identifier for the vector record.</returns>
     Task<TKey> UpsertAsync(TDataModel record, UpsertRecordOptions? options = default, CancellationToken cancellationToken = default);
 
-    //// <summary>
-    //// Upserts a group of vector records into the data store. Does not guarantee that the collection exists.
-    ////     If the record already exists, it will be updated.
-    ////     If the record does not exist, it will be created.
-    //// </summary>
-    //// <param name="collectionName">The name of the collection of records.</param>
-    //// <param name="records">The vector records to upsert.</param>
-    //// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
-    //// <returns>The unique identifiers for the vector records.</returns>
-    ////IAsyncEnumerable<string> UpsertBatchAsync(IEnumerable<TDataModel> records, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Upserts a group of vector records into the data store. Does not guarantee that the collection exists.
+    ///     If the record already exists, it will be updated.
+    ///     If the record does not exist, it will be created.
+    /// </summary>
+    /// <param name="records">The vector records to upsert.</param>
+    /// <param name="options">Optional options for upserting the records.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    /// <returns>The unique identifiers for the vector records.</returns>
+    IAsyncEnumerable<TKey> UpsertBatchAsync(IEnumerable<TDataModel> records, UpsertRecordOptions? options = default, CancellationToken cancellationToken = default);
 }

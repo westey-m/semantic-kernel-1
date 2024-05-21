@@ -12,17 +12,17 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 public interface IQdrantVectorDBRecordMapper<TDataModel>
 {
     /// <summary>
-    /// Convert from the consumer data model to a qdrant point.
+    /// Map from the consumer data model to a qdrant point.
     /// </summary>
     /// <param name="record">The consumer record to map.</param>
     /// <returns>The mapped result.</returns>
-    PointStruct ConvertFromDataModelToGrpc(TDataModel record);
+    PointStruct MapFromDataModelToGrpc(TDataModel record);
 
     /// <summary>
-    /// Convert from the give qdrant point to the consumer data model.
+    /// Map from the give qdrant point to the consumer data model.
     /// </summary>
     /// <param name="point">The qdrant point to map.</param>
     /// <param name="options">The <see cref="GetRecordOptions"/> of the operation that this mapping is needed for.</param>
     /// <returns>The mapped result.</returns>
-    TDataModel ConvertFromGrpcToDataModel(RetrievedPoint point, GetRecordOptions? options = default);
+    TDataModel MapFromGrpcToDataModel(RetrievedPoint point, GetRecordOptions? options = default);
 }

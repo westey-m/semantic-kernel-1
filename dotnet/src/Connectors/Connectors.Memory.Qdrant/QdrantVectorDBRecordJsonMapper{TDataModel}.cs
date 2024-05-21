@@ -81,7 +81,7 @@ public class QdrantVectorDBRecordJsonMapper<TDataModel> : IQdrantVectorDBRecordM
     }
 
     /// <inheritdoc />
-    public PointStruct ConvertFromDataModelToGrpc(TDataModel record)
+    public PointStruct MapFromDataModelToGrpc(TDataModel record)
     {
         PointId pointId;
         if (this._keyFieldPropertyInfo.PropertyType == typeof(ulong))
@@ -143,7 +143,7 @@ public class QdrantVectorDBRecordJsonMapper<TDataModel> : IQdrantVectorDBRecordM
     }
 
     /// <inheritdoc />
-    public TDataModel ConvertFromGrpcToDataModel(RetrievedPoint point, GetRecordOptions? options = default)
+    public TDataModel MapFromGrpcToDataModel(RetrievedPoint point, GetRecordOptions? options = default)
     {
         // Get the key property name and value.
         var keyPropertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(this._keyFieldPropertyInfo);

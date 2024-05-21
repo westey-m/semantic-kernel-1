@@ -111,6 +111,32 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
     }
 
     /// <inheritdoc />
+    public async Task RemoveBatchAsync(IEnumerable<ulong> keys, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
+    {
+        Verify.NotNull(keys);
+
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        await this._qdrantClient.DeleteAsync(
+            collectionName,
+            keys.ToList(),
+            wait: true,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task RemoveBatchAsync(IEnumerable<Guid> keys, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
+    {
+        Verify.NotNull(keys);
+
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var result = await this._qdrantClient.DeleteAsync(
+            collectionName,
+            keys.ToList(),
+            wait: true,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
     public async Task<ulong> UpsertAsync(TDataModel record, UpsertRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(record);
@@ -119,7 +145,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
 
         // Create point from record.
-        var pointStruct = this._recordMapper.ConvertFromDataModelToGrpc(record);
+        var pointStruct = this._recordMapper.MapFromDataModelToGrpc(record);
 
         // Upsert.
         await this._qdrantClient.UpsertAsync(collectionName, [pointStruct], true, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -135,11 +161,49 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
 
         // Create point from record.
-        var pointStruct = this._recordMapper.ConvertFromDataModelToGrpc(record);
+        var pointStruct = this._recordMapper.MapFromDataModelToGrpc(record);
 
         // Upsert.
         await this._qdrantClient.UpsertAsync(collectionName, [pointStruct], true, cancellationToken: cancellationToken).ConfigureAwait(false);
         return Guid.Parse(pointStruct.Id.Uuid);
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<ulong> UpsertBatchAsync(IEnumerable<TDataModel> records, UpsertRecordOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        Verify.NotNull(records);
+
+        // Create Options
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+
+        // Create points from records.
+        var pointStructs = records.Select(this._recordMapper.MapFromDataModelToGrpc).ToList();
+
+        // Upsert.
+        await this._qdrantClient.UpsertAsync(collectionName, pointStructs, true, cancellationToken: cancellationToken).ConfigureAwait(false);
+        foreach (var pointStruct in pointStructs)
+        {
+            yield return pointStruct.Id.Num;
+        }
+    }
+
+    /// <inheritdoc />
+    async IAsyncEnumerable<Guid> IVectorDBRecordService<Guid, TDataModel>.UpsertBatchAsync(IEnumerable<TDataModel> records, UpsertRecordOptions? options, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        Verify.NotNull(records);
+
+        // Create Options
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+
+        // Create points from records.
+        var pointStructs = records.Select(this._recordMapper.MapFromDataModelToGrpc).ToList();
+
+        // Upsert.
+        await this._qdrantClient.UpsertAsync(collectionName, pointStructs, true, cancellationToken: cancellationToken).ConfigureAwait(false);
+        foreach (var pointStruct in pointStructs)
+        {
+            yield return Guid.Parse(pointStruct.Id.Uuid);
+        }
     }
 
     /// <summary>
@@ -174,7 +238,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
         // Convert the retrieved points to the target data model.
         foreach (var retrievedPoint in retrievedPoints)
         {
-            yield return this._recordMapper.ConvertFromGrpcToDataModel(retrievedPoint, options);
+            yield return this._recordMapper.MapFromGrpcToDataModel(retrievedPoint, options);
         }
     }
 }

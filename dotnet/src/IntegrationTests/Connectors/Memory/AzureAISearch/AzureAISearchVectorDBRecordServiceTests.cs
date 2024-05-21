@@ -52,7 +52,6 @@ public sealed class AzureAISearchVectorDBRecordServiceTests(ITestOutputHelper ou
 
         // Act
         var results = sut.UpsertBatchAsync(
-            fixture.TestIndexName,
             [
                 new AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo("mh1", "MyHotel1", "My Hotel is great 1."),
                 new AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo("mh2", "MyHotel2", "My Hotel is great 2."),
@@ -147,7 +146,7 @@ public sealed class AzureAISearchVectorDBRecordServiceTests(ITestOutputHelper ou
         await sut.UpsertAsync(new AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo("tmp7", "TempHotel7", "This hotel will be deleted."));
 
         // Act
-        await sut.RemoveBatchAsync(fixture.TestIndexName, ["tmp5", "tmp6", "tmp7"]);
+        await sut.RemoveBatchAsync(["tmp5", "tmp6", "tmp7"]);
 
         // Assert
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp5", new GetRecordOptions { IncludeVectors = true }));

@@ -11,6 +11,7 @@ using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Memory;
+using NRedisStack.Json.DataTypes;
 using NRedisStack.RedisStackCommands;
 using StackExchange.Redis;
 
@@ -91,8 +92,11 @@ public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<str
     {
         Verify.NotNullOrWhiteSpace(key);
 
-        // Get the redis value and parse the JSON stored in Redis into a JsonNode object.
-        var maybePrefixedKey = this.PrefixKeyIfNeeded(key, options?.CollectionName);
+        // Create Options
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var maybePrefixedKey = this.PrefixKeyIfNeeded(key, collectionName);
+
+        // Get the redis value.
         var redisResult = options?.IncludeVectors is true ?
             await this._database
                 .JSON()
@@ -108,20 +112,7 @@ public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<str
         }
 
         var node = JsonSerializer.Deserialize<JsonNode>(redisResult.ToString());
-
-        // Since the key is not stored in the redis value, add it back in before deserializing into the data model.
-        if (node is JsonObject jsonObject)
-        {
-            if (jsonObject.ContainsKey(this._keyFieldPropertyInfo.Name))
-            {
-                throw new HttpOperationException($"Invalid data format for document with key '{key}'");
-            }
-
-            jsonObject.Add(this._keyFieldPropertyInfo.Name, key);
-            return JsonSerializer.Deserialize<TDataModel>(jsonObject);
-        }
-
-        throw new HttpOperationException($"Invalid data format for document with key '{key}'");
+        return this.MapFromRedisJsonToDataModel(key, node);
     }
 
     /// <inheritdoc />
@@ -131,8 +122,11 @@ public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<str
 
         var keysList = keys.ToList();
 
+        // Create Options
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var maybePrefixedKeys = keysList.Select(key => this.PrefixKeyIfNeeded(key, collectionName));
+
         // Get the list of redis results.
-        var maybePrefixedKeys = keysList.Select(key => this.PrefixKeyIfNeeded(key, options?.CollectionName));
         var redisResults = await this._database
             .JSON()
             .MGetAsync(maybePrefixedKeys.Select(x => new RedisKey(x)).ToArray(), "$").ConfigureAwait(false);
@@ -150,20 +144,7 @@ public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<str
             }
 
             var node = JsonSerializer.Deserialize<JsonNode>(redisResult.ToString());
-
-            // Since the key is not stored in the redis value, add it back in before deserializing into the data model.
-            if (node is JsonObject jsonObject)
-            {
-                if (jsonObject.ContainsKey(this._keyFieldPropertyInfo.Name))
-                {
-                    throw new HttpOperationException($"Invalid data format for document with key '{key}'");
-                }
-
-                jsonObject.Add(this._keyFieldPropertyInfo.Name, key);
-                yield return JsonSerializer.Deserialize<TDataModel>(jsonObject);
-            }
-
-            yield return null;
+            yield return this.MapFromRedisJsonToDataModel(key, node);
         }
     }
 
@@ -172,7 +153,11 @@ public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<str
     {
         Verify.NotNullOrWhiteSpace(key);
 
-        var maybePrefixedKey = this.PrefixKeyIfNeeded(key, options?.CollectionName);
+        // Create Options
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var maybePrefixedKey = this.PrefixKeyIfNeeded(key, collectionName);
+
+        // Remove.
         await this._database
             .JSON()
             .DelAsync(maybePrefixedKey).ConfigureAwait(false);
@@ -181,32 +166,66 @@ public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<str
     }
 
     /// <inheritdoc />
+    public async Task RemoveBatchAsync(IEnumerable<string> keys, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
+    {
+        Verify.NotNull(keys);
+
+        foreach (var key in keys)
+        {
+            await this.RemoveAsync(key, options, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<string> UpsertAsync(TDataModel record, UpsertRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(record);
 
-        // Convert the provided record into a JsonNode object and try to get the key field for it.
-        // Since we aleady checked that the key field is a string in the constructor, and that it exists on the model,
-        // the only edge case we have to be concerned about is if the key field is null.
-        var jsonNode = JsonSerializer.SerializeToNode(record);
-        if (jsonNode!.AsObject().TryGetPropertyValue(this._keyFieldPropertyInfo.Name, out var keyField) && keyField is JsonValue jsonValue)
-        {
-            // Remove the key field from the JSON object since we don't want to store it in the redis payload.
-            var keyValue = jsonValue.ToString();
-            jsonNode.AsObject().Remove(this._keyFieldPropertyInfo.Name);
+        // Create Options
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
 
-            // Prefix the key with the collection name if the option is set and save the JSON object to redis under this key.
-            var maybePrefixedKey = this.PrefixKeyIfNeeded(keyValue, options?.CollectionName);
-            await this._database
-                .JSON()
-                .SetAsync(
-                    maybePrefixedKey,
-                    "$",
-                    jsonNode).ConfigureAwait(false);
-            return keyValue;
+        // Map.
+        var redisJsonRecord = this.MapFromDataModelToRedisJson(record);
+
+        // Upsert.
+        var maybePrefixedKey = this.PrefixKeyIfNeeded(redisJsonRecord.key, collectionName);
+        await this._database
+            .JSON()
+            .SetAsync(
+                maybePrefixedKey,
+                "$",
+                redisJsonRecord.jsonNode).ConfigureAwait(false);
+
+        return redisJsonRecord.key;
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<string> UpsertBatchAsync(IEnumerable<TDataModel> records, UpsertRecordOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        Verify.NotNull(records);
+
+        // Create Options
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+
+        // Map.
+        var redisRecords = new List<(string maybePrefixedKey, string originalKey, JsonNode jsonNode)>();
+        foreach (var record in records)
+        {
+            var redisJsonRecord = this.MapFromDataModelToRedisJson(record);
+            var maybePrefixedKey = this.PrefixKeyIfNeeded(redisJsonRecord.key, collectionName);
+            redisRecords.Add((maybePrefixedKey, redisJsonRecord.key, redisJsonRecord.jsonNode));
         }
 
-        throw new ArgumentException($"Missing key field {this._keyFieldPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.", nameof(record));
+        // Upsert.
+        await this._database
+            .JSON()
+            .MSetAsync(redisRecords.Select(x => new KeyPathValue(x.maybePrefixedKey, "$", x.jsonNode)).ToArray()).ConfigureAwait(false);
+
+        // Return keys of upserted records.
+        foreach (var record in redisRecords)
+        {
+            yield return record.originalKey;
+        }
     }
 
     /// <summary>
@@ -224,5 +243,66 @@ public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<str
         }
 
         return key;
+    }
+
+    /// <summary>
+    /// Map from the consumer data model to a redis key and json object.
+    /// </summary>
+    /// <param name="record">The consumer record to map.</param>
+    /// <returns>The mapped result.</returns>
+    /// <exception cref="InvalidOperationException"></exception>
+    private (string key, JsonNode jsonNode) MapFromDataModelToRedisJson(TDataModel record)
+    {
+        // Convert the provided record into a JsonNode object and try to get the key field for it.
+        // Since we aleady checked that the key field is a string in the constructor, and that it exists on the model,
+        // the only edge case we have to be concerned about is if the key field is null.
+        var jsonNode = JsonSerializer.SerializeToNode(record);
+        if (jsonNode!.AsObject().TryGetPropertyValue(this._keyFieldPropertyInfo.Name, out var keyField) && keyField is JsonValue jsonValue)
+        {
+            // Remove the key field from the JSON object since we don't want to store it in the redis payload.
+            var keyValue = jsonValue.ToString();
+            jsonNode.AsObject().Remove(this._keyFieldPropertyInfo.Name);
+
+            return (keyValue, jsonNode);
+        }
+
+        throw new InvalidOperationException($"Missing key field {this._keyFieldPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.");
+    }
+
+    /// <summary>
+    /// Map from the redis key and json object to the consumer data model.
+    /// </summary>
+    /// <param name="key">The key of the redis json object.</param>
+    /// <param name="jsonNode">The redis json object.</param>
+    /// <returns>The mapped result.</returns>
+    /// <exception cref="HttpOperationException"></exception>
+    private TDataModel? MapFromRedisJsonToDataModel(string key, JsonNode? jsonNode)
+    {
+        JsonObject jsonObject;
+
+        // The redis result can be either a single object or an array with a single object in the case where we are doing an MGET.
+        if (jsonNode is JsonObject topLevelJsonObject)
+        {
+            jsonObject = topLevelJsonObject;
+        }
+        else if (jsonNode is JsonArray jsonArray && jsonArray.Count == 1 && jsonArray[0] is JsonObject arrayEntryJsonObject)
+        {
+            jsonObject = arrayEntryJsonObject;
+        }
+        else
+        {
+            throw new HttpOperationException($"Invalid data format for document with key '{key}'");
+        }
+
+        // Check that the key field is not already present in the redis value.
+        if (jsonObject.ContainsKey(this._keyFieldPropertyInfo.Name))
+        {
+            throw new HttpOperationException($"Invalid data format for document with key '{key}'. Key property '{this._keyFieldPropertyInfo.Name}' already present on retrieved object.");
+        }
+
+        // Since the key is not stored in the redis value, add it back in before deserializing into the data model.
+        jsonObject.Add(this._keyFieldPropertyInfo.Name, key);
+
+        return JsonSerializer.Deserialize<TDataModel>(jsonObject);
     }
 }

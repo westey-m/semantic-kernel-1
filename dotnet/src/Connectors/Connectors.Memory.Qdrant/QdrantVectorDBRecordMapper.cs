@@ -34,7 +34,7 @@ public class QdrantVectorDBRecordMapper : IQdrantVectorDBRecordMapper<VectorDBRe
     }
 
     /// <inheritdoc />
-    public PointStruct ConvertFromDataModelToGrpc(VectorDBRecord record)
+    public PointStruct MapFromDataModelToGrpc(VectorDBRecord record)
     {
         // Create point id.
         PointId pointId;
@@ -124,7 +124,7 @@ public class QdrantVectorDBRecordMapper : IQdrantVectorDBRecordMapper<VectorDBRe
     }
 
     /// <inheritdoc />
-    public VectorDBRecord ConvertFromGrpcToDataModel(RetrievedPoint point, GetRecordOptions? options = null)
+    public VectorDBRecord MapFromGrpcToDataModel(RetrievedPoint point, GetRecordOptions? options = null)
     {
         // Create record key based type of point id.
         object key;

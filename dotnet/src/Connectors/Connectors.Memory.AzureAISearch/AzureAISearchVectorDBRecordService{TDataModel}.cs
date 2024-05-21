@@ -126,15 +126,14 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
     }
 
     /// <inheritdoc />
-    public async Task RemoveBatchAsync(string collectionName, IEnumerable<string> keys, CancellationToken cancellationToken = default)
+    public async Task RemoveBatchAsync(IEnumerable<string> keys, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(collectionName))
-        {
-            throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
-        }
-
         Verify.NotNull(keys);
 
+        // Create options.
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+
+        // Remove records.
         var searchClient = this.GetSearchClient(collectionName);
         var results = await RunOperationAsync(() => searchClient.DeleteDocumentsAsync(this._keyFieldName, keys, new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
     }
@@ -154,16 +153,12 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<string> UpsertBatchAsync(string collectionName, IEnumerable<TDataModel> records, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<string> UpsertBatchAsync(IEnumerable<TDataModel> records, UpsertRecordOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(collectionName))
-        {
-            throw new ArgumentException($"{nameof(collectionName)} parameter may not be null or empty.", nameof(collectionName));
-        }
-
         Verify.NotNull(records);
 
         // Create Options
+        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
         var innerOptions = new IndexDocumentsOptions { ThrowOnAnyError = true };
 
         // Upload data

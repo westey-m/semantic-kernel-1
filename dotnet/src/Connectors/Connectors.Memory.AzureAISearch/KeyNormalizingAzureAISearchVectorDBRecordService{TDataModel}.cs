@@ -92,12 +92,7 @@ public class KeyNormalizingAzureAISearchVectorDBRecordService<TDataModel> : IVec
     /// <inheritdoc />
     public async Task<TDataModel?> GetAsync(string key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
-        var collectionName = options?.CollectionName == null ? this._defaultCollectionName : this._indexNameEncoder(options.CollectionName);
-        var innerOptions = new GetRecordOptions
-        {
-            IncludeVectors = options?.IncludeVectors ?? false,
-            CollectionName = collectionName
-        };
+        var innerOptions = this.EncodeCollectionName(options);
 
         var result = await this._vectorStore.GetAsync(
             this._recordKeyEncoder.Invoke(key),
@@ -115,12 +110,7 @@ public class KeyNormalizingAzureAISearchVectorDBRecordService<TDataModel> : IVec
     /// <inheritdoc />
     public async IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<string> keys, GetRecordOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var collectionName = options?.CollectionName == null ? this._defaultCollectionName : this._indexNameEncoder(options.CollectionName);
-        var innerOptions = new GetRecordOptions
-        {
-            IncludeVectors = options?.IncludeVectors ?? false,
-            CollectionName = collectionName
-        };
+        var innerOptions = this.EncodeCollectionName(options);
 
         var encodedKeys = keys.Select(this._recordKeyEncoder);
         var results = this._vectorStore.GetBatchAsync(
@@ -145,11 +135,7 @@ public class KeyNormalizingAzureAISearchVectorDBRecordService<TDataModel> : IVec
     /// <inheritdoc />
     public async Task<string> RemoveAsync(string key, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
-        var collectionName = options?.CollectionName == null ? this._defaultCollectionName : this._indexNameEncoder(options.CollectionName);
-        var innerOptions = new RemoveRecordOptions
-        {
-            CollectionName = collectionName
-        };
+        var innerOptions = this.EncodeCollectionName(options);
 
         var result = await this._vectorStore.RemoveAsync(
             this._recordKeyEncoder.Invoke(key),
@@ -159,23 +145,21 @@ public class KeyNormalizingAzureAISearchVectorDBRecordService<TDataModel> : IVec
         return this._recordKeyDecoder.Invoke(result);
     }
 
-    //// <inheritdoc />
-    ////public async Task RemoveBatchAsync(string collectionName, IEnumerable<string> keys, CancellationToken cancellationToken = default)
-    ////{
-    ////    await this._vectorStore.RemoveBatchAsync(
-    ////        this._indexNameEncoder(collectionName),
-    ////        keys.Select(this._recordKeyEncoder),
-    ////        cancellationToken).ConfigureAwait(false);
-    ////}
+    /// <inheritdoc />
+    public async Task RemoveBatchAsync(IEnumerable<string> keys, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
+    {
+        var innerOptions = this.EncodeCollectionName(options);
+
+        await this._vectorStore.RemoveBatchAsync(
+            keys.Select(this._recordKeyEncoder),
+            innerOptions,
+            cancellationToken).ConfigureAwait(false);
+    }
 
     /// <inheritdoc />
     public async Task<string> UpsertAsync(TDataModel record, UpsertRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
-        var collectionName = options?.CollectionName == null ? this._defaultCollectionName : this._indexNameEncoder(options.CollectionName);
-        var innerOptions = new UpsertRecordOptions
-        {
-            CollectionName = collectionName
-        };
+        var innerOptions = this.EncodeCollectionName(options);
 
         this.EncodeKeyField(record);
 
@@ -187,24 +171,95 @@ public class KeyNormalizingAzureAISearchVectorDBRecordService<TDataModel> : IVec
         return this._recordKeyDecoder.Invoke(result);
     }
 
-    //// <inheritdoc />
-    ////public async IAsyncEnumerable<string> UpsertBatchAsync(string collectionName, IEnumerable<TDataModel> records, [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    ////{
-    ////    foreach (var record in records)
-    ////    {
-    ////        this.EncodeKeyField(record);
-    ////    }
+    /// <inheritdoc />
+    public async IAsyncEnumerable<string> UpsertBatchAsync(IEnumerable<TDataModel> records, UpsertRecordOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var innerOptions = this.EncodeCollectionName(options);
 
-    ////    var results = this._vectorStore.UpsertBatchAsync(
-    ////        this._indexNameEncoder(collectionName),
-    ////        records,
-    ////        cancellationToken);
+        foreach (var record in records)
+        {
+            this.EncodeKeyField(record);
+        }
 
-    ////    await foreach (var result in results.ConfigureAwait(false))
-    ////    {
-    ////        yield return this._recordKeyDecoder.Invoke(result);
-    ////    }
-    ////}
+        var results = this._vectorStore.UpsertBatchAsync(
+            records,
+            innerOptions,
+            cancellationToken);
+
+        await foreach (var result in results.ConfigureAwait(false))
+        {
+            yield return this._recordKeyDecoder.Invoke(result);
+        }
+    }
+
+    /// <summary>
+    /// Create a new <see cref="GetRecordOptions"/> object with the collection name encoded but with all other properties preserved.
+    /// </summary>
+    /// <param name="options">The input options to preserve.</param>
+    /// <returns>The options with the collection name encoded.</returns>
+    private GetRecordOptions EncodeCollectionName(GetRecordOptions? options)
+    {
+        var collectionName = options?.CollectionName == null ? this._defaultCollectionName : this._indexNameEncoder(options.CollectionName);
+
+        if (options == null)
+        {
+            return new GetRecordOptions
+            {
+                CollectionName = collectionName
+            };
+        }
+
+        return new GetRecordOptions(options)
+        {
+            CollectionName = collectionName
+        };
+    }
+
+    /// <summary>
+    /// Create a new <see cref="RemoveRecordOptions"/> object with the collection name encoded but with all other properties preserved.
+    /// </summary>
+    /// <param name="options">The input options to preserve.</param>
+    /// <returns>The options with the collection name encoded.</returns>
+    private RemoveRecordOptions EncodeCollectionName(RemoveRecordOptions? options)
+    {
+        var collectionName = options?.CollectionName == null ? this._defaultCollectionName : this._indexNameEncoder(options.CollectionName);
+
+        if (options == null)
+        {
+            return new RemoveRecordOptions
+            {
+                CollectionName = collectionName
+            };
+        }
+
+        return new RemoveRecordOptions(options)
+        {
+            CollectionName = collectionName
+        };
+    }
+
+    /// <summary>
+    /// Create a new <see cref="UpsertRecordOptions"/> object with the collection name encoded but with all other properties preserved.
+    /// </summary>
+    /// <param name="options">The input options to preserve.</param>
+    /// <returns>The options with the collection name encoded.</returns>
+    private UpsertRecordOptions EncodeCollectionName(UpsertRecordOptions? options)
+    {
+        var collectionName = options?.CollectionName == null ? this._defaultCollectionName : this._indexNameEncoder(options.CollectionName);
+
+        if (options == null)
+        {
+            return new UpsertRecordOptions
+            {
+                CollectionName = collectionName
+            };
+        }
+
+        return new UpsertRecordOptions(options)
+        {
+            CollectionName = collectionName
+        };
+    }
 
     /// <summary>
     /// Encode the key field of the given record and update the record with the new value.
