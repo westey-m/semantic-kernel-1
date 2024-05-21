@@ -1,15 +1,25 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Text.Json.Nodes;
+
 namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 
 /// <summary>
 /// Options when creating a <see cref="AzureAISearchVectorDBRecordService{TDataModel}"/>.
 /// </summary>
-public class AzureAISearchVectorDBRecordServiceOptions
+public class AzureAISearchVectorDBRecordServiceOptions<TDataModel>
+    where TDataModel : class
 {
     /// <summary>
-    /// Gets the maximum number of items to retrieve in paraellel when getting records in a batch.
+    /// Gets or sets the choice of mapper to use when converting between the data model and the azure ai search record.
     /// </summary>
-    /// <remarks>Defaults to 50.</remarks>
-    public int? MaxDegreeOfGetParallelism { get; init; }
+    public AzureAISearchVectorDBRecordMapperType MapperType { get; init; } = AzureAISearchVectorDBRecordMapperType.Default;
+
+    /// <summary>
+    /// Gets or sets an optional custom mapper to use when converting between the data model and the azure ai search record.
+    /// </summary>
+    /// <remarks>
+    /// Set <see cref="MapperType"/> to <see cref="AzureAISearchVectorDBRecordMapperType.JsonObjectCustomerMapper"/> to use this mapper."/>
+    /// </remarks>
+    public IAzureAISearchVectorDBRecordMapper<TDataModel, JsonObject>? JsonObjectCustomMapper { get; init; } = null;
 }

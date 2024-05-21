@@ -81,17 +81,17 @@ public class QdrantVectorDBRecordJsonMapper<TDataModel> : IQdrantVectorDBRecordM
     }
 
     /// <inheritdoc />
-    public PointStruct MapFromDataModelToGrpc(TDataModel record)
+    public PointStruct MapFromDataToStorageModel(TDataModel dataModel)
     {
         PointId pointId;
         if (this._keyFieldPropertyInfo.PropertyType == typeof(ulong))
         {
-            var key = this._keyFieldPropertyInfo.GetValue(record) as ulong? ?? throw new ArgumentException($"Missing key field {this._keyFieldPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.", nameof(record));
+            var key = this._keyFieldPropertyInfo.GetValue(dataModel) as ulong? ?? throw new ArgumentException($"Missing key field {this._keyFieldPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.", nameof(dataModel));
             pointId = new PointId { Num = key };
         }
         else if (this._keyFieldPropertyInfo.PropertyType == typeof(Guid))
         {
-            var key = this._keyFieldPropertyInfo.GetValue(record) as Guid? ?? throw new ArgumentException($"Missing key field {this._keyFieldPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.", nameof(record));
+            var key = this._keyFieldPropertyInfo.GetValue(dataModel) as Guid? ?? throw new ArgumentException($"Missing key field {this._keyFieldPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.", nameof(dataModel));
             pointId = new PointId { Uuid = key.ToString("D") };
         }
         else
@@ -111,7 +111,7 @@ public class QdrantVectorDBRecordJsonMapper<TDataModel> : IQdrantVectorDBRecordM
         foreach (var payloadFieldPropertyInfo in this._payloadFieldsPropertyInfo)
         {
             var propertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(payloadFieldPropertyInfo);
-            var propertyValue = payloadFieldPropertyInfo.GetValue(record);
+            var propertyValue = payloadFieldPropertyInfo.GetValue(dataModel);
             pointStruct.Payload.Add(propertyName, ConvertToGrpcFieldValue(propertyValue));
         }
 
@@ -122,7 +122,7 @@ public class QdrantVectorDBRecordJsonMapper<TDataModel> : IQdrantVectorDBRecordM
             foreach (var vectorFieldPropertyInfo in this._vectorFieldsPropertyInfo)
             {
                 var propertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(vectorFieldPropertyInfo);
-                var propertyValue = vectorFieldPropertyInfo.GetValue(record);
+                var propertyValue = vectorFieldPropertyInfo.GetValue(dataModel);
                 if (propertyValue is not null)
                 {
                     var castPropertyValue = (ReadOnlyMemory<float>)propertyValue;
@@ -135,7 +135,7 @@ public class QdrantVectorDBRecordJsonMapper<TDataModel> : IQdrantVectorDBRecordM
         else
         {
             var vectorFieldPropertyInfo = this._vectorFieldsPropertyInfo.First();
-            var propertyValue = (ReadOnlyMemory<float>)vectorFieldPropertyInfo.GetValue(record);
+            var propertyValue = (ReadOnlyMemory<float>)vectorFieldPropertyInfo.GetValue(dataModel);
             pointStruct.Vectors.Vector = propertyValue.ToArray();
         }
 
@@ -143,11 +143,11 @@ public class QdrantVectorDBRecordJsonMapper<TDataModel> : IQdrantVectorDBRecordM
     }
 
     /// <inheritdoc />
-    public TDataModel MapFromGrpcToDataModel(RetrievedPoint point, GetRecordOptions? options = default)
+    public TDataModel MapFromStorageToDataModel(RetrievedPoint storageModel, GetRecordOptions? options = default)
     {
         // Get the key property name and value.
         var keyPropertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(this._keyFieldPropertyInfo);
-        var keyPropertyValue = point.Id.HasNum ? point.Id.Num as object : point.Id.Uuid as object;
+        var keyPropertyValue = storageModel.Id.HasNum ? storageModel.Id.Num as object : storageModel.Id.Uuid as object;
 
         // Create a json object to represent the point.
         var outputJsonObject = new JsonObject
@@ -164,14 +164,14 @@ public class QdrantVectorDBRecordJsonMapper<TDataModel> : IQdrantVectorDBRecordM
 
                 if (this._options.HasNamedVectors)
                 {
-                    if (point.Vectors.Vectors_.Vectors.TryGetValue(propertyName, out var vector))
+                    if (storageModel.Vectors.Vectors_.Vectors.TryGetValue(propertyName, out var vector))
                     {
                         outputJsonObject.Add(propertyName, new JsonArray(vector.Data.Select(x => JsonValue.Create(x)).ToArray()));
                     }
                 }
                 else
                 {
-                    outputJsonObject.Add(propertyName, new JsonArray(point.Vectors.Vector.Data.Select(x => JsonValue.Create(x)).ToArray()));
+                    outputJsonObject.Add(propertyName, new JsonArray(storageModel.Vectors.Vector.Data.Select(x => JsonValue.Create(x)).ToArray()));
                 }
             }
         }
@@ -180,7 +180,7 @@ public class QdrantVectorDBRecordJsonMapper<TDataModel> : IQdrantVectorDBRecordM
         foreach (var payloadProperty in this._payloadFieldsPropertyInfo)
         {
             var propertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(payloadProperty);
-            if (point.Payload.TryGetValue(propertyName, out var value))
+            if (storageModel.Payload.TryGetValue(propertyName, out var value))
             {
                 outputJsonObject.Add(propertyName, ConvertFromGrpcFieldValueToJsonNode(value));
             }

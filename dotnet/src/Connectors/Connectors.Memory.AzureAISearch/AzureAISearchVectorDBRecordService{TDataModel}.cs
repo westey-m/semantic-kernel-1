@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure;
@@ -35,7 +36,7 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
     private readonly ConcurrentDictionary<string, SearchClient> _searchClientsByIndex = new();
 
     /// <summary>Optional configuration options for this class.</summary>
-    private readonly AzureAISearchVectorDBRecordServiceOptions _options;
+    private readonly AzureAISearchVectorDBRecordServiceOptions<TDataModel> _options;
 
     /// <summary>The names of all non vector fields on the current model.</summary>
     private readonly List<string> _nonVectorFieldNames;
@@ -49,8 +50,7 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
     /// <param name="options">Optional configuration options for this class.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="searchIndexClient"/> is null.</exception>
     /// <exception cref="ArgumentException">Thrown when <paramref name="defaultCollectionName"/> or <paramref name="keyFieldName"/> is null or whitespace.</exception>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when the <see cref="AzureAISearchVectorDBRecordServiceOptions.MaxDegreeOfGetParallelism"/> setting is less than 1.</exception>
-    public AzureAISearchVectorDBRecordService(SearchIndexClient searchIndexClient, string defaultCollectionName, string keyFieldName, AzureAISearchVectorDBRecordServiceOptions? options = default)
+    public AzureAISearchVectorDBRecordService(SearchIndexClient searchIndexClient, string defaultCollectionName, string keyFieldName, AzureAISearchVectorDBRecordServiceOptions<TDataModel>? options = default)
     {
         Verify.NotNull(searchIndexClient);
         Verify.NotNullOrWhiteSpace(defaultCollectionName);
@@ -59,11 +59,11 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
         this._searchIndexClient = searchIndexClient;
         this._defaultCollectionName = defaultCollectionName;
         this._keyFieldName = keyFieldName;
-        this._options = options ?? new AzureAISearchVectorDBRecordServiceOptions();
+        this._options = options ?? new AzureAISearchVectorDBRecordServiceOptions<TDataModel>();
 
-        if (this._options.MaxDegreeOfGetParallelism is < 1)
+        if (this._options.MapperType == AzureAISearchVectorDBRecordMapperType.JsonObjectCustomerMapper && this._options.JsonObjectCustomMapper is null)
         {
-            throw new ArgumentOutOfRangeException(nameof(options), "AzureAISearchVectorStoreOptions.MaxDegreeOfGetParallelism must be greater than 0.");
+            throw new ArgumentException($"The {nameof(AzureAISearchVectorDBRecordServiceOptions<TDataModel>.JsonObjectCustomMapper)} option needs to be set if a {nameof(AzureAISearchVectorDBRecordServiceOptions<TDataModel>.MapperType)} of {nameof(AzureAISearchVectorDBRecordMapperType.JsonObjectCustomerMapper)} has been chosen.", nameof(options));
         }
 
         // Build the list of field names on the curent model that don't have the VectorStoreModelVectorAtrribute but has
@@ -85,7 +85,7 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
 
         // Get record.
         var searchClient = this.GetSearchClient(collectionName);
-        return await RunOperationAsync(() => searchClient.GetDocumentAsync<TDataModel>(key, innerOptions, cancellationToken)).ConfigureAwait(false);
+        return await RunOperationAsync(() => this.GetDocumentAndMapToDataModelAsync(searchClient, key, innerOptions, cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -97,18 +97,11 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
         var innerOptions = this.ConvertGetDocumentOptions(options);
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
 
-        // Split keys into batches
-        var maxDegreeOfGetParallelism = this._options?.MaxDegreeOfGetParallelism ?? 50;
-        var batches = keys.SplitIntoBatches(maxDegreeOfGetParallelism);
-
+        // Get records in parallel.
         var searchClient = this.GetSearchClient(collectionName);
-        foreach (var batch in batches)
-        {
-            // Get each batch
-            var tasks = batch.Select(key => RunOperationAsync(() => searchClient.GetDocumentAsync<TDataModel>(key, innerOptions, cancellationToken)));
-            var results = await Task.WhenAll(tasks).ConfigureAwait(false);
-            foreach (var result in results) { yield return result; }
-        }
+        var tasks = keys.Select(key => RunOperationAsync(() => this.GetDocumentAndMapToDataModelAsync(searchClient, key, innerOptions, cancellationToken)));
+        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+        foreach (var result in results) { yield return result; }
     }
 
     /// <inheritdoc />
@@ -144,10 +137,11 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
 
         // Create options.
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var innerOptions = new IndexDocumentsOptions { ThrowOnAnyError = true };
 
         // Upsert record.
         var searchClient = this.GetSearchClient(collectionName);
-        var results = await RunOperationAsync(() => searchClient.UploadDocumentsAsync<TDataModel>([record], new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
+        var results = await RunOperationAsync(() => this.MapToStorageModelAndUploadDocumentAsync(searchClient, [record], innerOptions, cancellationToken)).ConfigureAwait(false);
         return results.Value.Results[0].Key;
     }
 
@@ -160,17 +154,51 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
         var innerOptions = new IndexDocumentsOptions { ThrowOnAnyError = true };
 
-        // Upload data
+        // Upsert records
         var searchClient = this.GetSearchClient(collectionName);
-        var results = await RunOperationAsync(
-            () => searchClient.IndexDocumentsAsync(
-                IndexDocumentsBatch.Upload(records),
-                innerOptions,
-                cancellationToken: cancellationToken)).ConfigureAwait(false);
+        var results = await RunOperationAsync(() => this.MapToStorageModelAndUploadDocumentAsync(searchClient, records, innerOptions, cancellationToken)).ConfigureAwait(false);
 
         // Get results
         var resultKeys = results.Value.Results.Select(x => x.Key).ToList();
         foreach (var resultKey in resultKeys) { yield return resultKey; }
+    }
+
+    /// <summary>
+    /// Get the document with the given key and map it to the data model using the configured mapper type.
+    /// </summary>
+    /// <param name="searchClient">The search client to use when fetching the document.</param>
+    /// <param name="key">The key of the record to get.</param>
+    /// <param name="innerOptions">The azure ai search sdk options for geting a document.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    /// <returns>The retrieved document, mapped to the consumer data model.</returns>
+    private async Task<TDataModel> GetDocumentAndMapToDataModelAsync(SearchClient searchClient, string key, Azure.Search.Documents.GetDocumentOptions innerOptions, CancellationToken cancellationToken = default)
+    {
+        if (this._options.MapperType == AzureAISearchVectorDBRecordMapperType.JsonObjectCustomerMapper)
+        {
+            var jsonObject = await searchClient.GetDocumentAsync<JsonObject>(key, innerOptions, cancellationToken).ConfigureAwait(false);
+            return this._options.JsonObjectCustomMapper!.MapFromStorageToDataModel(jsonObject);
+        }
+
+        return await searchClient.GetDocumentAsync<TDataModel>(key, innerOptions, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Map the data model to the storage model and upload the document.
+    /// </summary>
+    /// <param name="searchClient">The search client to use when uploading the document.</param>
+    /// <param name="records">The records to upload.</param>
+    /// <param name="innerOptions">The azure ai search sdk options for uploading a document.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    /// <returns>The document upload result.</returns>
+    private async Task<Response<IndexDocumentsResult>> MapToStorageModelAndUploadDocumentAsync(SearchClient searchClient, IEnumerable<TDataModel> records, IndexDocumentsOptions innerOptions, CancellationToken cancellationToken = default)
+    {
+        if (this._options.MapperType == AzureAISearchVectorDBRecordMapperType.JsonObjectCustomerMapper)
+        {
+            var jsonObjects = records.Select(this._options.JsonObjectCustomMapper!.MapFromDataToStorageModel);
+            return await searchClient.UploadDocumentsAsync<JsonObject>(jsonObjects, innerOptions, cancellationToken).ConfigureAwait(false);
+        }
+
+        return await searchClient.UploadDocumentsAsync<TDataModel>(records, innerOptions, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

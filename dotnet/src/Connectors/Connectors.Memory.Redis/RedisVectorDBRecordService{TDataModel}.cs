@@ -168,10 +168,9 @@ public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<str
     {
         Verify.NotNull(keys);
 
-        foreach (var key in keys)
-        {
-            await this.RemoveAsync(key, options, cancellationToken).ConfigureAwait(false);
-        }
+        // Remove records in parallel.
+        var tasks = keys.Select(key => this.RemoveAsync(key, options, cancellationToken));
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

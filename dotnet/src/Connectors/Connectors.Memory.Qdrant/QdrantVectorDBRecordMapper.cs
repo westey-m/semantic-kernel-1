@@ -34,21 +34,21 @@ public class QdrantVectorDBRecordMapper : IQdrantVectorDBRecordMapper<VectorDBRe
     }
 
     /// <inheritdoc />
-    public PointStruct MapFromDataModelToGrpc(VectorDBRecord record)
+    public PointStruct MapFromDataToStorageModel(VectorDBRecord dataModel)
     {
         // Create point id.
         PointId pointId;
-        if (record.Key is ulong numberKey)
+        if (dataModel.Key is ulong numberKey)
         {
             pointId = new PointId { Num = numberKey };
         }
-        else if (record.Key is Guid guidKey)
+        else if (dataModel.Key is Guid guidKey)
         {
             pointId = new PointId { Uuid = guidKey.ToString("D") };
         }
         else
         {
-            throw new InvalidOperationException($"Unsupported key type {record.Key.GetType().FullName}.");
+            throw new InvalidOperationException($"Unsupported key type {dataModel.Key.GetType().FullName}.");
         }
 
         // Create point.
@@ -60,7 +60,7 @@ public class QdrantVectorDBRecordMapper : IQdrantVectorDBRecordMapper<VectorDBRe
         };
 
         // Add data fields.
-        foreach (var item in record.StringData)
+        foreach (var item in dataModel.StringData)
         {
             if (item.Value is null)
             {
@@ -73,18 +73,18 @@ public class QdrantVectorDBRecordMapper : IQdrantVectorDBRecordMapper<VectorDBRe
         }
 
         // Add metadata fields.
-        foreach (var item in record.Metadata)
+        foreach (var item in dataModel.Metadata)
         {
             pointStruct.Payload.Add(item.Key, ConvertToGrpcFieldValue(item.Value));
         }
 
-        if (record.Vectors.Count > 0)
+        if (dataModel.Vectors.Count > 0)
         {
             // Add named vector fields.
             if (this._options.HasNamedVectors)
             {
                 var namedVectors = new NamedVectors();
-                foreach (var item in record.Vectors)
+                foreach (var item in dataModel.Vectors)
                 {
                     if (item.Value is null)
                     {
@@ -102,12 +102,12 @@ public class QdrantVectorDBRecordMapper : IQdrantVectorDBRecordMapper<VectorDBRe
             else
             {
                 // Add single vector field.
-                if (record.Vectors.Count != 1)
+                if (dataModel.Vectors.Count != 1)
                 {
-                    throw new InvalidOperationException($"When not using named vectors, a single vector entry is expected in the NamedVectors dictionary, with an empty string key. Found {record.Vectors.Count} entries.");
+                    throw new InvalidOperationException($"When not using named vectors, a single vector entry is expected in the NamedVectors dictionary, with an empty string key. Found {dataModel.Vectors.Count} entries.");
                 }
 
-                if (!record.Vectors.TryGetValue(string.Empty, out var vectorField))
+                if (!dataModel.Vectors.TryGetValue(string.Empty, out var vectorField))
                 {
                     throw new InvalidOperationException("When not using named vectors, a single vector entry is expected in the NamedVectors dictionary, with an empty string key. Found no entry with an empty string key.");
                 }
@@ -124,17 +124,17 @@ public class QdrantVectorDBRecordMapper : IQdrantVectorDBRecordMapper<VectorDBRe
     }
 
     /// <inheritdoc />
-    public VectorDBRecord MapFromGrpcToDataModel(RetrievedPoint point, GetRecordOptions? options = null)
+    public VectorDBRecord MapFromStorageToDataModel(RetrievedPoint storageModel, GetRecordOptions? options = null)
     {
         // Create record key based type of point id.
         object key;
-        if (point.Id.HasNum)
+        if (storageModel.Id.HasNum)
         {
-            key = point.Id.Num;
+            key = storageModel.Id.Num;
         }
-        else if (point.Id.HasUuid)
+        else if (storageModel.Id.HasUuid)
         {
-            key = Guid.Parse(point.Id.Uuid);
+            key = Guid.Parse(storageModel.Id.Uuid);
         }
         else
         {
@@ -144,7 +144,7 @@ public class QdrantVectorDBRecordMapper : IQdrantVectorDBRecordMapper<VectorDBRe
         // Convert string data and metadata fields.
         var stringData = new Dictionary<string, string?>();
         var metadata = new Dictionary<string, object?>();
-        foreach (var item in point.Payload)
+        foreach (var item in storageModel.Payload)
         {
             // Convert the string data fields.
             if (this._stringDataFieldNames.Contains(item.Key))
@@ -184,18 +184,18 @@ public class QdrantVectorDBRecordMapper : IQdrantVectorDBRecordMapper<VectorDBRe
             if (this._options.HasNamedVectors)
             {
                 // Convert named vectors.
-                foreach (var item in point.Vectors.Vectors_.Vectors)
+                foreach (var item in storageModel.Vectors.Vectors_.Vectors)
                 {
                     var objectArray = Array.CreateInstance(typeof(object), item.Value.Data.Count);
                     Array.Copy(item.Value.Data.ToArray(), objectArray, item.Value.Data.Count);
                     vectors.Add(item.Key, new ReadOnlyMemory<object>((object[])objectArray));
                 }
             }
-            else if (point.Vectors is not null)
+            else if (storageModel.Vectors is not null)
             {
                 // Convert single vector.
-                var objectArray = Array.CreateInstance(typeof(object), point.Vectors.Vector.Data.Count);
-                Array.Copy(point.Vectors.Vector.Data.ToArray(), objectArray, point.Vectors.Vector.Data.Count);
+                var objectArray = Array.CreateInstance(typeof(object), storageModel.Vectors.Vector.Data.Count);
+                Array.Copy(storageModel.Vectors.Vector.Data.ToArray(), objectArray, storageModel.Vectors.Vector.Data.Count);
                 vectors.Add(string.Empty, new ReadOnlyMemory<object>((object[])objectArray));
             }
         }

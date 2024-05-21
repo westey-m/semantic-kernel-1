@@ -8,6 +8,7 @@ using Microsoft.SemanticKernel.Memory;
 using SemanticKernel.IntegrationTests.Connectors.Memory.AzureAISearch;
 using Xunit;
 using Xunit.Abstractions;
+using static SemanticKernel.IntegrationTests.Connectors.Memory.AzureAISearch.AzureAISearchVectorDBRecordServiceFixture;
 
 namespace SemanticKernel.IntegrationTests.Connectors.AzureAISearch;
 
@@ -26,10 +27,10 @@ public sealed class AzureAISearchVectorDBRecordServiceTests(ITestOutputHelper ou
     public async Task ItCanUpsertDocumentToVectorStoreAsync()
     {
         // Arrange
-        var sut = new AzureAISearchVectorDBRecordService<AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
+        var sut = new AzureAISearchVectorDBRecordService<HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
 
         // Act
-        var upsertResult = await sut.UpsertAsync(new AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo("mh5", "MyHotel5", "My Hotel is great."));
+        var upsertResult = await sut.UpsertAsync(new HotelShortInfo("mh5", "MyHotel5", "My Hotel is great."));
         var getResult = await sut.GetAsync("mh5");
 
         // Assert
@@ -48,14 +49,14 @@ public sealed class AzureAISearchVectorDBRecordServiceTests(ITestOutputHelper ou
     public async Task ItCanUpsertManyDocumentsToVectorStoreAsync()
     {
         // Arrange
-        var sut = new AzureAISearchVectorDBRecordService<AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
+        var sut = new AzureAISearchVectorDBRecordService<HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
 
         // Act
         var results = sut.UpsertBatchAsync(
             [
-                new AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo("mh1", "MyHotel1", "My Hotel is great 1."),
-                new AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo("mh2", "MyHotel2", "My Hotel is great 2."),
-                new AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo("mh3", "MyHotel3", "My Hotel is great 2."),
+                new HotelShortInfo("mh1", "MyHotel1", "My Hotel is great 1."),
+                new HotelShortInfo("mh2", "MyHotel2", "My Hotel is great 2."),
+                new HotelShortInfo("mh3", "MyHotel3", "My Hotel is great 2."),
             ]);
 
         // Assert
@@ -78,7 +79,7 @@ public sealed class AzureAISearchVectorDBRecordServiceTests(ITestOutputHelper ou
     public async Task ItCanGetDocumentFromVectorStoreAsync()
     {
         // Arrange
-        var sut = new AzureAISearchVectorDBRecordService<AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
+        var sut = new AzureAISearchVectorDBRecordService<HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
 
         // Act
         var hotel1 = await sut.GetAsync("1", new GetRecordOptions { IncludeVectors = true });
@@ -94,8 +95,7 @@ public sealed class AzureAISearchVectorDBRecordServiceTests(ITestOutputHelper ou
     public async Task ItCanGetManyDocumentsFromVectorStoreAsync()
     {
         // Arrange
-        var options = new AzureAISearchVectorDBRecordServiceOptions { MaxDegreeOfGetParallelism = 3 };
-        var sut = new AzureAISearchVectorDBRecordService<AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName, options);
+        var sut = new AzureAISearchVectorDBRecordService<HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
 
         // Act
         var hotels = sut.GetBatchAsync(["1", "2", "3", "4"], new GetRecordOptions { IncludeVectors = true });
@@ -116,7 +116,7 @@ public sealed class AzureAISearchVectorDBRecordServiceTests(ITestOutputHelper ou
     public async Task ItThrowsForPartialBatchResultAsync()
     {
         // Arrange.
-        var sut = new AzureAISearchVectorDBRecordService<AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
+        var sut = new AzureAISearchVectorDBRecordService<HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
 
         // Act.
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetBatchAsync(["1", "5", "2"]).ToListAsync());
@@ -126,8 +126,8 @@ public sealed class AzureAISearchVectorDBRecordServiceTests(ITestOutputHelper ou
     public async Task ItCanRemoveDocumentFromVectorStoreAsync()
     {
         // Arrange
-        var sut = new AzureAISearchVectorDBRecordService<AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
-        await sut.UpsertAsync(new AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo("tmp1", "TempHotel1", "This hotel will be deleted."));
+        var sut = new AzureAISearchVectorDBRecordService<HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
+        await sut.UpsertAsync(new HotelShortInfo("tmp1", "TempHotel1", "This hotel will be deleted."));
 
         // Act
         await sut.RemoveAsync("tmp1");
@@ -140,10 +140,10 @@ public sealed class AzureAISearchVectorDBRecordServiceTests(ITestOutputHelper ou
     public async Task ItCanRemoveManyDocumentsFromVectorStoreAsync()
     {
         // Arrange
-        var sut = new AzureAISearchVectorDBRecordService<AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
-        await sut.UpsertAsync(new AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo("tmp5", "TempHotel5", "This hotel will be deleted."));
-        await sut.UpsertAsync(new AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo("tmp6", "TempHotel6", "This hotel will be deleted."));
-        await sut.UpsertAsync(new AzureAISearchVectorDBRecordServiceFixture.HotelShortInfo("tmp7", "TempHotel7", "This hotel will be deleted."));
+        var sut = new AzureAISearchVectorDBRecordService<HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName, KeyFieldName);
+        await sut.UpsertAsync(new HotelShortInfo("tmp5", "TempHotel5", "This hotel will be deleted."));
+        await sut.UpsertAsync(new HotelShortInfo("tmp6", "TempHotel6", "This hotel will be deleted."));
+        await sut.UpsertAsync(new HotelShortInfo("tmp7", "TempHotel7", "This hotel will be deleted."));
 
         // Act
         await sut.RemoveBatchAsync(["tmp5", "tmp6", "tmp7"]);

@@ -141,7 +141,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
 
         // Create point from record.
-        var pointStruct = this._recordMapper.MapFromDataModelToGrpc(record);
+        var pointStruct = this._recordMapper.MapFromDataToStorageModel(record);
 
         // Upsert.
         await this._qdrantClient.UpsertAsync(collectionName, [pointStruct], true, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -157,7 +157,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
 
         // Create point from record.
-        var pointStruct = this._recordMapper.MapFromDataModelToGrpc(record);
+        var pointStruct = this._recordMapper.MapFromDataToStorageModel(record);
 
         // Upsert.
         await this._qdrantClient.UpsertAsync(collectionName, [pointStruct], true, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -173,7 +173,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
 
         // Create points from records.
-        var pointStructs = records.Select(this._recordMapper.MapFromDataModelToGrpc).ToList();
+        var pointStructs = records.Select(this._recordMapper.MapFromDataToStorageModel).ToList();
 
         // Upsert.
         await this._qdrantClient.UpsertAsync(collectionName, pointStructs, true, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -192,7 +192,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
 
         // Create points from records.
-        var pointStructs = records.Select(this._recordMapper.MapFromDataModelToGrpc).ToList();
+        var pointStructs = records.Select(this._recordMapper.MapFromDataToStorageModel).ToList();
 
         // Upsert.
         await this._qdrantClient.UpsertAsync(collectionName, pointStructs, true, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -234,7 +234,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
         // Convert the retrieved points to the target data model.
         foreach (var retrievedPoint in retrievedPoints)
         {
-            yield return this._recordMapper.MapFromGrpcToDataModel(retrievedPoint, options);
+            yield return this._recordMapper.MapFromStorageToDataModel(retrievedPoint, options);
         }
     }
 }
