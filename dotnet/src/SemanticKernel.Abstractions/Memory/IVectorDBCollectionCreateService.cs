@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -8,6 +9,7 @@ namespace Microsoft.SemanticKernel.Memory;
 /// <summary>
 /// Interface used to create new colletions in a vector database.
 /// </summary>
+[Experimental("SKEXP0001")]
 public interface IVectorDBCollectionCreateService
 {
     /// <summary>

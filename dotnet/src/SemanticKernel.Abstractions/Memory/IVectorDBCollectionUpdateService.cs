@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,6 +10,7 @@ namespace Microsoft.SemanticKernel.Memory;
 /// <summary>
 /// Interface used to do non-create operations on collections in a vector database.
 /// </summary>
+[Experimental("SKEXP0001")]
 public interface IVectorDBCollectionUpdateService
 {
     /// <summary>
@@ -16,7 +18,7 @@ public interface IVectorDBCollectionUpdateService
     /// </summary>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>The list of names of all the collections in the vector database.</returns>
-    Task<IEnumerable<string>> GetCollectionsAsync(CancellationToken cancellationToken = default);
+    Task<IEnumerable<string>> GetCollectionNamesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Check if a collection exists in the vector database.

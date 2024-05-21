@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -8,6 +9,7 @@ namespace Microsoft.SemanticKernel.Memory;
 /// <summary>
 /// An interface for adding, updating, deleting and retrieving records from a vector store.
 /// </summary>
+[Experimental("SKEXP0001")]
 public interface IVectorDBRecordService
 {
     /// <summary>

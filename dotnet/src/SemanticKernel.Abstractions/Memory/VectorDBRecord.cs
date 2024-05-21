@@ -2,12 +2,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Microsoft.SemanticKernel.Memory;
 
 /// <summary>
 /// A default record model for storing vectors and their associated data and metadata in a data store.
 /// </summary>
+[Experimental("SKEXP0001")]
 public class VectorDBRecord
 {
     /// <summary>Empty static dictionary for initialization purposes.</summary>
