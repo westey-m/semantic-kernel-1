@@ -18,17 +18,18 @@ The current abstractions are experimental and the purpose of this ADR is to prog
 
 ### Problems with current design
 
-1. The `IMemoryStore` interface has three responsibilities with different cardinalities and levels of significance to Semantic Kernel.
+1. The `IMemoryStore` interface has three responsibilities with different cardinalities.
 2. The `IMemoryStore` interface only supports a fixed schema for data storage, retrieval and search, which limits its usability by customers with existing data sets.
 2. The `IMemoryStore` implementations are opinionated around key encoding / decoding and collection name sanitization, which limits its usability by customers with existing data sets.
 
 Responsibilities:
 
-|Functional Area|Cardinality|Significance to Semantic Kernel|Avaialble alternatives|
+|Functional Area|Cardinality|Significance to Semantic Kernel|
 |-|-|-|-|
-|Collection/Index management|An implementation per store type and model|Only indirectly useful, when building a store|SDKs for each individual memory store|
-|Data Storage and Retrieval|An implementation per store type|Directly valueable for storing chat history and indirectly valueable in building a store|kernel-memory sdk/service|
-|Vector Search|An implementation per store type, model and search type|Directly valueable for RAG scenarios|No alternatives since it's a core scenario for Semantic Kernel|
+|Collection/Index create|An implementation per store type and model|Valueable when building a store and adding data|
+|Collection/Index list/exists/delete|An implementation per store type|Valueable when building a store and adding data|
+|Data Storage and Retrieval|An implementation per store type|Valueable when building a store and adding data|
+|Vector Search|An implementation per store type, model and search type|Valueable for RAG scenarios|
 
 
 ### Memory Store Today
@@ -69,29 +70,29 @@ interface IMemoryStore
 
 ### Actions
 
-1. The `IMemoryStore` should be split into three different interfaces, one for each responsibility.
+1. The `IMemoryStore` should be split into four different interfaces, one for each responsibility.
 2. The **Data Storage and Retrieval** and **Vector Search** areas should allow typed access to data and support any schema that is currently available in the customer's data store.
-3. The Collection / Index management area should be evolved to support managing common schemas for built in functionality like chat history, and would work with built in models, filters and plugins.
-4. Batching should be removed from **Data Storage and Retrieval** since it's primarily there to support bulk load and index operations and this is outside of the scope of SK.
-5. Remove opinionated behaviors from connectors. The opinionated behavior limits the ability of these connectors to be used with pre-created vector databases. As far as possible these behaviors should be moved into decorators.  Examples of opinionated behaviors:
+3. The collection / index list/exists/delete functionality should allow management of any collection regardless of schema.
+4. The collection / index create functionality should allow developers to create their own implementations and support creating first party collections for built in functionality.
+5. Remove opinionated behaviors from connectors. The opinionated behavior limits the ability of these connectors to be used with pre-created vector databases. As far as possible these behaviors should be moved into decorators or be injectable.  Examples of opinionated behaviors:
     1. The AzureAISearch connector encodes keys before storing and decodes them after retrieval since keys in Azure AI Search supports a limited set of characters.
     2. The AzureAISearch connector sanitizes collection names before using them, since Azure AI Search supports a limited set of characters.
     3. The Redis connector prepends the collection name on to the front of keys before storing records and also registers the collection name as a prefix for records to be indexed by the index.
 
 ### New Designs
 
-The separation between collection/index management and record management with batching support removed.
+The separation between collection/index management and record management.
 
 ```mermaid
 ---
 title: SK Collection/Index and Vector management
 ---
 classDiagram
-    note for IVectorDBRecordsService "Can manage records for any scenario"
-    note for IVectorDBCollectionsService "Can manage collections and\nindexes for core scenarios"
+    note for IVectorDBRecordService "Can manage records for any scenario"
+    note for IVectorDBCollectionService "Can manage collections and\nindexes for core scenarios"
 
     namespace SKAbstractions{
-        class IVectorDBCollectionsService{
+        class IVectorDBCollectionService{
             <<interface>>
             +CreateChatHistoryCollection
             +CreateSemanticCacheCollection
@@ -99,7 +100,7 @@ classDiagram
             +DeleteCollection
         }
 
-        class IVectorDBRecordsService~TModel~{
+        class IVectorDBRecordService~TModel~{
             <<interface>>
             +Upsert(TModel record) string
             +Get(string key) TModel
@@ -108,26 +109,26 @@ classDiagram
     }
 
     namespace AzureAIMemory{
-        class AzureAISearchVectorDBCollectionsService{
+        class AzureAISearchVectorDBCollectionService{
         }
 
-        class AzureAISearchVectorDBRecordsService{
+        class AzureAISearchVectorDBRecordService{
         }
     }
 
     namespace RedisMemory{
-        class RedisVectorDBCollectionsService{
+        class RedisVectorDBCollectionService{
         }
 
-        class RedisVectorDBRecordsService{
+        class RedisVectorDBRecordService{
         }
     }
 
-    IVectorDBCollectionsService <|-- AzureAISearchVectorDBCollectionsService
-    IVectorDBCollectionsService <|-- RedisVectorDBCollectionsService
+    IVectorDBCollectionService <|-- AzureAISearchVectorDBCollectionService
+    IVectorDBCollectionService <|-- RedisVectorDBCollectionService
 
-    IVectorDBRecordsService <|-- AzureAISearchVectorDBRecordsService
-    IVectorDBRecordsService <|-- RedisVectorDBRecordsService
+    IVectorDBRecordService <|-- AzureAISearchVectorDBRecordService
+    IVectorDBRecordService <|-- RedisVectorDBRecordService
 ```
 
 How to use your own schema with core sk functionality.
@@ -137,13 +138,13 @@ How to use your own schema with core sk functionality.
 title: Chat History Break Glass
 ---
 classDiagram
-    note for IVectorDBRecordsService "Can manage records for any scenario"
-    note for IVectorDBCollectionsService "Can manage collections and\nindexes for core scenarios"
-    note for CustomerHistoryVectorDBRecordsService "Decorator class for IVectorDBRecordsService that maps\nbetween the customer model to our model"
+    note for IVectorDBRecordService "Can manage records for any scenario"
+    note for IVectorDBCollectionService "Can manage collections and\nindexes for core scenarios"
+    note for CustomerHistoryVectorDBRecordService "Decorator class for IVectorDBRecordService that maps\nbetween the customer model to our model"
     note for CustomerVectorDBCollectionManagement "Creates indices using\nCustomer requirements"
 
     namespace SKAbstractions{
-        class IVectorDBCollectionsService{
+        class IVectorDBCollectionService{
             <<interface>>
             +CreateChatHistoryCollection
             +CreateSemanticCacheCollection
@@ -151,7 +152,7 @@ classDiagram
             +DeleteCollection
         }
 
-        class IVectorDBRecordsService~TModel~{
+        class IVectorDBRecordService~TModel~{
             <<interface>>
             +Upsert(TModel record) string
             +Get(string key) TModel
@@ -176,8 +177,8 @@ classDiagram
             +Dictionary~string, string~ properties
         }
 
-        class CustomerHistoryVectorDBRecordsService{
-            -IVectorDBRecordsService~CustomerHistoryModel~ _store
+        class CustomerHistoryVectorDBRecordService{
+            -IVectorDBRecordService~CustomerHistoryModel~ _store
             +Upsert(ChatHistoryModel record) string
             +Get(string key) ChatHistoryModel
             +Remove(string key) string
@@ -193,8 +194,8 @@ classDiagram
 
     namespace SKCore{
         class SemanticTextMemory{
-            -IVectorDBRecordsService~ChatHistoryModel~ _vectorDBRecordsService
-            -IVectorDBCollectionsService _collectionsService
+            -IVectorDBRecordService~ChatHistoryModel~ _VectorDBRecordService
+            -IVectorDBCollectionService _collectionsService
             -ITextEmbeddingGenerationService _embeddingGenerationService
         }
 
@@ -209,15 +210,15 @@ classDiagram
         }
     }
 
-    IVectorDBRecordsService <|-- CustomerHistoryVectorDBRecordsService
-    IVectorDBRecordsService <.. CustomerHistoryVectorDBRecordsService
-    CustomerHistoryModel <.. CustomerHistoryVectorDBRecordsService
-    ChatHistoryModel <.. CustomerHistoryVectorDBRecordsService
-    IVectorDBCollectionsService <|-- CustomerVectorDBCollectionManagement
+    IVectorDBRecordService <|-- CustomerHistoryVectorDBRecordService
+    IVectorDBRecordService <.. CustomerHistoryVectorDBRecordService
+    CustomerHistoryModel <.. CustomerHistoryVectorDBRecordService
+    ChatHistoryModel <.. CustomerHistoryVectorDBRecordService
+    IVectorDBCollectionService <|-- CustomerVectorDBCollectionManagement
 
     ChatHistoryModel <.. SemanticTextMemory
-    IVectorDBRecordsService <.. SemanticTextMemory
-    IVectorDBCollectionsService <.. SemanticTextMemory
+    IVectorDBRecordService <.. SemanticTextMemory
+    IVectorDBCollectionService <.. SemanticTextMemory
 
     ISemanticTextMemory <.. ChatHistoryPlugin
 ```
@@ -258,14 +259,23 @@ Footnotes:
 - Weaviate Dynamic = Starts as flat and switches to HNSW if the number of objects exceed a limit
 - PGA = [Pinecone Graph Algorithm](https://www.pinecone.io/blog/hnsw-not-enough/)
 
+### Support for different mappers
+
+Mapping between data models and the storage models can also require custom logic depending on the type of data model and storage model involved.
+
+I'm therefore proposing that we allow mappers to be injectable for each `VectorDBRecordService` instance. The interfaces for these would vary depending
+on the storage models used by each vector store and any unique capabilities that each vector store may have, e.g. qdrant can operate in `single` or
+`multiple named vector` modes, which means the mapper needs to know wether to set a single vector or fill a vector map.
+
+In addition to this, we should build first party mappers for each of the vector stores, which will cater for built in, generic models or use metadata to perform the mapping.
+
 ### Support for different storage schemas
 
 The different stores vary in many ways around how data is organized.
 - Some just store a record with fields on it, where fields can be a key or a data field or a vector and their type is determined at collection creation time.
 - Others separate fields by type when interacting with the api, e.g. you have to specify a key explicitly, put metadata into a metadata dictionary and put vectors into a vector array.
 
-This means that we have to know the category of field for each field in the record.
-I'm therefore proposing that we use attributes to annotate the model indicating the category of field.
+For the built in mapper, I'm proposing that we use attributes to annotate the model indicating the category of field.
 
 ```cs
     public record HotelInfo(
@@ -273,26 +283,6 @@ I'm therefore proposing that we use attributes to annotate the model indicating 
         [property: Metadata, JsonPropertyName("hotel-name")] string HotelName,
         [property: Data, JsonPropertyName("description")] string Description,
         [property: Vector(DataField = "Description"), JsonPropertyName("description-embeddings")] ReadOnlyMemory<float>? DescriptionEmbeddings);
-```
-
-### Support for standard SK vector db data model
-
-For users who don't want to implement their own data model, we should also support a default built in
-data model, that allows mapping to and from all the different store schemas.
-
-It contains a key, which is an object, since allowed key types can vary by vector store, and some vector stores allow more than one key type.
-Vectors are a dictionary of `ReadOnlyMemory<object>`, since different types of vector values are supported by some vector stores.
-StringData here means the text snippets that have been embedded using the Vectors dictionary.
-Metadata here means any other data associated stored in the record.
-
-```cs
-public class VectorDBRecord
-{
-    public object Key { get; init; }
-    public IReadOnlyDictionary<string, ReadOnlyMemory<object>?> Vectors { get; init; };
-    public IReadOnlyDictionary<string, object?> Metadata { get; init; };
-    public IReadOnlyDictionary<string, string?> StringData { get; init; };
-}
 ```
 
 ## Decision Drivers
@@ -327,7 +317,7 @@ Additional:
 #### Option 1 - Combined collection and record management
 
 ```cs
-interface IVectorDBRecordsService<TDataModel>
+interface IVectorDBRecordService<TDataModel>
 {
     Task CreateCollectionAsync(CollectionConfig collectionConfig, CancellationToken cancellationToken = default);
     Task<IEnumerable<CollectionConfig>> GetCollectionsAsync(CancellationToken cancellationToken = default);
@@ -342,24 +332,24 @@ interface IVectorDBRecordsService<TDataModel>
     Task RemoveBatchAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default);
 }
 
-class AzureAISearchVectorDBRecordsService<TDataModel>(
+class AzureAISearchVectorDBRecordService<TDataModel>(
     Azure.Search.Documents.Indexes.SearchIndexClient client,
-    Schema schema): IVectorDBRecordsService<TDataModel>;
+    Schema schema): IVectorDBRecordService<TDataModel>;
 
-class WeaviateVectorDBRecordsService<TDataModel>(
+class WeaviateVectorDBRecordService<TDataModel>(
     WeaviateClient client,
-    Schema schema): IVectorDBRecordsService<TDataModel>;
+    Schema schema): IVectorDBRecordService<TDataModel>;
 
-class RedisVectorDBRecordsService<TDataModel>(
+class RedisVectorDBRecordService<TDataModel>(
     StackExchange.Redis.IDatabase database,
-    Schema schema): IVectorDBRecordsService<TDataModel>;
+    Schema schema): IVectorDBRecordService<TDataModel>;
 ```
 
-#### Option 2 - Separated collection and record management
+#### Option 2 - Separated collection and record management with opinionated create implementations
 
 ```cs
 
-interface IVectorDBCollectionsService
+interface IVectorDBCollectionService
 {
     virtual Task CreateChatHistoryCollectionAsync(string name, CancellationToken cancellationToken = default);
     virtual Task CreateSemanticCacheCollectionAsync(string name, CancellationToken cancellationToken = default);
@@ -369,24 +359,24 @@ interface IVectorDBCollectionsService
     Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default);
 }
 
-class AzureAISearchVectorDBCollectionsService: IVectorDBCollectionsService;
-class RedisVectorDBCollectionsService: IVectorDBCollectionsService;
-class WeaviateVectorDBCollectionsService: IVectorDBCollectionsService;
+class AzureAISearchVectorDBCollectionService: IVectorDBCollectionService;
+class RedisVectorDBCollectionService: IVectorDBCollectionService;
+class WeaviateVectorDBCollectionService: IVectorDBCollectionService;
 
 // Customers can inherit from our implementations and replace just the creation scenarios to match their schemas.
-class CustomerCollectionsService: AzureAISearchVectorDBCollectionsService, IVectorDBCollectionsService;
+class CustomerCollectionsService: AzureAISearchVectorDBCollectionService, IVectorDBCollectionService;
 
 // We can also create implementations that create indices based on an MLIndex specification.
-class MLIndexAzureAISearchVectorDBCollectionsService(MLIndex mlIndexSpec): AzureAISearchVectorDBCollectionsService, IVectorDBCollectionsService;
+class MLIndexAzureAISearchVectorDBCollectionService(MLIndex mlIndexSpec): AzureAISearchVectorDBCollectionService, IVectorDBCollectionService;
 
-interface IVectorDBRecordsService<TDataModel>
+interface IVectorDBRecordService<TDataModel>
 {
-    Task<TDataModel?> GetAsync(string key, VectorDBRecordsServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
-    Task<string> RemoveAsync(string key, VectorDBRecordsServiceRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default);
-    Task<string> UpsertAsync(TDataModel record, VectorDBRecordsServiceUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    Task<TDataModel?> GetAsync(string key, VectorDBRecordServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    Task<string> RemoveAsync(string key, VectorDBRecordServiceRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    Task<string> UpsertAsync(TDataModel record, VectorDBRecordServiceUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default);
 }
 
-class AzureAISearchVectorDBRecordsService<TDataModel>(): IVectorDBRecordsService<TDataModel>;
+class AzureAISearchVectorDBRecordService<TDataModel>(): IVectorDBRecordService<TDataModel>;
 ```
 
 #### Option 3 - Separated collection and record management with collection create separate from other operations.
@@ -406,16 +396,16 @@ class AzureAISearchSemanticCacheCollectionCreateService: IVectorDBCollectionCrea
 // Customers can create their own creation scenarios to match their schemas, but can continue to use our get, does exist and delete class.
 class CustomerChatHistoryCollectionCreateService: IVectorDBCollectionCreateService;
 
-interface IVectorDBCollectionsService
+interface IVectorDBCollectionUpdateService
 {
     Task<IEnumerable<string>> GetCollectionsAsync(CancellationToken cancellationToken = default);
     Task<bool> DoesCollectionExistAsync(string name, CancellationToken cancellationToken = default);
     Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default);
 }
 
-class AzureAISearchVectorDBCollectionsService: IVectorDBCollectionsService;
-class RedisVectorDBCollectionsService: IVectorDBCollectionsService;
-class WeaviateVectorDBCollectionsService: IVectorDBCollectionsService;
+class AzureAISearchVectorDBCollectionUpdateService: IVectorDBCollectionUpdateService;
+class RedisVectorDBCollectionUpdateService: IVectorDBCollectionUpdateService;
+class WeaviateVectorDBCollectionUpdateService: IVectorDBCollectionUpdateService;
 
 ```
 
@@ -430,7 +420,7 @@ interface IVectorDBCollectionCreateService
     virtual Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default);
 }
 
-interface IVectorDBCollectionsUpdateService
+interface IVectorDBCollectionUpdateService
 {
     Task<IEnumerable<string>> GetCollectionsAsync(CancellationToken cancellationToken = default);
     Task<bool> DoesCollectionExistAsync(string name, CancellationToken cancellationToken = default);
@@ -438,14 +428,14 @@ interface IVectorDBCollectionsUpdateService
 }
 
 // DB Specific Update implementations
-class AzureAISearchVectorDBCollectionUpdateService: IVectorDBCollectionsUpdateService;
-class RedisVectorDBCollectionUpdateService: IVectorDBCollectionsUpdateService;
+class AzureAISearchVectorDBCollectionUpdateService: IVectorDBCollectionUpdateService;
+class RedisVectorDBCollectionUpdateService: IVectorDBCollectionUpdateService;
 
 // Combined Create + Update Interface
-interface IVectorDBCollectionsService: IVectorDBCollectionCreateService, IVectorDBCollectionsUpdateService {}
+interface IVectorDBCollectionService: IVectorDBCollectionCreateService, IVectorDBCollectionUpdateService {}
 
 // Base abstract class that forwards non-create operations to provided service.
-abstract class VectorDBCollectionsService(IVectorDBCollectionsUpdateService collectionsUpdateService): IVectorDBCollectionsService
+abstract class VectorDBCollectionService(IVectorDBCollectionUpdateService collectionsUpdateService): IVectorDBCollectionService
 {
     public abstract Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default);
     public Task<IEnumerable<string>> GetCollectionsAsync(CancellationToken cancellationToken = default) { return collectionsUpdateService.GetCollectionsAsync(cancellationToken); }
@@ -454,12 +444,12 @@ abstract class VectorDBCollectionsService(IVectorDBCollectionsUpdateService coll
 }
 
 // Collections service implementations, that inherit from base class, and just adds the different creation implementations.
-class AzureAISearchChatHistoryVectorDBService(AzureAISearchVectorDBCollectionUpdateService updateService): VectorDBCollectionsService(updateService);
-class AzureAISearchSemanticCacheVectorDBService(AzureAISearchVectorDBCollectionUpdateService updateService): VectorDBCollectionsService(updateService);
-class AzureAISearchMLIndexVectorDBService(AzureAISearchVectorDBCollectionUpdateService updateService): VectorDBCollectionsService(updateService);
+class AzureAISearchChatHistoryVectorDBService(AzureAISearchVectorDBCollectionUpdateService updateService): VectorDBCollectionService(updateService);
+class AzureAISearchSemanticCacheVectorDBService(AzureAISearchVectorDBCollectionUpdateService updateService): VectorDBCollectionService(updateService);
+class AzureAISearchMLIndexVectorDBService(AzureAISearchVectorDBCollectionUpdateService updateService): VectorDBCollectionService(updateService);
 
 // Customer collections service implementation, that uses the base Azure AI Search implementation for get, doesExist and delete, but adds it's own creation.
-class ContosoProductsVectorDBCollectionsService(AzureAISearchVectorDBCollectionUpdateService updateService): VectorDBCollectionsService(updateService);
+class ContosoProductsVectorDBCollectionService(AzureAISearchVectorDBCollectionUpdateService updateService): VectorDBCollectionService(updateService);
 
 ```
 
@@ -469,12 +459,12 @@ Same as option 3 / 4, plus:
 
 ```cs
 
-interface IVectorService : IVectorDBCollectionCreateService, IVectorDBCollectionsService, IVectorDBRecordsService
+interface IVectorDBService : IVectorDBCollectionCreateService, IVectorDBCollectionService, IVectorDBRecordService
 {    
 }
 
 // Create a static factory that produces one of these, so only the interface is public, not the class.
-internal class CombinedVectorService<TDataModel>(IVectorDBCollectionCreateService creation, IVectorDBCollectionsService collections, IVectorDBRecordsService<TDataModel> records): IVectorService
+internal class CombinedVectorService<TDataModel>(IVectorDBCollectionCreateService creation, IVectorDBCollectionService collections, IVectorDBRecordService<TDataModel> records): IVectorDBService
 {
 }
 
@@ -484,14 +474,14 @@ internal class CombinedVectorService<TDataModel>(IVectorDBCollectionCreateServic
 
 Chosen option: 4 + 5.
 
-- Collection setup and configuration varies considerably across different databases.
-- Collection setup and configuration outside of some core supported scenarios is not part of the value proposition of SK.
-- Vector storage, even with custom schemas can be supported using a single implementation.
-- We will therefore need to support multiple collection service implementations per store type and a single vector store implementation per store type.
+- Collection create and configuration varies considerably across different schemas, even for the same database, but also varies by database type.
+- Collection list, exists and delete is the same across different schemas, but varies by database type.
+- Vector storage, even with custom schemas can be supported using a single implementation per database type.
+- We will therefore need to support multiple collection create service implementations per store type, a single colelction update service implementation per store type, and a single vector store implementation per store type.
 - At the same time we can layer interfaces on top that allow easy combined access to colleciton and record management.
 
 
-###  Question 2: Collection name and key value normalization in decorator or main class.
+###  Question 2: Collection name and key value normalization in store, decorator or via injection.
 
 #### Option 1 - Normalization in main vector store
 
@@ -499,7 +489,7 @@ Chosen option: 4 + 5.
 - Cons: The normalization needs to vary separately from the vector store, so this will not work
 
 ```cs
-    public class AzureAISearchVectorDBRecordsService<TDataModel> : IVectorDBRecordsService<TDataModel>
+    public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordService<TDataModel>
     {
         ...
 
@@ -522,23 +512,23 @@ Chosen option: 4 + 5.
 - Pros: No code executed when no normalization required.
 - Pros: Easy to package matching encoders/decoders together.
 - Pros: Easier to obsolete encoding/normalization as a concept.
-- Cons: Need to implement the full VectorDBRecordsService interface.
+- Cons: Need to implement the full VectorDBRecordService interface.
 
 ```cs
-    new KeyNormalizingAISearchVectorDBRecordsService<MyModel>(
+    new KeyNormalizingAISearchVectorDBRecordService<MyModel>(
         "keyField",
-         new AzureAISearchVectorDBRecordsService<MyModel>(...));
+         new AzureAISearchVectorDBRecordService<MyModel>(...));
 ```
 
 #### Option 3 - Normalization via optional function parameters to vector store constructor
 
 - Pros: Allows normalization to vary separately from the vector store.
-- Pros: No need to implement the full VectorDBRecordsService interface.
+- Pros: No need to implement the full VectorDBRecordService interface.
 - Pros: Can modify values on serialization without changing the incoming record.
 - Cons: Harder to package matching encoders/decoders together.
 
 ```cs
-public class AzureAISearchVectorDBRecordsService<TDataModel>(StoreOptions options);
+public class AzureAISearchVectorDBRecordService<TDataModel>(StoreOptions options);
 
 public class StoreOptions
 {
@@ -563,7 +553,7 @@ provide their own encoding / decoding behavior.
 ```cs
 public class MyMemoryStore()
 {
-    public async Task<TDataModel?> GetAsync(string collectionName, string key, VectorDBRecordsServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    public async Task<TDataModel?> GetAsync(string collectionName, string key, VectorDBRecordServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
 }
 ```
 
@@ -572,7 +562,7 @@ public class MyMemoryStore()
 ```cs
 public class MyMemoryStore(string defaultCollectionName)
 {
-    public async Task<TDataModel?> GetAsync(string key, VectorDBRecordsServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    public async Task<TDataModel?> GetAsync(string key, VectorDBRecordServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
 }
 ```
 
@@ -581,21 +571,25 @@ public class MyMemoryStore(string defaultCollectionName)
 ```cs
 public class MyMemoryStore(string defaultCollectionName)
 {
-    public async Task<TDataModel?> GetAsync(string key, VectorDBRecordsServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    public async Task<TDataModel?> GetAsync(string key, VectorDBRecordServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
 }
 
-public class VectorDBRecordsServiceGetDocumentOptions
+public class VectorDBRecordServiceGetDocumentOptions
 {
     public string CollectionName { get; init; };
 }
 ```
+
+#### Decision Outcome
+
+Chosen option 3, to allow developers more choice.
 
 ### Question 4: How to normalize ids across different vector stores where different types are supported.
 
 #### Option 1 - Take a string and convert to a type that was specified on the constructor
 
 ```cs
-public async Task<TDataModel?> GetAsync(string key, VectorDBRecordsServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+public async Task<TDataModel?> GetAsync(string key, VectorDBRecordServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
 {
     var convertedKey = this.keyType switch
     {
@@ -613,7 +607,7 @@ public async Task<TDataModel?> GetAsync(string key, VectorDBRecordsServiceGetDoc
 #### Option 2 - Take an object and cast to a type that was specified on the constructor.
 
 ```cs
-public async Task<TDataModel?> GetAsync(object key, VectorDBRecordsServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+public async Task<TDataModel?> GetAsync(object key, VectorDBRecordServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
 {
     var convertedKey = this.keyType switch
     {
@@ -637,7 +631,7 @@ public async Task<TDataModel?> GetAsync(object key, VectorDBRecordsServiceGetDoc
 #### Option 3 - Multiple overloads where we convert where possible, throw when not possible.
 
 ```cs
-public async Task<TDataModel?> GetAsync(string key, VectorDBRecordsServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+public async Task<TDataModel?> GetAsync(string key, VectorDBRecordServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
 {
     var convertedKey = this.keyType switch
     {
@@ -646,7 +640,7 @@ public async Task<TDataModel?> GetAsync(string key, VectorDBRecordsServiceGetDoc
         KeyType.GUID => Guid.Parse(key)
     }
 }
-public async Task<TDataModel?> GetAsync(int key, VectorDBRecordsServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+public async Task<TDataModel?> GetAsync(int key, VectorDBRecordServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
 {
     var convertedKey = this.keyType switch
     {
@@ -655,7 +649,7 @@ public async Task<TDataModel?> GetAsync(int key, VectorDBRecordsServiceGetDocume
         KeyType.GUID => throw new InvalidOperationException($"The provided key must be convertable to a GUID.")
     }
 }
-public async Task<TDataModel?> GetAsync(GUID key, VectorDBRecordsServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
+public async Task<TDataModel?> GetAsync(GUID key, VectorDBRecordServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default)
 {
     var convertedKey = this.keyType switch
     {
@@ -672,14 +666,14 @@ public async Task<TDataModel?> GetAsync(GUID key, VectorDBRecordsServiceGetDocum
 #### Option 4 - Add key type as generic to interface
 
 ```cs
-interface IVectorDBRecordsService<TDataModel, TKeyType>
+interface IVectorDBRecordService<TDataModel, TKeyType>
 {
-    Task<TDataModel?> GetAsync(TKeyType key, VectorDBRecordsServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    Task<TDataModel?> GetAsync(TKeyType key, VectorDBRecordServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
 }
 
-class AzureAISearchVectorDBRecordsService<TDataModel, TKeyType>: IVectorDBRecordsService<TDataModel, TKeyType>
+class AzureAISearchVectorDBRecordService<TDataModel, TKeyType>: IVectorDBRecordService<TDataModel, TKeyType>
 {
-    public AzureAISearchVectorDBRecordsService()
+    public AzureAISearchVectorDBRecordService()
     {
         // Check if TKeyType matches the type of the field marked as a key on TDataModel and throw if they don't match.
         // Also check if keytype is one of the allowed types for Azure AI Search and throw if it isn't.
@@ -693,18 +687,8 @@ class AzureAISearchVectorDBRecordsService<TDataModel, TKeyType>: IVectorDBRecord
 
 #### Decision Outcome
 
-Chosen option 3, because we need to support customers / databases who use collections as a partitioning strategy, where e.g. the name may be a user id.
-At the same time, the sdk should be easy to use for people who don't need this.
-So requiring customers to provide a default collection name, but they can optionally choose to provide a per operation collection name per operation as well.
-This also has the benefit of having an options object for each operation, so making the api future proof for extensibility.
-
-## More Information
-
-{You might want to provide additional evidence/confidence for the decision outcome here and/or
-document the team agreement on the decision and/or
-define when this decision when and how the decision should be realized and if/when it should be re-visited and/or
-how the decision is validated.
-Links to other decisions and resources might appear here as well.}
+Chosen option 4, since it is forwards compatible with any complex key types we may need to support but still allows
+each implementation to hardcode allowed key types if the vector db only supports certain key types.
 
 ## Roadmap
 
