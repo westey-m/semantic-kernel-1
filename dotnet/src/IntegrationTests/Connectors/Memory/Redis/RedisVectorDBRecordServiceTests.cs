@@ -8,6 +8,7 @@ using Microsoft.SemanticKernel.Connectors.Redis;
 using Microsoft.SemanticKernel.Memory;
 using Xunit;
 using Xunit.Abstractions;
+using static SemanticKernel.IntegrationTests.Connectors.Memory.Redis.RedisVectorDBRecordServiceFixture;
 
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.Redis;
 
@@ -23,7 +24,7 @@ public sealed class RedisVectorDBRecordServiceTests(ITestOutputHelper output, Re
     public async Task ItCanGetDocumentFromVectorStoreAsync()
     {
         // Arrange.
-        var sut = new RedisVectorDBRecordService<RedisVectorDBRecordServiceFixture.HotelInfo>(fixture.Database, "hotels", new RedisVectorDBRecordServiceOptions { PrefixCollectionNameToKeyNames = true });
+        var sut = new RedisVectorDBRecordService<HotelInfo>(fixture.Database, "hotels", new RedisVectorDBRecordServiceOptions<HotelInfo> { PrefixCollectionNameToKeyNames = true });
 
         // Act.
         var getResult = await sut.GetAsync("H10");
@@ -45,7 +46,7 @@ public sealed class RedisVectorDBRecordServiceTests(ITestOutputHelper output, Re
     public async Task ItCanGetDocumentFromVectorStoreWithEmbeddingsAsync()
     {
         // Arrange.
-        var sut = new RedisVectorDBRecordService<RedisVectorDBRecordServiceFixture.HotelInfo>(fixture.Database, "hotels", new RedisVectorDBRecordServiceOptions { PrefixCollectionNameToKeyNames = true });
+        var sut = new RedisVectorDBRecordService<HotelInfo>(fixture.Database, "hotels", new RedisVectorDBRecordServiceOptions<HotelInfo> { PrefixCollectionNameToKeyNames = true });
 
         // Act.
         var getResult = await sut.GetAsync("H10", new GetRecordOptions { IncludeVectors = true });
@@ -67,7 +68,7 @@ public sealed class RedisVectorDBRecordServiceTests(ITestOutputHelper output, Re
     public async Task ItFailsToGetDocumentsWithInvalidSchemaAsync()
     {
         // Arrange.
-        var sut = new RedisVectorDBRecordService<RedisVectorDBRecordServiceFixture.HotelInfo>(fixture.Database, "hotels", new RedisVectorDBRecordServiceOptions { PrefixCollectionNameToKeyNames = true });
+        var sut = new RedisVectorDBRecordService<HotelInfo>(fixture.Database, "hotels", new RedisVectorDBRecordServiceOptions<HotelInfo> { PrefixCollectionNameToKeyNames = true });
 
         // Act & Assert.
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("H13-Invalid", new GetRecordOptions { IncludeVectors = true }));
@@ -77,7 +78,7 @@ public sealed class RedisVectorDBRecordServiceTests(ITestOutputHelper output, Re
     public async Task ItCanGetManyDocumentsFromVectorStoreAsync()
     {
         // Arrange
-        var sut = new RedisVectorDBRecordService<RedisVectorDBRecordServiceFixture.HotelInfo>(fixture.Database, "hotels", new RedisVectorDBRecordServiceOptions { PrefixCollectionNameToKeyNames = true });
+        var sut = new RedisVectorDBRecordService<HotelInfo>(fixture.Database, "hotels", new RedisVectorDBRecordServiceOptions<HotelInfo> { PrefixCollectionNameToKeyNames = true });
 
         // Act
         var hotels = sut.GetBatchAsync(["H10", "H11"], new GetRecordOptions { IncludeVectors = true });
@@ -98,7 +99,7 @@ public sealed class RedisVectorDBRecordServiceTests(ITestOutputHelper output, Re
     public async Task ItThrowsForPartialBatchResultAsync()
     {
         // Arrange.
-        var sut = new RedisVectorDBRecordService<RedisVectorDBRecordServiceFixture.HotelInfo>(fixture.Database, "hotels", new RedisVectorDBRecordServiceOptions { PrefixCollectionNameToKeyNames = true });
+        var sut = new RedisVectorDBRecordService<HotelInfo>(fixture.Database, "hotels", new RedisVectorDBRecordServiceOptions<HotelInfo> { PrefixCollectionNameToKeyNames = true });
 
         // Act & Assert.
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetBatchAsync(["H10", "H15", "H11"], new GetRecordOptions { IncludeVectors = true }).ToListAsync());
@@ -108,9 +109,9 @@ public sealed class RedisVectorDBRecordServiceTests(ITestOutputHelper output, Re
     public async Task ItCanRemoveDocumentFromVectorStoreAsync()
     {
         // Arrange.
-        var sut = new RedisVectorDBRecordService<RedisVectorDBRecordServiceFixture.HotelInfo>(fixture.Database, "hotels", new RedisVectorDBRecordServiceOptions { PrefixCollectionNameToKeyNames = true });
-        var address = new RedisVectorDBRecordServiceFixture.HotelAddress("Seattle", "USA");
-        var record = new RedisVectorDBRecordServiceFixture.HotelInfo("TMP20", "My Hotel 20", 20, true, address, "This is a great hotel.", Array.Empty<float>());
+        var sut = new RedisVectorDBRecordService<HotelInfo>(fixture.Database, "hotels", new RedisVectorDBRecordServiceOptions<HotelInfo> { PrefixCollectionNameToKeyNames = true });
+        var address = new HotelAddress("Seattle", "USA");
+        var record = new HotelInfo("TMP20", "My Hotel 20", 20, true, address, "This is a great hotel.", Array.Empty<float>());
         await sut.UpsertAsync(record);
 
         // Act.
@@ -124,9 +125,9 @@ public sealed class RedisVectorDBRecordServiceTests(ITestOutputHelper output, Re
     public async Task ItCanUpsertDocumentToVectorStoreAsync()
     {
         // Arrange.
-        var sut = new RedisVectorDBRecordService<RedisVectorDBRecordServiceFixture.HotelInfo>(fixture.Database, "hotels", new RedisVectorDBRecordServiceOptions { PrefixCollectionNameToKeyNames = true });
-        var address = new RedisVectorDBRecordServiceFixture.HotelAddress("Seattle", "USA");
-        var record = new RedisVectorDBRecordServiceFixture.HotelInfo("H1", "My Hotel 1", 1, true, address, "This is a great hotel.", new[] { 30f, 31f, 32f, 33f });
+        var sut = new RedisVectorDBRecordService<HotelInfo>(fixture.Database, "hotels", new RedisVectorDBRecordServiceOptions<HotelInfo> { PrefixCollectionNameToKeyNames = true });
+        var address = new HotelAddress("Seattle", "USA");
+        var record = new HotelInfo("H1", "My Hotel 1", 1, true, address, "This is a great hotel.", new[] { 30f, 31f, 32f, 33f });
 
         // Act.
         var upsertResult = await sut.UpsertAsync(record);

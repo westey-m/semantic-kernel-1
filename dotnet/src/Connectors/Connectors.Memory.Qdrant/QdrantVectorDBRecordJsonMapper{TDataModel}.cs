@@ -15,7 +15,7 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 /// Mapper between a Qdrant record and the consumer data model that uses json as an intermediary to allow supporting a wide range of models.
 /// </summary>
 /// <typeparam name="TDataModel">The consumer data model to map to or from.</typeparam>
-public class QdrantVectorDBRecordJsonMapper<TDataModel> : IQdrantVectorDBRecordMapper<TDataModel>
+internal class QdrantVectorDBRecordJsonMapper<TDataModel> : IVectorDBRecordMapper<TDataModel, PointStruct>
     where TDataModel : class
 {
     /// <summary>A set of types that a key on the provided model may have.</summary>
@@ -143,7 +143,7 @@ public class QdrantVectorDBRecordJsonMapper<TDataModel> : IQdrantVectorDBRecordM
     }
 
     /// <inheritdoc />
-    public TDataModel MapFromStorageToDataModel(RetrievedPoint storageModel, GetRecordOptions? options = default)
+    public TDataModel MapFromStorageToDataModel(PointStruct storageModel, GetRecordOptions? options = default)
     {
         // Get the key property name and value.
         var keyPropertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(this._keyFieldPropertyInfo);

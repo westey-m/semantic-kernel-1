@@ -11,7 +11,7 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 /// <summary>
 /// Mapper between a Qdrant record and <see cref="VectorDBRecord"/>.
 /// </summary>
-public class QdrantVectorDBRecordMapper : IQdrantVectorDBRecordMapper<VectorDBRecord>
+public class QdrantVectorDBRecordMapper : IVectorDBRecordMapper<VectorDBRecord, PointStruct>
 {
     /// <summary>Optional options to use when doing the model conversion.</summary>
     private readonly QdrantVectorDBRecordMapperOptions _options;
@@ -124,7 +124,7 @@ public class QdrantVectorDBRecordMapper : IQdrantVectorDBRecordMapper<VectorDBRe
     }
 
     /// <inheritdoc />
-    public VectorDBRecord MapFromStorageToDataModel(RetrievedPoint storageModel, GetRecordOptions? options = null)
+    public VectorDBRecord MapFromStorageToDataModel(PointStruct storageModel, GetRecordOptions? options = null)
     {
         // Create record key based type of point id.
         object key;

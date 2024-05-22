@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Text.Json.Nodes;
+using Microsoft.SemanticKernel.Memory;
 
 namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 
@@ -21,5 +22,5 @@ public class AzureAISearchVectorDBRecordServiceOptions<TDataModel>
     /// <remarks>
     /// Set <see cref="MapperType"/> to <see cref="AzureAISearchVectorDBRecordMapperType.JsonObjectCustomerMapper"/> to use this mapper."/>
     /// </remarks>
-    public IAzureAISearchVectorDBRecordMapper<TDataModel, JsonObject>? JsonObjectCustomMapper { get; init; } = null;
+    public IVectorDBRecordMapper<TDataModel, JsonObject>? JsonObjectCustomMapper { get; init; } = null;
 }

@@ -26,28 +26,45 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
     /// <summary>The name of the collection to use with this store if none is provided for any individual operation.</summary>
     private readonly string _defaultCollectionName;
 
+    /// <summary>Optional configuration options for this class.</summary>
+    private readonly QdrantVectorDBRecordServiceOptions<TDataModel> _options;
+
     /// <summary>A mapper to use for converting between qdrant point and consumer models.</summary>
-    private readonly IQdrantVectorDBRecordMapper<TDataModel> _recordMapper;
+    private readonly IVectorDBRecordMapper<TDataModel, PointStruct> _mapper;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="QdrantVectorDBRecordService{TDataModel}"/> class.
     /// </summary>
     /// <param name="qdrantClient">Qdrant client that can be used to manage the points in a Qdrant store.</param>
     /// <param name="defaultCollectionName">The name of the collection to use with this store if none is provided for any individual operation.</param>
-    /// <param name="recordMapper">A mapper to use for converting between qdrant point and consumer models.</param>
+    /// <param name="options">Optional configuration options for this class.</param>
     /// <exception cref="ArgumentNullException"></exception>
     /// <exception cref="ArgumentException"></exception>
-    public QdrantVectorDBRecordService(QdrantClient qdrantClient, string defaultCollectionName, IQdrantVectorDBRecordMapper<TDataModel> recordMapper)
+    public QdrantVectorDBRecordService(QdrantClient qdrantClient, string defaultCollectionName, QdrantVectorDBRecordServiceOptions<TDataModel>? options = null)
     {
         // Verify.
         Verify.NotNull(qdrantClient);
         Verify.NotNullOrWhiteSpace(defaultCollectionName);
-        Verify.NotNull(recordMapper);
 
         // Assign.
         this._qdrantClient = qdrantClient;
         this._defaultCollectionName = defaultCollectionName;
-        this._recordMapper = recordMapper;
+        this._options = options ?? new QdrantVectorDBRecordServiceOptions<TDataModel>();
+
+        // Assign Mapper.
+        if (this._options.MapperType == QdrantVectorDBRecordMapperType.QdrantPointStructCustomMapper)
+        {
+            if (this._options.PointStructCustomMapper is null)
+            {
+                throw new ArgumentException($"The {nameof(QdrantVectorDBRecordServiceOptions<TDataModel>.PointStructCustomMapper)} option needs to be set if a {nameof(QdrantVectorDBRecordServiceOptions<TDataModel>.MapperType)} of {nameof(QdrantVectorDBRecordMapperType.QdrantPointStructCustomMapper)} has been chosen.", nameof(options));
+            }
+
+            this._mapper = this._options.PointStructCustomMapper;
+        }
+        else
+        {
+            this._mapper = new QdrantVectorDBRecordJsonMapper<TDataModel>(new QdrantVectorDBRecordJsonMapperOptions { HasNamedVectors = this._options.HasNamedVectors });
+        }
     }
 
     /// <inheritdoc />
@@ -141,7 +158,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
 
         // Create point from record.
-        var pointStruct = this._recordMapper.MapFromDataToStorageModel(record);
+        var pointStruct = this._mapper.MapFromDataToStorageModel(record);
 
         // Upsert.
         await this._qdrantClient.UpsertAsync(collectionName, [pointStruct], true, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -157,7 +174,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
 
         // Create point from record.
-        var pointStruct = this._recordMapper.MapFromDataToStorageModel(record);
+        var pointStruct = this._mapper.MapFromDataToStorageModel(record);
 
         // Upsert.
         await this._qdrantClient.UpsertAsync(collectionName, [pointStruct], true, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -173,7 +190,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
 
         // Create points from records.
-        var pointStructs = records.Select(this._recordMapper.MapFromDataToStorageModel).ToList();
+        var pointStructs = records.Select(this._mapper.MapFromDataToStorageModel).ToList();
 
         // Upsert.
         await this._qdrantClient.UpsertAsync(collectionName, pointStructs, true, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -192,7 +209,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
 
         // Create points from records.
-        var pointStructs = records.Select(this._recordMapper.MapFromDataToStorageModel).ToList();
+        var pointStructs = records.Select(this._mapper.MapFromDataToStorageModel).ToList();
 
         // Upsert.
         await this._qdrantClient.UpsertAsync(collectionName, pointStructs, true, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -234,7 +251,19 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
         // Convert the retrieved points to the target data model.
         foreach (var retrievedPoint in retrievedPoints)
         {
-            yield return this._recordMapper.MapFromStorageToDataModel(retrievedPoint, options);
+            var pointStruct = new PointStruct
+            {
+                Id = retrievedPoint.Id,
+                Vectors = retrievedPoint.Vectors,
+                Payload = { }
+            };
+
+            foreach (KeyValuePair<string, Value> payloadEntry in retrievedPoint.Payload)
+            {
+                pointStruct.Payload.Add(payloadEntry.Key, payloadEntry.Value);
+            }
+
+            yield return this._mapper.MapFromStorageToDataModel(pointStruct, options);
         }
     }
 }
