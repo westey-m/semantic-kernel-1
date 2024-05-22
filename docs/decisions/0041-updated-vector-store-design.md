@@ -89,27 +89,38 @@ title: SK Collection/Index and Vector management
 ---
 classDiagram
     note for IVectorDBRecordService "Can manage records for any scenario"
-    note for IVectorDBCollectionService "Can manage collections and\nindexes for core scenarios"
+    note for IVectorDBCollectionCreateService "Can create collections and\nindexes"
+    note for IVectorDBCollectionUpdateService "Can retrieve/delete any collections and\nindexes"
 
     namespace SKAbstractions{
-        class IVectorDBCollectionService{
+        class IVectorDBCollectionCreateService{
             <<interface>>
-            +CreateChatHistoryCollection
-            +CreateSemanticCacheCollection
-            +GetCollections
+            +CreateCollection
+        }
+
+        class IVectorDBCollectionUpdateService{
+            <<interface>>
+            +GetCollectionNames
+            +DoesCollectionExist
             +DeleteCollection
         }
 
         class IVectorDBRecordService~TModel~{
             <<interface>>
             +Upsert(TModel record) string
+            +UpserBatch(TModel record) string
             +Get(string key) TModel
-            +Remove(string key) string
+            +GetBatch(string[] keys) TModel[]
+            +Remove(string key)
+            +RemoveBatch(string[] keys)
         }
     }
 
     namespace AzureAIMemory{
-        class AzureAISearchVectorDBCollectionService{
+        class AzureAISearchVectorDBCollectionCreateService{
+        }
+
+        class AzureAISearchVectorDBCollectionUpdateService{
         }
 
         class AzureAISearchVectorDBRecordService{
@@ -117,17 +128,22 @@ classDiagram
     }
 
     namespace RedisMemory{
-        class RedisVectorDBCollectionService{
+        class RedisVectorDBCollectionCreateService{
+        }
+
+        class RedisVectorDBCollectionUpdateService{
         }
 
         class RedisVectorDBRecordService{
         }
     }
 
-    IVectorDBCollectionService <|-- AzureAISearchVectorDBCollectionService
-    IVectorDBCollectionService <|-- RedisVectorDBCollectionService
-
+    IVectorDBCollectionCreateService <|-- AzureAISearchVectorDBCollectionCreateService
+    IVectorDBCollectionUpdateService <|-- AzureAISearchVectorDBCollectionUpdateService
     IVectorDBRecordService <|-- AzureAISearchVectorDBRecordService
+
+    IVectorDBCollectionCreateService <|-- RedisVectorDBCollectionCreateService
+    IVectorDBCollectionUpdateService <|-- RedisVectorDBCollectionUpdateService
     IVectorDBRecordService <|-- RedisVectorDBRecordService
 ```
 
@@ -138,17 +154,22 @@ How to use your own schema with core sk functionality.
 title: Chat History Break Glass
 ---
 classDiagram
-    note for IVectorDBRecordService "Can manage records for any scenario"
-    note for IVectorDBCollectionService "Can manage collections and\nindexes for core scenarios"
+    note for IVectorDBRecordService "Can manage records\nfor any scenario"
+    note for IVectorDBCollectionCreateService "Can create collections\nan dindexes"
+    note for IVectorDBCollectionUpdateService "Can retrieve/delete any\ncollections and indexes"
+    note for CustomerHistoryVectorDBCollectionCreateService "Creates history collections and indices\nusing Customer requirements"
     note for CustomerHistoryVectorDBRecordService "Decorator class for IVectorDBRecordService that maps\nbetween the customer model to our model"
-    note for CustomerVectorDBCollectionManagement "Creates indices using\nCustomer requirements"
 
     namespace SKAbstractions{
-        class IVectorDBCollectionService{
+        class IVectorDBCollectionCreateService{
             <<interface>>
-            +CreateChatHistoryCollection
-            +CreateSemanticCacheCollection
-            +GetCollections
+            +CreateCollection
+        }
+
+        class IVectorDBCollectionUpdateService{
+            <<interface>>
+            +GetCollectionNames
+            +DoesCollectionExist
             +DeleteCollection
         }
 
@@ -177,18 +198,15 @@ classDiagram
             +Dictionary~string, string~ properties
         }
 
+        class CustomerHistoryVectorDBCollectionCreateService{
+            +CreateCollection
+        }
+
         class CustomerHistoryVectorDBRecordService{
             -IVectorDBRecordService~CustomerHistoryModel~ _store
             +Upsert(ChatHistoryModel record) string
             +Get(string key) ChatHistoryModel
             +Remove(string key) string
-        }
-
-        class CustomerVectorDBCollectionManagement{
-            +CreateChatHistoryCollection
-            +CreateSemanticCacheCollection
-            +GetCollections
-            +DeleteCollection
         }
     }
 
@@ -210,15 +228,16 @@ classDiagram
         }
     }
 
+    IVectorDBCollectionCreateService <|-- CustomerHistoryVectorDBCollectionCreateService
+
     IVectorDBRecordService <|-- CustomerHistoryVectorDBRecordService
     IVectorDBRecordService <.. CustomerHistoryVectorDBRecordService
     CustomerHistoryModel <.. CustomerHistoryVectorDBRecordService
     ChatHistoryModel <.. CustomerHistoryVectorDBRecordService
-    IVectorDBCollectionService <|-- CustomerVectorDBCollectionManagement
 
     ChatHistoryModel <.. SemanticTextMemory
     IVectorDBRecordService <.. SemanticTextMemory
-    IVectorDBCollectionService <.. SemanticTextMemory
+    IVectorDBCollectionCreateService <.. SemanticTextMemory
 
     ISemanticTextMemory <.. ChatHistoryPlugin
 ```
