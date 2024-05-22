@@ -3,13 +3,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 using Microsoft.SemanticKernel.Memory;
-using NRedisStack.Search;
 using NRedisStack.RedisStackCommands;
+using NRedisStack.Search;
 using StackExchange.Redis;
 using Xunit;
 

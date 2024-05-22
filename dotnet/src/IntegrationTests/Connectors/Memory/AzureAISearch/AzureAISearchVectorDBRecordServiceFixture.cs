@@ -1,19 +1,19 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
-using System.Threading.Tasks;
-using Azure.Search.Documents.Indexes.Models;
-using Azure.Search.Documents.Indexes;
 using System.Text.Json.Serialization;
-using Azure.Search.Documents.Models;
-using Azure.Search.Documents;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Azure;
+using Azure.Search.Documents;
+using Azure.Search.Documents.Indexes;
+using Azure.Search.Documents.Indexes.Models;
+using Azure.Search.Documents.Models;
+using Microsoft.Extensions.Configuration;
+using Microsoft.SemanticKernel.Memory;
+using SemanticKernel.IntegrationTests.Connectors.AzureAISearch;
 using SemanticKernel.IntegrationTests.TestSettings.Memory;
 using Xunit;
-using Microsoft.Extensions.Configuration;
-using SemanticKernel.IntegrationTests.Connectors.AzureAISearch;
-using System.Text.RegularExpressions;
-using Microsoft.SemanticKernel.Memory;
 
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.AzureAISearch;
 
