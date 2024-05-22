@@ -29,7 +29,7 @@ public interface IVectorDBRecordService<TKey, TDataModel>
     /// <summary>
     /// Gets a batch of vector records from the data store. Does not guarantee that the collection exists.
     /// Throws if any of the records are not found.
-    /// Requests will be made in a single request or in a single parallel batch depending on the available store functionality.
+    /// Gets will be made in a single request or in a single parallel batch depending on the available store functionality.
     /// </summary>
     /// <param name="keys">The unique ids associated with the vector record to get.</param>
     /// <param name="options">Optional options for retrieving the records.</param>
@@ -48,7 +48,7 @@ public interface IVectorDBRecordService<TKey, TDataModel>
 
     /// <summary>
     /// Removes a batch of vector records from the data store. Does not guarantee that the collection exists.
-    /// Requests will be made in a single request or in a single parallel batch depending on the available store functionality.
+    /// Removes will be made in a single request or in a single parallel batch depending on the available store functionality.
     /// </summary>
     /// <param name="keys">The unique ids associated with the vector records to remove.</param>
     /// <param name="options">Optional options for removing the records.</param>
@@ -70,7 +70,7 @@ public interface IVectorDBRecordService<TKey, TDataModel>
     /// Upserts a group of vector records into the data store. Does not guarantee that the collection exists.
     ///     If the record already exists, it will be updated.
     ///     If the record does not exist, it will be created.
-    /// Requests will be made in a single request or in a single parallel batch depending on the available store functionality.
+    /// Upserts will be made in a single request or in a single parallel batch depending on the available store functionality.
     /// </summary>
     /// <param name="records">The vector records to upsert.</param>
     /// <param name="options">Optional options for upserting the records.</param>
