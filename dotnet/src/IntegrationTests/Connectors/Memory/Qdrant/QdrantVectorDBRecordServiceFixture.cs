@@ -271,7 +271,7 @@ public class QdrantVectorDBRecordServiceFixture : IAsyncLifetime
         public string Description { get; set; }
 
         /// <summary>A vector field.</summary>
-        [Vector]
+        [Vector(DataPropertyName = nameof(Description))]
         public ReadOnlyMemory<float>? DescriptionEmbeddings { get; set; }
     }
 
@@ -294,7 +294,7 @@ public class QdrantVectorDBRecordServiceFixture : IAsyncLifetime
         public string Description { get; set; }
 
         /// <summary>A vector field.</summary>
-        [Vector]
+        [Vector(DataPropertyName = nameof(Description))]
         public ReadOnlyMemory<float>? DescriptionEmbeddings { get; set; }
     }
 }
