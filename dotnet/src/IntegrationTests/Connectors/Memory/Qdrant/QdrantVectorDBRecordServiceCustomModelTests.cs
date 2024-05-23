@@ -9,7 +9,7 @@ using Microsoft.SemanticKernel.Connectors.Qdrant;
 using Microsoft.SemanticKernel.Memory;
 using Xunit;
 using Xunit.Abstractions;
-using static SemanticKernel.IntegrationTests.Connectors.Memory.Qdrant.QdrantVectorDBRecordServiceFixture;
+using static SemanticKernel.IntegrationTests.Connectors.Memory.Qdrant.QdrantVectorDBFixture;
 
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.Qdrant;
 
@@ -18,8 +18,8 @@ namespace SemanticKernel.IntegrationTests.Connectors.Memory.Qdrant;
 /// </summary>
 /// <param name="output">Used for logging.</param>
 /// <param name="fixture">Redis setup and teardown.</param>
-[Collection("QdrantVectorDBRecordServiceCollection")]
-public sealed class QdrantVectorDBRecordServiceCustomModelTests(ITestOutputHelper output, QdrantVectorDBRecordServiceFixture fixture)
+[Collection("QdrantVectorDBCollection")]
+public sealed class QdrantVectorDBRecordServiceCustomModelTests(ITestOutputHelper output, QdrantVectorDBFixture fixture)
 {
     [Fact]
     public async Task ItCanGetDocumentFromVectorStoreAsync()

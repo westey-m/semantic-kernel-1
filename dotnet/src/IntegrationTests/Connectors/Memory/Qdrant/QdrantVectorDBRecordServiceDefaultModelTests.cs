@@ -16,8 +16,8 @@ namespace SemanticKernel.IntegrationTests.Connectors.Memory.Qdrant;
 /// </summary>
 /// <param name="output">Used for logging.</param>
 /// <param name="fixture">Redis setup and teardown.</param>
-[Collection("QdrantVectorDBRecordServiceCollection")]
-public sealed class QdrantVectorDBRecordServiceDefaultModelTests(ITestOutputHelper output, QdrantVectorDBRecordServiceFixture fixture)
+[Collection("QdrantVectorDBCollection")]
+public sealed class QdrantVectorDBRecordServiceDefaultModelTests(ITestOutputHelper output, QdrantVectorDBFixture fixture)
 {
     private readonly List<string> _metadataFieldNames = ["HotelName", "hotelCode", "Seafront", "HotelRating", "Tags"];
 

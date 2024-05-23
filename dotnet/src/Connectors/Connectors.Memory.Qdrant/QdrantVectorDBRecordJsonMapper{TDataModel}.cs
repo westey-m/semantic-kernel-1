@@ -15,13 +15,12 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 /// Mapper between a Qdrant record and the consumer data model that uses json as an intermediary to allow supporting a wide range of models.
 /// </summary>
 /// <typeparam name="TDataModel">The consumer data model to map to or from.</typeparam>
-internal class QdrantVectorDBRecordJsonMapper<TDataModel> : IVectorDBRecordMapper<TDataModel, PointStruct>
+internal sealed class QdrantVectorDBRecordJsonMapper<TDataModel> : IVectorDBRecordMapper<TDataModel, PointStruct>
     where TDataModel : class
 {
     /// <summary>A set of types that a key on the provided model may have.</summary>
     private static readonly HashSet<Type> s_supportedKeyTypes = new()
     {
-        typeof(string),
         typeof(ulong),
         typeof(Guid)
     };

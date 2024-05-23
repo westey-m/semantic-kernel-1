@@ -8,7 +8,7 @@ using Microsoft.SemanticKernel.Memory;
 using SemanticKernel.IntegrationTests.Connectors.Memory.AzureAISearch;
 using Xunit;
 using Xunit.Abstractions;
-using static SemanticKernel.IntegrationTests.Connectors.Memory.AzureAISearch.AzureAISearchVectorDBRecordServiceFixture;
+using static SemanticKernel.IntegrationTests.Connectors.Memory.AzureAISearch.AzureAISearchVectorDBFixture;
 
 namespace SemanticKernel.IntegrationTests.Connectors.AzureAISearch;
 
@@ -16,7 +16,8 @@ namespace SemanticKernel.IntegrationTests.Connectors.AzureAISearch;
 /// Integration tests for <see cref="AzureAISearchVectorDBRecordService{TDataModel}"/> class.
 /// Tests work with Azure AI Search Instance..
 /// </summary>
-public sealed class AzureAISearchVectorDBRecordServiceTests(ITestOutputHelper output, AzureAISearchVectorDBRecordServiceFixture fixture) : IClassFixture<AzureAISearchVectorDBRecordServiceFixture>
+[Collection("AzureAISearchVectorDBCollection")]
+public sealed class AzureAISearchVectorDBRecordServiceTests(ITestOutputHelper output, AzureAISearchVectorDBFixture fixture) : IClassFixture<AzureAISearchVectorDBFixture>
 {
     // If null, all tests will be enabled
     private const string SkipReason = null; //"Requires Azure AI Search Service instance up and running";

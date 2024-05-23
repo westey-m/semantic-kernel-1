@@ -20,7 +20,7 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ulong, TDataModel>, IVectorDBRecordService<Guid, TDataModel>
     where TDataModel : class
 {
-    /// <summary>Qdrant client that can be used to manage the points in a Qdrant store.</summary>
+    /// <summary>Qdrant client that can be used to manage the collections and points in a Qdrant store.</summary>
     private readonly QdrantClient _qdrantClient;
 
     /// <summary>The name of the collection to use with this store if none is provided for any individual operation.</summary>
@@ -35,7 +35,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
     /// <summary>
     /// Initializes a new instance of the <see cref="QdrantVectorDBRecordService{TDataModel}"/> class.
     /// </summary>
-    /// <param name="qdrantClient">Qdrant client that can be used to manage the points in a Qdrant store.</param>
+    /// <param name="qdrantClient">Qdrant client that can be used to manage the collections and points in a Qdrant store.</param>
     /// <param name="defaultCollectionName">The name of the collection to use with this store if none is provided for any individual operation.</param>
     /// <param name="options">Optional configuration options for this class.</param>
     /// <exception cref="ArgumentNullException"></exception>

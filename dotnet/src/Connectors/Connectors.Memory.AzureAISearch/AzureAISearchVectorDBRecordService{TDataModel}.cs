@@ -42,7 +42,7 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
     private readonly List<string> _nonVectorFieldNames;
 
     /// <summary>
-    /// Create a new instance of vector storage using Azure AI Search.
+    /// Initializes a new instance of the <see cref="AzureAISearchVectorDBRecordService{TDataModel}"/> class.
     /// </summary>
     /// <param name="searchIndexClient">Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</param>
     /// <param name="defaultCollectionName">The name of the collection to use with this store if none is provided for any individual operation.</param>
@@ -52,15 +52,18 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
     /// <exception cref="ArgumentException">Thrown when <paramref name="defaultCollectionName"/> or <paramref name="keyFieldName"/> is null or whitespace.</exception>
     public AzureAISearchVectorDBRecordService(SearchIndexClient searchIndexClient, string defaultCollectionName, string keyFieldName, AzureAISearchVectorDBRecordServiceOptions<TDataModel>? options = default)
     {
+        // Verify.
         Verify.NotNull(searchIndexClient);
         Verify.NotNullOrWhiteSpace(defaultCollectionName);
         Verify.NotNullOrWhiteSpace(keyFieldName);
 
+        // Assign.
         this._searchIndexClient = searchIndexClient;
         this._defaultCollectionName = defaultCollectionName;
         this._keyFieldName = keyFieldName;
         this._options = options ?? new AzureAISearchVectorDBRecordServiceOptions<TDataModel>();
 
+        // Verify custom mapper.
         if (this._options.MapperType == AzureAISearchVectorDBRecordMapperType.JsonObjectCustomerMapper && this._options.JsonObjectCustomMapper is null)
         {
             throw new ArgumentException($"The {nameof(AzureAISearchVectorDBRecordServiceOptions<TDataModel>.JsonObjectCustomMapper)} option needs to be set if a {nameof(AzureAISearchVectorDBRecordServiceOptions<TDataModel>.MapperType)} of {nameof(AzureAISearchVectorDBRecordMapperType.JsonObjectCustomerMapper)} has been chosen.", nameof(options));

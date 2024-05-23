@@ -25,7 +25,7 @@ The current abstractions are experimental and the purpose of this ADR is to prog
 Responsibilities:
 
 |Functional Area|Cardinality|Significance to Semantic Kernel|
-|-|-|-|-|
+|-|-|-|
 |Collection/Index create|An implementation per store type and model|Valuable when building a store and adding data|
 |Collection/Index list/exists/delete|An implementation per store type|Valuable when building a store and adding data|
 |Data Storage and Retrieval|An implementation per store type|Valueble when building a store and adding data|
@@ -187,7 +187,7 @@ classDiagram
             +GetAsync()
             +RemoveAsync()
             +SearchAsync()
-            +GetCollectionNamesAsync()
+            +GetCollectionsAsync()
         }
     }
 
@@ -339,8 +339,8 @@ Additional:
 interface IVectorDBRecordService<TDataModel>
 {
     Task CreateCollectionAsync(CollectionConfig collectionConfig, CancellationToken cancellationToken = default);
-    Task<IEnumerable<CollectionConfig>> GetCollectionNamesAsync(CancellationToken cancellationToken = default);
-    Task<bool> DoesCollectionExistAsync(string name, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<string> ListCollectionNamesAsync(CancellationToken cancellationToken = default);
+    Task<bool> CollectionExistAsync(string name, CancellationToken cancellationToken = default);
     Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default);
 
     Task UpsertAsync(TDataModel data, CancellationToken cancellationToken = default);
@@ -373,8 +373,8 @@ interface IVectorDBCollectionService
     virtual Task CreateChatHistoryCollectionAsync(string name, CancellationToken cancellationToken = default);
     virtual Task CreateSemanticCacheCollectionAsync(string name, CancellationToken cancellationToken = default);
 
-    Task<IEnumerable<string>> GetCollectionNamesAsync(CancellationToken cancellationToken = default);
-    Task<bool> DoesCollectionExistAsync(string name, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<string> ListCollectionNamesAsync(CancellationToken cancellationToken = default);
+    Task<bool> CollectionExistAsync(string name, CancellationToken cancellationToken = default);
     Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default);
 }
 
@@ -417,8 +417,8 @@ class CustomerChatHistoryCollectionCreateService: IVectorDBCollectionCreateServi
 
 interface IVectorDBCollectionUpdateService
 {
-    Task<IEnumerable<string>> GetCollectionNamesAsync(CancellationToken cancellationToken = default);
-    Task<bool> DoesCollectionExistAsync(string name, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<string> ListCollectionNamesAsync(CancellationToken cancellationToken = default);
+    Task<bool> CollectionExistAsync(string name, CancellationToken cancellationToken = default);
     Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default);
 }
 
@@ -441,8 +441,8 @@ interface IVectorDBCollectionCreateService
 
 interface IVectorDBCollectionUpdateService
 {
-    Task<IEnumerable<string>> GetCollectionNamesAsync(CancellationToken cancellationToken = default);
-    Task<bool> DoesCollectionExistAsync(string name, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<string> ListCollectionNamesAsync(CancellationToken cancellationToken = default);
+    Task<bool> CollectionExistAsync(string name, CancellationToken cancellationToken = default);
     Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default);
 }
 
@@ -457,8 +457,8 @@ interface IVectorDBCollectionService: IVectorDBCollectionCreateService, IVectorD
 abstract class VectorDBCollectionService(IVectorDBCollectionUpdateService collectionsUpdateService): IVectorDBCollectionService
 {
     public abstract Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default);
-    public Task<IEnumerable<string>> GetCollectionNamesAsync(CancellationToken cancellationToken = default) { return collectionsUpdateService.GetCollectionNamesAsync(cancellationToken); }
-    public Task<bool> DoesCollectionExistAsync(string name, CancellationToken cancellationToken = default) { return collectionsUpdateService.DoesCollectionExistAsync(name, cancellationToken); }
+    public IAsyncEnumerable<string> ListCollectionNamesAsync(CancellationToken cancellationToken = default) { return collectionsUpdateService.ListCollectionNamesAsync(cancellationToken); }
+    public Task<bool> CollectionExistAsync(string name, CancellationToken cancellationToken = default) { return collectionsUpdateService.CollectionExistAsync(name, cancellationToken); }
     public Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default) { return collectionsUpdateService.DeleteCollectionAsync(name, cancellationToken); }
 }
 
@@ -532,6 +532,7 @@ Chosen option: 4 + 5.
 - Pros: Easy to package matching encoders/decoders together.
 - Pros: Easier to obsolete encoding/normalization as a concept.
 - Cons: Need to implement the full VectorDBRecordService interface.
+- Cons: Hard to have a generic implementation that can work with any model, without either changing the data in the provided object on upsert or doing cloning in an expensive way.
 
 ```cs
     new KeyNormalizingAISearchVectorDBRecordService<MyModel>(
@@ -543,7 +544,7 @@ Chosen option: 4 + 5.
 
 - Pros: Allows normalization to vary separately from the vector store.
 - Pros: No need to implement the full VectorDBRecordService interface.
-- Pros: Can modify values on serialization without changing the incoming record.
+- Pros: Can modify values on serialization without changing the incoming record, if supported by DB SDK.
 - Cons: Harder to package matching encoders/decoders together.
 
 ```cs
@@ -557,9 +558,18 @@ public class StoreOptions
 }
 ```
 
+### Option 4 - Normalization via custom mapper
+
+If developer wants to change any values they can do so by creating a custom mapper.
+
+- Cons: Developer needs to implement a mapper if they want to do normalization.
+- Cons: Developer cannot change collection name as part of the mapping.
+- Pros: No new extension points required to support normalization.
+- Pros: Developer can change any field in the record.
+
 #### Decision Outcome
 
-Option 2 / 3 should work. Leaning towards 2, but let's discuss.
+Chosen option 3, since it is similar to how we are doing mapper injection and would also work well in python.
 
 Option 1 won't work because if e.g. the data was written using another tool, it may be unlikely that it was encoded using the same mechanism as supported here
 and therefore this functionality may not be appropriate. The developer should have the ability to not use this functionality or

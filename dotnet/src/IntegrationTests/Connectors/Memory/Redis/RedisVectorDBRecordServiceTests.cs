@@ -8,7 +8,7 @@ using Microsoft.SemanticKernel.Connectors.Redis;
 using Microsoft.SemanticKernel.Memory;
 using Xunit;
 using Xunit.Abstractions;
-using static SemanticKernel.IntegrationTests.Connectors.Memory.Redis.RedisVectorDBRecordServiceFixture;
+using static SemanticKernel.IntegrationTests.Connectors.Memory.Redis.RedisVectorDBFixture;
 
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.Redis;
 
@@ -17,8 +17,8 @@ namespace SemanticKernel.IntegrationTests.Connectors.Memory.Redis;
 /// </summary>
 /// <param name="output">Used for logging.</param>
 /// <param name="fixture">Redis setup and teardown.</param>
-[Collection("RedisVectorDBRecordServiceCollection")]
-public sealed class RedisVectorDBRecordServiceTests(ITestOutputHelper output, RedisVectorDBRecordServiceFixture fixture)
+[Collection("RedisVectorDBCollection")]
+public sealed class RedisVectorDBRecordServiceTests(ITestOutputHelper output, RedisVectorDBFixture fixture)
 {
     [Fact]
     public async Task ItCanGetDocumentFromVectorStoreAsync()

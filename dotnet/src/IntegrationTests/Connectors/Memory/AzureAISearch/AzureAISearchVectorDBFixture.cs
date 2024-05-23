@@ -20,7 +20,7 @@ namespace SemanticKernel.IntegrationTests.Connectors.Memory.AzureAISearch;
 /// <summary>
 /// Helper class for setting up and tearing down Azure AI Search indexes for testing purposes.
 /// </summary>
-public class AzureAISearchVectorDBRecordServiceFixture : IAsyncLifetime
+public class AzureAISearchVectorDBFixture : IAsyncLifetime
 {
     /// <summary>
     /// Test index name which consists out of "hotels-" and the machine name with any non-alphanumeric characters removed.
@@ -40,9 +40,9 @@ public class AzureAISearchVectorDBRecordServiceFixture : IAsyncLifetime
             .Build();
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="AzureAISearchVectorDBRecordServiceFixture"/> class.
+    /// Initializes a new instance of the <see cref="AzureAISearchVectorDBFixture"/> class.
     /// </summary>
-    public AzureAISearchVectorDBRecordServiceFixture()
+    public AzureAISearchVectorDBFixture()
     {
         var config = this._configuration.GetSection("AzureAISearch").Get<AzureAISearchConfiguration>();
         Assert.NotNull(config);
@@ -65,9 +65,9 @@ public class AzureAISearchVectorDBRecordServiceFixture : IAsyncLifetime
     /// <returns>An async task.</returns>
     public async Task InitializeAsync()
     {
-        await AzureAISearchVectorDBRecordServiceFixture.DeleteIndexIfExistsAsync(this._testIndexName, this.SearchIndexClient);
-        await AzureAISearchVectorDBRecordServiceFixture.CreateIndexAsync(this._testIndexName, this.SearchIndexClient);
-        AzureAISearchVectorDBRecordServiceFixture.UploadDocuments(this.SearchIndexClient.GetSearchClient(this._testIndexName));
+        await AzureAISearchVectorDBFixture.DeleteIndexIfExistsAsync(this._testIndexName, this.SearchIndexClient);
+        await AzureAISearchVectorDBFixture.CreateIndexAsync(this._testIndexName, this.SearchIndexClient);
+        AzureAISearchVectorDBFixture.UploadDocuments(this.SearchIndexClient.GetSearchClient(this._testIndexName));
     }
 
     /// <summary>
@@ -76,7 +76,7 @@ public class AzureAISearchVectorDBRecordServiceFixture : IAsyncLifetime
     /// <returns>An async task.</returns>
     public async Task DisposeAsync()
     {
-        await AzureAISearchVectorDBRecordServiceFixture.DeleteIndexIfExistsAsync(this._testIndexName, this.SearchIndexClient);
+        await AzureAISearchVectorDBFixture.DeleteIndexIfExistsAsync(this._testIndexName, this.SearchIndexClient);
     }
 
     /// <summary>

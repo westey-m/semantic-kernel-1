@@ -15,7 +15,7 @@ using Xunit;
 
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.Qdrant;
 
-public class QdrantVectorDBRecordServiceFixture : IAsyncLifetime
+public class QdrantVectorDBFixture : IAsyncLifetime
 {
     /// <summary>The docker client we are using to create a qdrant container with.</summary>
     private readonly DockerClient _client;
@@ -26,9 +26,9 @@ public class QdrantVectorDBRecordServiceFixture : IAsyncLifetime
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="QdrantVectorDBRecordServiceFixture"/> class.
+    /// Initializes a new instance of the <see cref="QdrantVectorDBFixture"/> class.
     /// </summary>
-    public QdrantVectorDBRecordServiceFixture()
+    public QdrantVectorDBFixture()
     {
         using var dockerClientConfiguration = new DockerClientConfiguration();
         this._client = dockerClientConfiguration.CreateClient();

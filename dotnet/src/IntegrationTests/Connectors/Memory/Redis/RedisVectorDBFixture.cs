@@ -20,7 +20,7 @@ namespace SemanticKernel.IntegrationTests.Connectors.Memory.Redis;
 /// <summary>
 /// Does setup and teardown of redis docker container and associated test data.
 /// </summary>
-public class RedisVectorDBRecordServiceFixture : IAsyncLifetime
+public class RedisVectorDBFixture : IAsyncLifetime
 {
     /// <summary>The docker client we are using to create a redis container with.</summary>
     private readonly DockerClient _client;
@@ -29,9 +29,9 @@ public class RedisVectorDBRecordServiceFixture : IAsyncLifetime
     private string? _containerId = null;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="RedisVectorDBRecordServiceFixture"/> class.
+    /// Initializes a new instance of the <see cref="RedisVectorDBFixture"/> class.
     /// </summary>
-    public RedisVectorDBRecordServiceFixture()
+    public RedisVectorDBFixture()
     {
         using var dockerClientConfiguration = new DockerClientConfiguration();
         this._client = dockerClientConfiguration.CreateClient();
@@ -54,7 +54,6 @@ public class RedisVectorDBRecordServiceFixture : IAsyncLifetime
 
         // Create a schema for the vector store.
         var schema = new Schema();
-        schema.AddTextField("HotelId");
         schema.AddTextField("HotelName");
         schema.AddNumericField("hotelCode");
         schema.AddTextField("Description");

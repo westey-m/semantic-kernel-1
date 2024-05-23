@@ -11,7 +11,7 @@ namespace Microsoft.SemanticKernel.Connectors.Redis;
 /// Class for mapping between a json node stored in redis, and the consumer data model.
 /// </summary>
 /// <typeparam name="TConsumerDataModel">The consumer data model to map to or from.</typeparam>
-internal class RedisVectorDBRecordMapper<TConsumerDataModel> : IVectorDBRecordMapper<TConsumerDataModel, (string Key, JsonNode Node)>
+internal sealed class RedisVectorDBRecordMapper<TConsumerDataModel> : IVectorDBRecordMapper<TConsumerDataModel, (string Key, JsonNode Node)>
     where TConsumerDataModel : class
 {
     /// <summary>The name of the temporary json property that the key field will be serialized / parsed from.</summary>
