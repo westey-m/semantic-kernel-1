@@ -23,6 +23,19 @@ namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordService<string, TDataModel>
     where TDataModel : class
 {
+    /// <summary>A set of types that a key on the provided model may have.</summary>
+    private static readonly HashSet<Type> s_supportedKeyTypes = new()
+    {
+        typeof(string)
+    };
+
+    /// <summary>A set of types that vectors on the provided model may have.</summary>
+    private static readonly HashSet<Type> s_supportedVectorTypes = new()
+    {
+        typeof(ReadOnlyMemory<float>),
+        typeof(ReadOnlyMemory<float>?)
+    };
+
     /// <summary>Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</summary>
     private readonly SearchIndexClient _searchIndexClient;
 
@@ -46,21 +59,18 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
     /// </summary>
     /// <param name="searchIndexClient">Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</param>
     /// <param name="defaultCollectionName">The name of the collection to use with this store if none is provided for any individual operation.</param>
-    /// <param name="keyFieldName">The name of the key field for the collection that this class is used with.</param>
     /// <param name="options">Optional configuration options for this class.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="searchIndexClient"/> is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="defaultCollectionName"/> or <paramref name="keyFieldName"/> is null or whitespace.</exception>
-    public AzureAISearchVectorDBRecordService(SearchIndexClient searchIndexClient, string defaultCollectionName, string keyFieldName, AzureAISearchVectorDBRecordServiceOptions<TDataModel>? options = default)
+    /// <exception cref="ArgumentException">Thrown when <paramref name="defaultCollectionName"/> is null or whitespace.</exception>
+    public AzureAISearchVectorDBRecordService(SearchIndexClient searchIndexClient, string defaultCollectionName, AzureAISearchVectorDBRecordServiceOptions<TDataModel>? options = default)
     {
         // Verify.
         Verify.NotNull(searchIndexClient);
         Verify.NotNullOrWhiteSpace(defaultCollectionName);
-        Verify.NotNullOrWhiteSpace(keyFieldName);
 
         // Assign.
         this._searchIndexClient = searchIndexClient;
         this._defaultCollectionName = defaultCollectionName;
-        this._keyFieldName = keyFieldName;
         this._options = options ?? new AzureAISearchVectorDBRecordServiceOptions<TDataModel>();
 
         // Verify custom mapper.
@@ -68,6 +78,12 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
         {
             throw new ArgumentException($"The {nameof(AzureAISearchVectorDBRecordServiceOptions<TDataModel>.JsonObjectCustomMapper)} option needs to be set if a {nameof(AzureAISearchVectorDBRecordServiceOptions<TDataModel>.MapperType)} of {nameof(AzureAISearchVectorDBRecordMapperType.JsonObjectCustomerMapper)} has been chosen.", nameof(options));
         }
+
+        // Enumerate public properties/fields on model, validate, and store for later use.
+        var fields = VectorStoreModelPropertyReader.FindFields(typeof(TDataModel), true);
+        VectorStoreModelPropertyReader.VerifyFieldTypes([fields.keyField], s_supportedKeyTypes, "Key");
+        VectorStoreModelPropertyReader.VerifyFieldTypes(fields.vectorFields, s_supportedVectorTypes, "Vector");
+        this._keyFieldName = fields.keyField.Name;
 
         // Build the list of field names on the curent model that don't have the VectorStoreModelVectorAtrribute but has
         // the VectorStoreModelKeyAttribute or VectorStoreModelDataAtrribute or VectorStoreModelMetadataAtrribute attributes.

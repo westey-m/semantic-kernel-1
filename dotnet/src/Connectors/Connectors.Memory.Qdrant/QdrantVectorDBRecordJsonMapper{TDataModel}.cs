@@ -47,6 +47,13 @@ internal sealed class QdrantVectorDBRecordJsonMapper<TDataModel> : IVectorDBReco
         typeof(bool?)
     };
 
+    /// <summary>A set of types that vectors on the provided model may have.</summary>
+    private static readonly HashSet<Type> s_supportedVectorTypes = new()
+    {
+        typeof(ReadOnlyMemory<float>),
+        typeof(ReadOnlyMemory<float>?)
+    };
+
     /// <summary>A list of property info objects that point at the payload fields in the current model, and allows easy reading and writing of these properties.</summary>
     private readonly List<PropertyInfo> _payloadFieldsPropertyInfo = new();
 
@@ -72,6 +79,7 @@ internal sealed class QdrantVectorDBRecordJsonMapper<TDataModel> : IVectorDBReco
         VectorStoreModelPropertyReader.VerifyFieldTypes([fields.keyField], s_supportedKeyTypes, "Key");
         VectorStoreModelPropertyReader.VerifyFieldTypes(fields.dataFields, s_supportedFieldTypes, "Data");
         VectorStoreModelPropertyReader.VerifyFieldTypes(fields.metadataFields, s_supportedFieldTypes, "Metadata");
+        VectorStoreModelPropertyReader.VerifyFieldTypes(fields.vectorFields, s_supportedVectorTypes, "Vector");
 
         // Store properties for later use.
         this._keyFieldPropertyInfo = fields.keyField;

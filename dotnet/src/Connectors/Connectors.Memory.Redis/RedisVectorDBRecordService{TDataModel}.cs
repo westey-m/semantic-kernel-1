@@ -30,6 +30,15 @@ public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<str
         typeof(string)
     };
 
+    /// <summary>A set of types that vectors on the provided model may have.</summary>
+    private static readonly HashSet<Type> s_supportedVectorTypes = new()
+    {
+        typeof(ReadOnlyMemory<float>),
+        typeof(ReadOnlyMemory<double>),
+        typeof(ReadOnlyMemory<float>?),
+        typeof(ReadOnlyMemory<double>?)
+    };
+
     /// <summary>The redis database to read/write records from.</summary>
     private readonly IDatabase _database;
 
@@ -75,6 +84,7 @@ public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<str
         // Enumerate public properties/fields on model and store for later use.
         var fields = VectorStoreModelPropertyReader.FindFields(typeof(TDataModel), true);
         VectorStoreModelPropertyReader.VerifyFieldTypes([fields.keyField], s_supportedKeyTypes, "Key");
+        VectorStoreModelPropertyReader.VerifyFieldTypes(fields.vectorFields, s_supportedVectorTypes, "Vector");
 
         this._keyFieldPropertyInfo = fields.keyField;
         this._keyFieldJsonPropertyName = VectorStoreModelPropertyReader.GetSerializedPropertyName(this._keyFieldPropertyInfo);

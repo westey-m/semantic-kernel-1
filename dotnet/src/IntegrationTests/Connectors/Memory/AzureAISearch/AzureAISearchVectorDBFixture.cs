@@ -11,7 +11,6 @@ using Azure.Search.Documents.Indexes.Models;
 using Azure.Search.Documents.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.SemanticKernel.Memory;
-using SemanticKernel.IntegrationTests.Connectors.AzureAISearch;
 using SemanticKernel.IntegrationTests.TestSettings.Memory;
 using Xunit;
 
