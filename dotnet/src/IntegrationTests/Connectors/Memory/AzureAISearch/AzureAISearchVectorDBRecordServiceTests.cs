@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
@@ -25,10 +26,26 @@ public sealed class AzureAISearchVectorDBRecordServiceTests(ITestOutputHelper ou
     public async Task ItCanUpsertDocumentToVectorStoreAsync()
     {
         // Arrange
-        var sut = new AzureAISearchVectorDBRecordService<HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName);
+        var sut = new AzureAISearchVectorDBRecordService<Hotel>(fixture.SearchIndexClient, fixture.TestIndexName);
 
         // Act
-        var upsertResult = await sut.UpsertAsync(new HotelShortInfo("mh5", "MyHotel5", "My Hotel is great."));
+        var hotel = new Hotel()
+        {
+            HotelId = "mh5",
+            HotelName = "MyHotel5",
+            Description = "My Hotel is great.",
+            DescriptionEmbedding = new[] { 30f, 31f, 32f, 33f },
+            Tags = new[] { "pool", "air conditioning", "concierge" },
+            ParkingIncluded = true,
+            LastRenovationDate = new DateTimeOffset(1970, 1, 18, 0, 0, 0, TimeSpan.Zero),
+            Rating = 3.6,
+            Address = new Address()
+            {
+                City = "New York",
+                Country = "USA"
+            }
+        };
+        var upsertResult = await sut.UpsertAsync(hotel);
         var getResult = await sut.GetAsync("mh5");
 
         // Assert
@@ -36,7 +53,15 @@ public sealed class AzureAISearchVectorDBRecordServiceTests(ITestOutputHelper ou
         Assert.Equal("mh5", upsertResult);
 
         Assert.NotNull(getResult);
-        Assert.Equal("MyHotel5", getResult.HotelName);
+        Assert.Equal(hotel.HotelName, getResult.HotelName);
+        Assert.Equal(hotel.Description, getResult.Description);
+        Assert.Equal(hotel.DescriptionEmbedding, getResult.DescriptionEmbedding);
+        Assert.Equal(hotel.Tags, getResult.Tags);
+        Assert.Equal(hotel.ParkingIncluded, getResult.ParkingIncluded);
+        Assert.Equal(hotel.LastRenovationDate, getResult.LastRenovationDate);
+        Assert.Equal(hotel.Rating, getResult.Rating);
+        Assert.Equal(hotel.Address.City, getResult.Address.City);
+        Assert.Equal(hotel.Address.Country, getResult.Address.Country);
 
         // Output
         output.WriteLine(upsertResult);

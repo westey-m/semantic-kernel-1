@@ -48,10 +48,16 @@ internal sealed class QdrantVectorDBRecordJsonMapper<TDataModel> : IVectorDBReco
     };
 
     /// <summary>A set of types that vectors on the provided model may have.</summary>
+    /// <remarks>
+    /// While qdrant supports float32 and uint64, the api only supports float64, therefore
+    /// any float32 vectors will be converted to float64 before being sent to qdrant.
+    /// </remarks>
     private static readonly HashSet<Type> s_supportedVectorTypes = new()
     {
         typeof(ReadOnlyMemory<float>),
-        typeof(ReadOnlyMemory<float>?)
+        typeof(ReadOnlyMemory<float>?),
+        typeof(ReadOnlyMemory<double>),
+        typeof(ReadOnlyMemory<double>?)
     };
 
     /// <summary>A list of property info objects that point at the payload fields in the current model, and allows easy reading and writing of these properties.</summary>
