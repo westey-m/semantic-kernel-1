@@ -259,6 +259,10 @@ A comparison of the different ways in which stores implement storage capabilitie
 |Is Key separate from data|N|Y|Y|Y||Y||N|Y|N|
 |Can Generate Ids|N|Y|N|N||Y||Y|N|Y|
 |Can Generate Embedding|Not Available Via API yet|Y|N|Client Side Abstraction|||||N||
+|Index allows text search|Y|Y|Y|Y (On Metadata by default)||||Y (with TSVECTOR field)|Y|Y|
+|Allows filtering|Y|Y|Y (on TAG)|Y (On Metadata by default)||[Y](https://docs.pinecone.io/guides/indexes/configure-pod-based-indexes#selective-metadata-indexing)||Y|Y|Y|
+|Allows scalar index field setup|Y|Y|Y|N||Y|||Y|Y|
+|Requires scalar index field setup to filter|Y|Y|Y|N||N (on by default for all)|||N|N (can filter without index)|
 |Field Differentiation|Fields|Key, Props, Vectors|Key, Fields|Key, Documents, Metadata, Vectors||Key, Metadata, SparseValues, Vectors||Fields|Key, Props(Payload), Vectors|Fields|
 |Index to Collection|1 to 1|1 to 1|1 to many|1 to 1|-|1 to 1|-|1 to 1|1 to 1|1 to 1|
 |Id Type|String|UUID|string with collection name prefix|string||string|UUID|64Bit Int / UUID / ULID|64Bit Unsigned Int / UUID|Int64 / varchar|
