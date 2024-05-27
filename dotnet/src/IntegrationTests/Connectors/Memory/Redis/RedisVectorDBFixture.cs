@@ -150,7 +150,7 @@ public class RedisVectorDBFixture : IAsyncLifetime
         [property: Metadata] bool Seafront,
         [property: Metadata] HotelAddress Address,
         [property: Data] string Description,
-        [property: Vector(DataPropertyName = nameof(HotelInfo.Description))] ReadOnlyMemory<float>? DescriptionEmbeddings);
+        [property: Vector()] ReadOnlyMemory<float>? DescriptionEmbeddings);
 
     /// <summary>
     /// A test model for the vector store to simulate a complex type.
