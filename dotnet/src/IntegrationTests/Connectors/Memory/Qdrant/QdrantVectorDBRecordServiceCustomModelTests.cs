@@ -189,7 +189,7 @@ public sealed class QdrantVectorDBRecordServiceCustomModelTests(ITestOutputHelpe
         await sut.UpsertAsync(record);
 
         // Act.
-        await sut.RemoveAsync(20);
+        await sut.DeleteAsync(20);
 
         // Assert.
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync(20));
@@ -260,7 +260,7 @@ public sealed class QdrantVectorDBRecordServiceCustomModelTests(ITestOutputHelpe
         Assert.Equal(record.Description, getResult?.Description);
 
         // Act.
-        await sut.RemoveAsync(Guid.Parse("55555555-5555-5555-5555-555555555555"));
+        await sut.DeleteAsync(Guid.Parse("55555555-5555-5555-5555-555555555555"));
 
         // Assert.
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync(Guid.Parse("55555555-5555-5555-5555-555555555555")));

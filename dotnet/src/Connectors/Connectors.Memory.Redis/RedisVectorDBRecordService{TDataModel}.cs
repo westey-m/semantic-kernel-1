@@ -177,7 +177,7 @@ public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<str
     }
 
     /// <inheritdoc />
-    public async Task RemoveAsync(string key, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(string key, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNullOrWhiteSpace(key);
 
@@ -192,12 +192,12 @@ public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<str
     }
 
     /// <inheritdoc />
-    public async Task RemoveBatchAsync(IEnumerable<string> keys, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task DeleteBatchAsync(IEnumerable<string> keys, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(keys);
 
         // Remove records in parallel.
-        var tasks = keys.Select(key => this.RemoveAsync(key, options, cancellationToken));
+        var tasks = keys.Select(key => this.DeleteAsync(key, options, cancellationToken));
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 

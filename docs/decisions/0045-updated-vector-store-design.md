@@ -111,8 +111,8 @@ classDiagram
             +UpserBatch(TModel record) string
             +Get(string key) TModel
             +GetBatch(string[] keys) TModel[]
-            +Remove(string key)
-            +RemoveBatch(string[] keys)
+            +Delete(string key)
+            +DeleteBatch(string[] keys)
         }
     }
 
@@ -177,7 +177,7 @@ classDiagram
             <<interface>>
             +Upsert(TModel record) string
             +Get(string key) TModel
-            +Remove(string key) string
+            +Delete(string key) string
         }
 
         class ISemanticTextMemory{
@@ -185,7 +185,7 @@ classDiagram
             +SaveInformationAsync()
             +SaveReferenceAsync()
             +GetAsync()
-            +RemoveAsync()
+            +DeleteAsync()
             +SearchAsync()
             +GetCollectionsAsync()
         }
@@ -206,7 +206,7 @@ classDiagram
             -IVectorDBRecordService~CustomerHistoryModel~ _store
             +Upsert(ChatHistoryModel record) string
             +Get(string key) ChatHistoryModel
-            +Remove(string key) string
+            +Delete(string key) string
         }
     }
 
@@ -351,8 +351,8 @@ interface IVectorDBRecordService<TDataModel>
     IAsyncEnumerable<string> UpsertBatchAsync(IEnumerable<TDataModel> dataSet, CancellationToken cancellationToken = default);
     Task<TDataModel> GetAsync(string key, bool withEmbedding = false, CancellationToken cancellationToken = default);
     IAsyncEnumerable<TDataModel> GetBatchAsync(IEnumerable<string> keys, bool withVectors = false, CancellationToken cancellationToken = default);
-    Task RemoveAsync(string key, CancellationToken cancellationToken = default);
-    Task RemoveBatchAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default);
+    Task DeleteAsync(string key, CancellationToken cancellationToken = default);
+    Task DeleteBatchAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default);
 }
 
 class AzureAISearchVectorDBRecordService<TDataModel>(
@@ -395,7 +395,7 @@ class MLIndexAzureAISearchVectorDBCollectionService(MLIndex mlIndexSpec): AzureA
 interface IVectorDBRecordService<TDataModel>
 {
     Task<TDataModel?> GetAsync(string key, VectorDBRecordServiceGetDocumentOptions? options = default, CancellationToken cancellationToken = default);
-    Task RemoveAsync(string key, VectorDBRecordServiceRemoveDocumentOptions? options = default, CancellationToken cancellationToken = default);
+    Task DeleteAsync(string key, VectorDBRecordServiceDeleteDocumentOptions? options = default, CancellationToken cancellationToken = default);
     Task<string> UpsertAsync(TDataModel record, VectorDBRecordServiceUpsertDocumentOptions? options = default, CancellationToken cancellationToken = default);
 }
 

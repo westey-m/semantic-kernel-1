@@ -124,7 +124,7 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
     }
 
     /// <inheritdoc />
-    public async Task RemoveAsync(string key, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(string key, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNullOrWhiteSpace(key);
 
@@ -137,7 +137,7 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
     }
 
     /// <inheritdoc />
-    public async Task RemoveBatchAsync(IEnumerable<string> keys, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task DeleteBatchAsync(IEnumerable<string> keys, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(keys);
 

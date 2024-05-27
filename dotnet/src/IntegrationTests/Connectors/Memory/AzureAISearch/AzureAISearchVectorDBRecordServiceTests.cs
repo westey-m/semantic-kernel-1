@@ -153,7 +153,7 @@ public sealed class AzureAISearchVectorDBRecordServiceTests(ITestOutputHelper ou
         await sut.UpsertAsync(new HotelShortInfo("tmp1", "TempHotel1", "This hotel will be deleted."));
 
         // Act
-        await sut.RemoveAsync("tmp1");
+        await sut.DeleteAsync("tmp1");
 
         // Assert
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp1", new GetRecordOptions { IncludeVectors = true }));
@@ -169,7 +169,7 @@ public sealed class AzureAISearchVectorDBRecordServiceTests(ITestOutputHelper ou
         await sut.UpsertAsync(new HotelShortInfo("tmp7", "TempHotel7", "This hotel will be deleted."));
 
         // Act
-        await sut.RemoveBatchAsync(["tmp5", "tmp6", "tmp7"]);
+        await sut.DeleteBatchAsync(["tmp5", "tmp6", "tmp7"]);
 
         // Assert
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp5", new GetRecordOptions { IncludeVectors = true }));

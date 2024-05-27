@@ -133,22 +133,22 @@ public class KeyNormalizingAzureAISearchVectorDBRecordService<TDataModel> : IVec
     }
 
     /// <inheritdoc />
-    public async Task RemoveAsync(string key, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(string key, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         var innerOptions = this.EncodeCollectionName(options);
 
-        await this._vectorStore.RemoveAsync(
+        await this._vectorStore.DeleteAsync(
             this._recordKeyEncoder.Invoke(key),
             innerOptions,
             cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task RemoveBatchAsync(IEnumerable<string> keys, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task DeleteBatchAsync(IEnumerable<string> keys, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         var innerOptions = this.EncodeCollectionName(options);
 
-        await this._vectorStore.RemoveBatchAsync(
+        await this._vectorStore.DeleteBatchAsync(
             keys.Select(this._recordKeyEncoder),
             innerOptions,
             cancellationToken).ConfigureAwait(false);
@@ -214,23 +214,23 @@ public class KeyNormalizingAzureAISearchVectorDBRecordService<TDataModel> : IVec
     }
 
     /// <summary>
-    /// Create a new <see cref="RemoveRecordOptions"/> object with the collection name encoded but with all other properties preserved.
+    /// Create a new <see cref="DeleteRecordOptions"/> object with the collection name encoded but with all other properties preserved.
     /// </summary>
     /// <param name="options">The input options to preserve.</param>
     /// <returns>The options with the collection name encoded.</returns>
-    private RemoveRecordOptions EncodeCollectionName(RemoveRecordOptions? options)
+    private DeleteRecordOptions EncodeCollectionName(DeleteRecordOptions? options)
     {
         var collectionName = options?.CollectionName == null ? this._defaultCollectionName : this._indexNameEncoder(options.CollectionName);
 
         if (options == null)
         {
-            return new RemoveRecordOptions
+            return new DeleteRecordOptions
             {
                 CollectionName = collectionName
             };
         }
 
-        return new RemoveRecordOptions(options)
+        return new DeleteRecordOptions(options)
         {
             CollectionName = collectionName
         };

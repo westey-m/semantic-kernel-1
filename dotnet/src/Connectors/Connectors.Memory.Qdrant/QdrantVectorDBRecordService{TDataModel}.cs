@@ -98,7 +98,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
     }
 
     /// <inheritdoc />
-    public async Task RemoveAsync(ulong key, RemoveRecordOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(ulong key, DeleteRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(key);
 
@@ -111,7 +111,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
     }
 
     /// <inheritdoc />
-    public async Task RemoveAsync(Guid key, RemoveRecordOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(Guid key, DeleteRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(key);
 
@@ -124,7 +124,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
     }
 
     /// <inheritdoc />
-    public async Task RemoveBatchAsync(IEnumerable<ulong> keys, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task DeleteBatchAsync(IEnumerable<ulong> keys, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(keys);
 
@@ -137,7 +137,7 @@ public class QdrantVectorDBRecordService<TDataModel> : IVectorDBRecordService<ul
     }
 
     /// <inheritdoc />
-    public async Task RemoveBatchAsync(IEnumerable<Guid> keys, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public async Task DeleteBatchAsync(IEnumerable<Guid> keys, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(keys);
 

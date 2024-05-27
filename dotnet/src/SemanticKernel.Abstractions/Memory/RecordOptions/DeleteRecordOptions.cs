@@ -5,23 +5,23 @@ using System.Diagnostics.CodeAnalysis;
 namespace Microsoft.SemanticKernel.Memory;
 
 /// <summary>
-/// Optional options when calling <see cref="IVectorDBRecordService{TKey, TDataModel}.RemoveAsync"/>.
+/// Optional options when calling <see cref="IVectorDBRecordService{TKey, TDataModel}.DeleteAsync"/>.
 /// </summary>
 [Experimental("SKEXP0001")]
-public class RemoveRecordOptions
+public class DeleteRecordOptions
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="RemoveRecordOptions"/> class.
+    /// Initializes a new instance of the <see cref="DeleteRecordOptions"/> class.
     /// </summary>
-    public RemoveRecordOptions()
+    public DeleteRecordOptions()
     {
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="RemoveRecordOptions"/> class by cloning the given options.
+    /// Initializes a new instance of the <see cref="DeleteRecordOptions"/> class by cloning the given options.
     /// </summary>
     /// <param name="source">The options to clone</param>
-    public RemoveRecordOptions(RemoveRecordOptions source)
+    public DeleteRecordOptions(DeleteRecordOptions source)
     {
         this.CollectionName = source.CollectionName;
     }

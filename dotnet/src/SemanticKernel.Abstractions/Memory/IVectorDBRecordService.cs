@@ -28,7 +28,7 @@ public interface IVectorDBRecordService
     /// <param name="options">Optional options for removing the record.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>The unique identifier for the vector record.</returns>
-    Task<object> RemoveAsync(object key, RemoveRecordOptions? options = default, CancellationToken cancellationToken = default);
+    Task<object> RemoveAsync(object key, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Upserts a vector record into the data store. Does not guarantee that the collection exists.
