@@ -20,7 +20,7 @@ public class RedisVectorDBCollectionUpdateServiceTests(ITestOutputHelper output,
         var sut = new RedisVectorDBCollectionUpdateService(fixture.Database);
 
         // Act.
-        var doesExistResult = await sut.CollectionExistAsync("hotels");
+        var doesExistResult = await sut.CollectionExistsAsync("hotels");
 
         // Assert.
         Assert.True(doesExistResult);
@@ -36,7 +36,7 @@ public class RedisVectorDBCollectionUpdateServiceTests(ITestOutputHelper output,
         var sut = new RedisVectorDBCollectionUpdateService(fixture.Database);
 
         // Act.
-        var doesExistResult = await sut.CollectionExistAsync("non-existing-collection");
+        var doesExistResult = await sut.CollectionExistsAsync("non-existing-collection");
 
         // Assert.
         Assert.False(doesExistResult);
@@ -79,6 +79,6 @@ public class RedisVectorDBCollectionUpdateServiceTests(ITestOutputHelper output,
         await sut.DeleteCollectionAsync(tempCollectionName);
 
         // Assert
-        Assert.False(await sut.CollectionExistAsync(tempCollectionName));
+        Assert.False(await sut.CollectionExistsAsync(tempCollectionName));
     }
 }

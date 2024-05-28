@@ -19,7 +19,7 @@ public class QdrantVectorDBCollectionUpdateServiceTests(ITestOutputHelper output
         var sut = new QdrantVectorDBCollectionUpdateService(fixture.QdrantClient);
 
         // Act.
-        var doesExistResult = await sut.CollectionExistAsync("namedVectorsHotels");
+        var doesExistResult = await sut.CollectionExistsAsync("namedVectorsHotels");
 
         // Assert.
         Assert.True(doesExistResult);
@@ -35,7 +35,7 @@ public class QdrantVectorDBCollectionUpdateServiceTests(ITestOutputHelper output
         var sut = new QdrantVectorDBCollectionUpdateService(fixture.QdrantClient);
 
         // Act.
-        var doesExistResult = await sut.CollectionExistAsync("non-existing-collection");
+        var doesExistResult = await sut.CollectionExistsAsync("non-existing-collection");
 
         // Assert.
         Assert.False(doesExistResult);
@@ -78,6 +78,6 @@ public class QdrantVectorDBCollectionUpdateServiceTests(ITestOutputHelper output
         await sut.DeleteCollectionAsync(tempCollectionName);
 
         // Assert
-        Assert.False(await sut.CollectionExistAsync(tempCollectionName));
+        Assert.False(await sut.CollectionExistsAsync(tempCollectionName));
     }
 }

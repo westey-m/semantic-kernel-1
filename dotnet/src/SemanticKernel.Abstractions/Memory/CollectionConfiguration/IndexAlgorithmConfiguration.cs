@@ -8,12 +8,23 @@ namespace Microsoft.SemanticKernel.Memory.CollectionConfiguration;
 public class IndexAlgorithmConfiguration
 {
     /// <summary>
-    /// The kind of index to use.
+    /// Initializes a new instance of the <see cref="IndexAlgorithmConfiguration"/> class.
     /// </summary>
-    public IndexKind IndexKind { get; set; }
+    /// <param name="indexKind">The kind of index to use.</param>
+    /// <param name="distanceFunction">The distance function to use when comparing vectors.</param>
+    public IndexAlgorithmConfiguration(IndexKind indexKind, DistanceFunction distanceFunction)
+    {
+        this.IndexKind = indexKind;
+        this.DistanceFunction = distanceFunction;
+    }
 
     /// <summary>
-    /// The distance function to use when comparing vectors.
+    /// Gets the kind of index to use.
     /// </summary>
-    public DistanceFunction DistanceFunction { get; set; }
+    public IndexKind IndexKind { get; private set; }
+
+    /// <summary>
+    /// Gets the distance function to use when comparing vectors.
+    /// </summary>
+    public DistanceFunction DistanceFunction { get; private set; }
 }

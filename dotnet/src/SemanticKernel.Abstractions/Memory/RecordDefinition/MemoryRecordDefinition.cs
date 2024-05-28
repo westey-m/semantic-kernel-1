@@ -6,13 +6,16 @@ using System.Diagnostics.CodeAnalysis;
 namespace Microsoft.SemanticKernel.Memory;
 
 /// <summary>
-/// A description of a record stored in a vector store.
+/// A description of a record stored in a memory store.
 /// </summary>
 [Experimental("SKEXP0001")]
-public sealed class VectorDBRecordConfiguration
+public sealed class MemoryRecordDefinition
 {
+    /// <summary>Empty static list for initialization purposes.</summary>
+    private static readonly List<Field> s_emptyFields = new();
+
     /// <summary>
     /// The list of fields that are stored in the record.
     /// </summary>
-    public IReadOnlyList<Field> Fields { get; set; }
+    public IReadOnlyList<Field> Fields { get; set; } = s_emptyFields;
 }

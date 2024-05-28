@@ -26,7 +26,7 @@ public interface IVectorDBCollectionUpdateService
     /// <param name="name">The name of the collection to check for.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns><see langword="true"/> if the collection exists, <see langword="false"/> otherwise.</returns>
-    Task<bool> CollectionExistAsync(string name, CancellationToken cancellationToken = default);
+    Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Delete a collection from the vector database.

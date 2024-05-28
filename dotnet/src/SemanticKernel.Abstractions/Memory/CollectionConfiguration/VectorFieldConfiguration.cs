@@ -8,22 +8,37 @@ namespace Microsoft.SemanticKernel.Memory.CollectionConfiguration;
 public class VectorFieldConfiguration
 {
     /// <summary>
-    /// The name of the field.
+    /// Initializes a new instance of the <see cref="VectorFieldConfiguration"/> class.
     /// </summary>
-    public string Name { get; set; }
+    /// <param name="name">The name of the field.</param>
+    /// <param name="vectorValueType">The data type that the vector will store.</param>
+    /// <param name="vectorDimensions">The number of dimensions in the vector.</param>
+    /// <param name="indexAlgorithmConfiguration">The configuration for the index algorithm to use when indexing the vector field.</param>
+    public VectorFieldConfiguration(string name, VectorValueType vectorValueType, int vectorDimensions, IndexAlgorithmConfiguration indexAlgorithmConfiguration)
+    {
+        this.Name = name;
+        this.VectorValueType = vectorValueType;
+        this.VectorDimensions = vectorDimensions;
+        this.IndexAlgorithmConfiguration = indexAlgorithmConfiguration;
+    }
 
     /// <summary>
-    /// The data type that the vector will store.
+    /// Gets the name of the field.
     /// </summary>
-    public VectorValueType VectorValueType { get; set; }
+    public string Name { get; private set; }
 
     /// <summary>
-    /// The number of dimensions in the vector.
+    /// Gets the data type that the vector will store.
     /// </summary>
-    public int VectorDimensions { get; set; }
+    public VectorValueType VectorValueType { get; private set; }
 
     /// <summary>
-    /// The configuration for the index algorithm to use when indexing the vector field.
+    /// Gets the number of dimensions in the vector.
     /// </summary>
-    public IndexAlgorithmConfiguration IndexAlgorithmConfiguration { get; set; }
+    public int VectorDimensions { get; private set; }
+
+    /// <summary>
+    /// Gets the configuration for the index algorithm to use when indexing the vector field.
+    /// </summary>
+    public IndexAlgorithmConfiguration IndexAlgorithmConfiguration { get; private set; }
 }

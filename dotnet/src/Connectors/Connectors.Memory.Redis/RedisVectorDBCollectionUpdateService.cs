@@ -29,7 +29,7 @@ public class RedisVectorDBCollectionUpdateService : IVectorDBCollectionUpdateSer
     }
 
     /// <inheritdoc />
-    public async Task<bool> CollectionExistAsync(string name, CancellationToken cancellationToken = default)
+    public async Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default)
     {
         try
         {

@@ -101,7 +101,7 @@ classDiagram
         class IVectorDBCollectionUpdateService{
             <<interface>>
             +GetCollectionNames
-            +DoesCollectionExist
+            +CollectionExists
             +DeleteCollection
         }
 
@@ -169,7 +169,7 @@ classDiagram
         class IVectorDBCollectionUpdateService{
             <<interface>>
             +GetCollectionNames
-            +DoesCollectionExist
+            +CollectionExists
             +DeleteCollection
         }
 
@@ -344,7 +344,7 @@ interface IVectorDBRecordService<TDataModel>
 {
     Task CreateCollectionAsync(CollectionConfig collectionConfig, CancellationToken cancellationToken = default);
     IAsyncEnumerable<string> ListCollectionNamesAsync(CancellationToken cancellationToken = default);
-    Task<bool> CollectionExistAsync(string name, CancellationToken cancellationToken = default);
+    Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default);
     Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default);
 
     Task UpsertAsync(TDataModel data, CancellationToken cancellationToken = default);
@@ -378,7 +378,7 @@ interface IVectorDBCollectionService
     virtual Task CreateSemanticCacheCollectionAsync(string name, CancellationToken cancellationToken = default);
 
     IAsyncEnumerable<string> ListCollectionNamesAsync(CancellationToken cancellationToken = default);
-    Task<bool> CollectionExistAsync(string name, CancellationToken cancellationToken = default);
+    Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default);
     Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default);
 }
 
@@ -422,7 +422,7 @@ class CustomerChatHistoryCollectionCreateService: IVectorDBCollectionCreateServi
 interface IVectorDBCollectionUpdateService
 {
     IAsyncEnumerable<string> ListCollectionNamesAsync(CancellationToken cancellationToken = default);
-    Task<bool> CollectionExistAsync(string name, CancellationToken cancellationToken = default);
+    Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default);
     Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default);
 }
 
@@ -446,7 +446,7 @@ interface IVectorDBCollectionCreateService
 interface IVectorDBCollectionUpdateService
 {
     IAsyncEnumerable<string> ListCollectionNamesAsync(CancellationToken cancellationToken = default);
-    Task<bool> CollectionExistAsync(string name, CancellationToken cancellationToken = default);
+    Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default);
     Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default);
 }
 
@@ -462,7 +462,7 @@ abstract class VectorDBCollectionService(IVectorDBCollectionUpdateService collec
 {
     public abstract Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default);
     public IAsyncEnumerable<string> ListCollectionNamesAsync(CancellationToken cancellationToken = default) { return collectionsUpdateService.ListCollectionNamesAsync(cancellationToken); }
-    public Task<bool> CollectionExistAsync(string name, CancellationToken cancellationToken = default) { return collectionsUpdateService.CollectionExistAsync(name, cancellationToken); }
+    public Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default) { return collectionsUpdateService.CollectionExistsAsync(name, cancellationToken); }
     public Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default) { return collectionsUpdateService.DeleteCollectionAsync(name, cancellationToken); }
 }
 

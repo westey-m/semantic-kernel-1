@@ -21,7 +21,7 @@ public class AzureAISearchVectorDBCollectionUpdateServiceTests(ITestOutputHelper
         var sut = new AzureAISearchVectorDBCollectionUpdateService(fixture.SearchIndexClient);
 
         // Act
-        var existResult = await sut.CollectionExistAsync(fixture.TestIndexName);
+        var existResult = await sut.CollectionExistsAsync(fixture.TestIndexName);
 
         // Assert
         Assert.True(existResult);
@@ -37,7 +37,7 @@ public class AzureAISearchVectorDBCollectionUpdateServiceTests(ITestOutputHelper
         var sut = new AzureAISearchVectorDBCollectionUpdateService(fixture.SearchIndexClient);
 
         // Act
-        var existResult = await sut.CollectionExistAsync("non-existing-collection");
+        var existResult = await sut.CollectionExistsAsync("non-existing-collection");
 
         // Assert
         Assert.False(existResult);
@@ -77,6 +77,6 @@ public class AzureAISearchVectorDBCollectionUpdateServiceTests(ITestOutputHelper
         await sut.DeleteCollectionAsync(tempCollectionName);
 
         // Assert
-        Assert.False(await sut.CollectionExistAsync(tempCollectionName));
+        Assert.False(await sut.CollectionExistsAsync(tempCollectionName));
     }
 }
