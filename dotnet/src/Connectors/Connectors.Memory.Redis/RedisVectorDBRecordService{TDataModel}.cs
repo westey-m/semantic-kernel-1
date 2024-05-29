@@ -91,7 +91,6 @@ public class RedisVectorDBRecordService<TDataModel> : IVectorDBRecordService<str
 
         this._dataAndMetadataFieldNames = fields
             .dataFields
-            .Concat(fields.metadataFields)
             .Select(VectorStoreModelPropertyReader.GetSerializedPropertyName)
             .ToArray();
 

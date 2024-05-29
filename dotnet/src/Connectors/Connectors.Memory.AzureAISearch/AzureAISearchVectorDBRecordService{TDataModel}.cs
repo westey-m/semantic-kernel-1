@@ -85,12 +85,8 @@ public class AzureAISearchVectorDBRecordService<TDataModel> : IVectorDBRecordSer
         VectorStoreModelPropertyReader.VerifyFieldTypes(fields.vectorFields, s_supportedVectorTypes, "Vector");
         this._keyFieldName = fields.keyField.Name;
 
-        // Build the list of field names on the curent model that don't have the VectorStoreModelVectorAtrribute but has
-        // the VectorStoreModelKeyAttribute or VectorStoreModelDataAtrribute or VectorStoreModelMetadataAtrribute attributes.
-        this._nonVectorFieldNames = typeof(TDataModel).GetProperties()
-            .Where(x => x.GetCustomAttributes(true).Select(x => x.GetType()).Intersect([typeof(KeyAttribute), typeof(DataAttribute), typeof(MetadataAttribute)]).Any())
-            .Select(x => x.Name)
-            .ToList();
+        // Build the list of field names from the current model that are either key or data fields.
+        this._nonVectorFieldNames = fields.dataFields.Concat([fields.keyField]).Select(x => x.Name).ToList();
     }
 
     /// <inheritdoc />

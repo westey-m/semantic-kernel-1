@@ -145,11 +145,11 @@ public class RedisVectorDBFixture : IAsyncLifetime
     /// <param name="DescriptionEmbeddings">A vector field.</param>
     public record HotelInfo(
         [property: Key] string HotelId,
-        [property: Metadata] string HotelName,
-        [property: Metadata, JsonPropertyName("hotelCode")] int HotelCode,
-        [property: Metadata] bool Seafront,
-        [property: Metadata] HotelAddress Address,
-        [property: Data] string Description,
+        [property: Data] string HotelName,
+        [property: Data, JsonPropertyName("hotelCode")] int HotelCode,
+        [property: Data] bool Seafront,
+        [property: Data] HotelAddress Address,
+        [property: Data(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbeddings")] string Description,
         [property: Vector()] ReadOnlyMemory<float>? DescriptionEmbeddings);
 
     /// <summary>

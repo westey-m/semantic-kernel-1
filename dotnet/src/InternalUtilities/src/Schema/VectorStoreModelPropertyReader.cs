@@ -18,14 +18,14 @@ namespace Microsoft.SemanticKernel;
 internal static class VectorStoreModelPropertyReader
 {
     /// <summary>
-    /// Find the fields with <see cref="KeyAttribute"/>, <see cref="DataAttribute"/>, <see cref="MetadataAttribute"/> and <see cref="VectorAttribute"/> attributes.
+    /// Find the fields with <see cref="KeyAttribute"/>, <see cref="DataAttribute"/> and <see cref="VectorAttribute"/> attributes.
     /// Return those fields in separate categories.
     /// Throws if no key field is found, if there are multiple key fields, or if the key field is not a string.
     /// </summary>
     /// <param name="type">The data model to find the fields on.</param>
     /// <param name="supportsMultipleVectors">A value indicating whether multiple vector fields are supported instead of just one.</param>
     /// <returns>The categorized fields.</returns>
-    public static (PropertyInfo keyField, List<PropertyInfo> dataFields, List<PropertyInfo> metadataFields, List<PropertyInfo> vectorFields) FindFields(Type type, bool supportsMultipleVectors)
+    public static (PropertyInfo keyField, List<PropertyInfo> dataFields, List<PropertyInfo> vectorFields) FindFields(Type type, bool supportsMultipleVectors)
     {
         PropertyInfo? keyField = null;
         List<PropertyInfo> dataProperties = new();
@@ -50,12 +50,6 @@ internal static class VectorStoreModelPropertyReader
             if (property.GetCustomAttribute<DataAttribute>() is not null)
             {
                 dataProperties.Add(property);
-            }
-
-            // Get metadata properties.
-            if (property.GetCustomAttribute<MetadataAttribute>() is not null)
-            {
-                metadataProperties.Add(property);
             }
 
             // Get Vector properties.
@@ -96,7 +90,7 @@ internal static class VectorStoreModelPropertyReader
             throw new ArgumentException($"No vector field found on type {type.FullName}.");
         }
 
-        return (keyField, dataProperties, metadataProperties, vectorFields);
+        return (keyField, dataProperties, vectorFields);
     }
 
     /// <summary>

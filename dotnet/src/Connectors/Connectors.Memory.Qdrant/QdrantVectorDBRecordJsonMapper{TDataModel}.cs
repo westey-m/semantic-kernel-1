@@ -84,12 +84,11 @@ internal sealed class QdrantVectorDBRecordJsonMapper<TDataModel> : IVectorDBReco
         var fields = VectorStoreModelPropertyReader.FindFields(typeof(TDataModel), this._options.HasNamedVectors);
         VectorStoreModelPropertyReader.VerifyFieldTypes([fields.keyField], s_supportedKeyTypes, "Key");
         VectorStoreModelPropertyReader.VerifyFieldTypes(fields.dataFields, s_supportedFieldTypes, "Data");
-        VectorStoreModelPropertyReader.VerifyFieldTypes(fields.metadataFields, s_supportedFieldTypes, "Metadata");
         VectorStoreModelPropertyReader.VerifyFieldTypes(fields.vectorFields, s_supportedVectorTypes, "Vector");
 
         // Store properties for later use.
         this._keyFieldPropertyInfo = fields.keyField;
-        this._payloadFieldsPropertyInfo = fields.dataFields.Concat(fields.metadataFields).ToList();
+        this._payloadFieldsPropertyInfo = fields.dataFields;
         this._vectorFieldsPropertyInfo = fields.vectorFields;
     }
 

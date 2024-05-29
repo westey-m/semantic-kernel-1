@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Microsoft.SemanticKernel.Memory;
 
 /// <summary>
-/// A description of a record stored in a memory store.
+/// A description of the fields of a record stored in a memory store, plus how the fields are used.
 /// </summary>
 [Experimental("SKEXP0001")]
 public sealed class MemoryRecordDefinition

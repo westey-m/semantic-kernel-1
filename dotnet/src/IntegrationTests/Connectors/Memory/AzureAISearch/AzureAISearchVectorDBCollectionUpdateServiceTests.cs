@@ -50,6 +50,7 @@ public class AzureAISearchVectorDBCollectionUpdateServiceTests(ITestOutputHelper
     public async Task ItCanGetAListOfExistingCollectionNamesAsync()
     {
         // Arrange
+        await AzureAISearchVectorDBFixture.DeleteIndexIfExistsAsync(fixture.TestIndexName + "-additional", fixture.SearchIndexClient);
         await AzureAISearchVectorDBFixture.CreateIndexAsync(fixture.TestIndexName + "-additional", fixture.SearchIndexClient);
         var sut = new AzureAISearchVectorDBCollectionUpdateService(fixture.SearchIndexClient);
 
@@ -63,6 +64,9 @@ public class AzureAISearchVectorDBCollectionUpdateServiceTests(ITestOutputHelper
 
         // Output
         output.WriteLine(string.Join(",", collectionNames));
+
+        // Cleanup
+        await AzureAISearchVectorDBFixture.DeleteIndexIfExistsAsync(fixture.TestIndexName + "-additional", fixture.SearchIndexClient);
     }
 
     [Fact(Skip = SkipReason)]

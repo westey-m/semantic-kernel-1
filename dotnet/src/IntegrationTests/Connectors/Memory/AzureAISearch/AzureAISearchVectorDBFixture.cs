@@ -199,8 +199,8 @@ public class AzureAISearchVectorDBFixture : IAsyncLifetime
 
     public record HotelShortInfo(
         [property: Key] string HotelId,
-        [property: Metadata] string HotelName,
-        [property: Data] string Description);
+        [property: Data] string HotelName,
+        [property: Data(HasEmbedding = true)] string Description);
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     public record Hotel
@@ -210,36 +210,36 @@ public class AzureAISearchVectorDBFixture : IAsyncLifetime
         public string HotelId { get; set; }
 
         [SearchableField(IsSortable = true)]
-        [Metadata]
+        [Data]
         public string HotelName { get; set; }
 
         [SearchableField(AnalyzerName = LexicalAnalyzerName.Values.EnLucene)]
-        [Data]
+        [Data(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbedding")]
         public string Description { get; set; }
 
         [Vector]
         public ReadOnlyMemory<float> DescriptionEmbedding { get; set; }
 
         [SearchableField(IsFilterable = true, IsFacetable = true)]
-        [Metadata]
+        [Data]
 #pragma warning disable CA1819 // Properties should not return arrays
         public string[] Tags { get; set; }
 #pragma warning restore CA1819 // Properties should not return arrays
 
         [SimpleField(IsFilterable = true, IsSortable = true, IsFacetable = true)]
-        [Metadata]
+        [Data]
         public bool? ParkingIncluded { get; set; }
 
         [SimpleField(IsFilterable = true, IsSortable = true, IsFacetable = true)]
-        [Metadata]
+        [Data]
         public DateTimeOffset? LastRenovationDate { get; set; }
 
         [SimpleField(IsFilterable = true, IsSortable = true, IsFacetable = true)]
-        [Metadata]
+        [Data]
         public double? Rating { get; set; }
 
         [SearchableField]
-        [Metadata]
+        [Data]
         public Address Address { get; set; }
     }
 

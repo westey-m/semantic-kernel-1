@@ -3,8 +3,8 @@
 status: proposed
 contact: westey-m
 date: 2024-05-01
-deciders: sergeymenshykh, markwallace, rbarreto, dmytrostruk, westey-m
-consulted: 
+deciders: sergeymenshykh, markwallace, rbarreto, dmytrostruk, westey-m, matthewbolanos
+consulted: stephentoub, dluc
 informed: 
 ---
 
@@ -298,14 +298,55 @@ The different stores vary in many ways around how data is organized.
 - Some just store a record with fields on it, where fields can be a key or a data field or a vector and their type is determined at collection creation time.
 - Others separate fields by type when interacting with the api, e.g. you have to specify a key explicitly, put metadata into a metadata dictionary and put vectors into a vector array.
 
-For the built in mapper, I'm proposing that we use attributes to annotate the model indicating the category of field.
+I'm proposing that we allow two ways in which to provide the information required to map data between the consumer data model and storage data model.
+First is a set of configuration objects that capture the types of each field. Second would be a set of attributes that can be used to decorate the model itself
+and can be converted to the configuration objects, allowing a single execution path.
+Additional configuration properties can easily be added for each type of field as required, e.g. IsFilterable or IsFullTextSearchable, allowing us to also create an index from
+the provided configuration.
+
+Here is what the attributes would look like, plus a sample use case.
 
 ```cs
-    public record HotelInfo(
-        [property: Key, JsonPropertyName("hotel-id")] string HotelId,
-        [property: Metadata, JsonPropertyName("hotel-name")] string HotelName,
-        [property: Data, JsonPropertyName("description")] string Description,
-        [property: Vector, JsonPropertyName("description-embeddings")] ReadOnlyMemory<float>? DescriptionEmbeddings);
+sealed class KeyAttribute : Attribute
+{
+}
+sealed class DataAttribute : Attribute
+{
+    public bool HasEmbedding { get; set; }
+    public string EmbeddingPropertyName { get; set; }
+}
+sealed class VectorAttribute : Attribute
+{
+}
+
+public record HotelInfo(
+    [property: Key, JsonPropertyName("hotel-id")] string HotelId,
+    [property: Data, JsonPropertyName("hotel-name")] string HotelName,
+    [property: Data(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbeddings"), JsonPropertyName("description")] string Description,
+    [property: Vector, JsonPropertyName("description-embeddings")] ReadOnlyMemory<float>? DescriptionEmbeddings);
+```
+
+Here is what the configuration objects would look like.
+
+```cs
+abstract class Field(string fieldName);
+
+sealed class KeyField(string fieldName): Field(fieldName)
+{
+}
+sealed class DataField(string fieldName): Field(fieldName)
+{
+    bool HasEmbedding;
+    string EmbeddingPropertyName;
+}
+sealed class VectorField(string fieldName): Field(fieldName)
+{
+}
+
+sealed class MemoryRecordDefinition
+{
+    IReadOnlyList<Field> Fields;
+}
 ```
 
 ## Decision Drivers
