@@ -13,9 +13,9 @@ using Microsoft.SemanticKernel.Memory;
 namespace Microsoft.SemanticKernel;
 
 /// <summary>
-/// Contains helpers for reading vector store model properties and their attributes.
+/// Contains helpers for reading memory service model properties and their attributes.
 /// </summary>
-internal static class VectorStoreModelPropertyReader
+internal static class MemoryServiceModelPropertyReader
 {
     /// <summary>
     /// Find the fields with <see cref="KeyAttribute"/>, <see cref="DataAttribute"/> and <see cref="VectorAttribute"/> attributes.
