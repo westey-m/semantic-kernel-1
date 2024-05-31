@@ -198,7 +198,7 @@ public class AzureAISearchMemoryFixture : IAsyncLifetime
     }
 
     public record HotelShortInfo(
-        [property: Key] string HotelId,
+        [property: MemoryRecordKey] string HotelId,
         [property: Data] string HotelName,
         [property: Data(HasEmbedding = true)] string Description);
 
@@ -206,7 +206,7 @@ public class AzureAISearchMemoryFixture : IAsyncLifetime
     public record Hotel
     {
         [SimpleField(IsKey = true, IsFilterable = true)]
-        [Key]
+        [MemoryRecordKey]
         public string HotelId { get; set; }
 
         [SearchableField(IsSortable = true)]
@@ -217,7 +217,7 @@ public class AzureAISearchMemoryFixture : IAsyncLifetime
         [Data(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbedding")]
         public string Description { get; set; }
 
-        [Vector]
+        [MemoryRecordVector]
         public ReadOnlyMemory<float> DescriptionEmbedding { get; set; }
 
         [SearchableField(IsFilterable = true, IsFacetable = true)]

@@ -244,7 +244,7 @@ public class QdrantMemoryFixture : IAsyncLifetime
     public record HotelInfo()
     {
         /// <summary>The key of the record.</summary>
-        [Key]
+        [MemoryRecordKey]
         public ulong HotelId { get; init; }
 
         /// <summary>A string metadata field.</summary>
@@ -271,7 +271,7 @@ public class QdrantMemoryFixture : IAsyncLifetime
         public string Description { get; set; }
 
         /// <summary>A vector field.</summary>
-        [Vector]
+        [MemoryRecordVector]
         public ReadOnlyMemory<float>? DescriptionEmbeddings { get; set; }
     }
 
@@ -282,7 +282,7 @@ public class QdrantMemoryFixture : IAsyncLifetime
     public record HotelInfoWithGuidId()
     {
         /// <summary>The key of the record.</summary>
-        [Key]
+        [MemoryRecordKey]
         public Guid HotelId { get; init; }
 
         /// <summary>A string metadata field.</summary>
@@ -294,7 +294,7 @@ public class QdrantMemoryFixture : IAsyncLifetime
         public string Description { get; set; }
 
         /// <summary>A vector field.</summary>
-        [Vector]
+        [MemoryRecordVector]
         public ReadOnlyMemory<float>? DescriptionEmbeddings { get; set; }
     }
 }

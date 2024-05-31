@@ -144,13 +144,13 @@ public class RedisMemoryFixture : IAsyncLifetime
     /// <param name="Description">A document field.</param>
     /// <param name="DescriptionEmbeddings">A vector field.</param>
     public record HotelInfo(
-        [property: Key] string HotelId,
+        [property: MemoryRecordKey] string HotelId,
         [property: Data] string HotelName,
         [property: Data, JsonPropertyName("hotelCode")] int HotelCode,
         [property: Data] bool Seafront,
         [property: Data] HotelAddress Address,
         [property: Data(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbeddings")] string Description,
-        [property: Vector()] ReadOnlyMemory<float>? DescriptionEmbeddings);
+        [property: MemoryRecordVector()] ReadOnlyMemory<float>? DescriptionEmbeddings);
 
     /// <summary>
     /// A test model for the vector store to simulate a complex type.
