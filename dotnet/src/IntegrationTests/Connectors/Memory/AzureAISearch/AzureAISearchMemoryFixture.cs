@@ -199,8 +199,8 @@ public class AzureAISearchMemoryFixture : IAsyncLifetime
 
     public record HotelShortInfo(
         [property: MemoryRecordKey] string HotelId,
-        [property: Data] string HotelName,
-        [property: Data(HasEmbedding = true)] string Description);
+        [property: MemoryRecordData] string HotelName,
+        [property: MemoryRecordData(HasEmbedding = true)] string Description);
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     public record Hotel
@@ -210,36 +210,36 @@ public class AzureAISearchMemoryFixture : IAsyncLifetime
         public string HotelId { get; set; }
 
         [SearchableField(IsSortable = true)]
-        [Data]
+        [MemoryRecordData]
         public string HotelName { get; set; }
 
         [SearchableField(AnalyzerName = LexicalAnalyzerName.Values.EnLucene)]
-        [Data(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbedding")]
+        [MemoryRecordData(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbedding")]
         public string Description { get; set; }
 
         [MemoryRecordVector]
         public ReadOnlyMemory<float> DescriptionEmbedding { get; set; }
 
         [SearchableField(IsFilterable = true, IsFacetable = true)]
-        [Data]
+        [MemoryRecordData]
 #pragma warning disable CA1819 // Properties should not return arrays
         public string[] Tags { get; set; }
 #pragma warning restore CA1819 // Properties should not return arrays
 
         [SimpleField(IsFilterable = true, IsSortable = true, IsFacetable = true)]
-        [Data]
+        [MemoryRecordData]
         public bool? ParkingIncluded { get; set; }
 
         [SimpleField(IsFilterable = true, IsSortable = true, IsFacetable = true)]
-        [Data]
+        [MemoryRecordData]
         public DateTimeOffset? LastRenovationDate { get; set; }
 
         [SimpleField(IsFilterable = true, IsSortable = true, IsFacetable = true)]
-        [Data]
+        [MemoryRecordData]
         public double? Rating { get; set; }
 
         [SearchableField]
-        [Data]
+        [MemoryRecordData]
         public Address Address { get; set; }
     }
 

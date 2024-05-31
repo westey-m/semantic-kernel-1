@@ -145,11 +145,11 @@ public class RedisMemoryFixture : IAsyncLifetime
     /// <param name="DescriptionEmbeddings">A vector field.</param>
     public record HotelInfo(
         [property: MemoryRecordKey] string HotelId,
-        [property: Data] string HotelName,
-        [property: Data, JsonPropertyName("hotelCode")] int HotelCode,
-        [property: Data] bool Seafront,
-        [property: Data] HotelAddress Address,
-        [property: Data(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbeddings")] string Description,
+        [property: MemoryRecordData] string HotelName,
+        [property: MemoryRecordData, JsonPropertyName("hotelCode")] int HotelCode,
+        [property: MemoryRecordData] bool Seafront,
+        [property: MemoryRecordData] HotelAddress Address,
+        [property: MemoryRecordData(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbeddings")] string Description,
         [property: MemoryRecordVector()] ReadOnlyMemory<float>? DescriptionEmbeddings);
 
     /// <summary>

@@ -18,7 +18,7 @@ namespace Microsoft.SemanticKernel;
 internal static class MemoryServiceModelPropertyReader
 {
     /// <summary>
-    /// Find the fields with <see cref="MemoryRecordKeyAttribute"/>, <see cref="DataAttribute"/> and <see cref="MemoryRecordVectorAttribute"/> attributes.
+    /// Find the fields with <see cref="MemoryRecordKeyAttribute"/>, <see cref="MemoryRecordDataAttribute"/> and <see cref="MemoryRecordVectorAttribute"/> attributes.
     /// Return those fields in separate categories.
     /// Throws if no key field is found, if there are multiple key fields, or if the key field is not a string.
     /// </summary>
@@ -47,7 +47,7 @@ internal static class MemoryServiceModelPropertyReader
             }
 
             // Get data properties.
-            if (property.GetCustomAttribute<DataAttribute>() is not null)
+            if (property.GetCustomAttribute<MemoryRecordDataAttribute>() is not null)
             {
                 dataProperties.Add(property);
             }

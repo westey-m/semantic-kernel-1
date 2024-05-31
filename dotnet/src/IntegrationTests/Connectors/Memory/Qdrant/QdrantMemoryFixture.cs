@@ -248,26 +248,26 @@ public class QdrantMemoryFixture : IAsyncLifetime
         public ulong HotelId { get; init; }
 
         /// <summary>A string metadata field.</summary>
-        [Data]
+        [MemoryRecordData]
         public string? HotelName { get; set; }
 
         /// <summary>An int metadata field.</summary>
-        [Data, JsonPropertyName("hotelCode")]
+        [MemoryRecordData, JsonPropertyName("hotelCode")]
         public int HotelCode { get; set; }
 
         /// <summary>A  float metadata field.</summary>
-        [Data]
+        [MemoryRecordData]
         public float? HotelRating { get; set; }
 
         /// <summary>A bool metadata field.</summary>
-        [Data]
+        [MemoryRecordData]
         public bool Seafront { get; set; }
 
-        [Data]
+        [MemoryRecordData]
         public List<string> Tags { get; set; } = new List<string>();
 
         /// <summary>A data field.</summary>
-        [Data(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbeddings")]
+        [MemoryRecordData(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbeddings")]
         public string Description { get; set; }
 
         /// <summary>A vector field.</summary>
@@ -286,11 +286,11 @@ public class QdrantMemoryFixture : IAsyncLifetime
         public Guid HotelId { get; init; }
 
         /// <summary>A string metadata field.</summary>
-        [Data]
+        [MemoryRecordData]
         public string? HotelName { get; set; }
 
         /// <summary>A data field.</summary>
-        [Data(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbeddings")]
+        [MemoryRecordData(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbeddings")]
         public string Description { get; set; }
 
         /// <summary>A vector field.</summary>
