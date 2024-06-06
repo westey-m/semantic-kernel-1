@@ -11,7 +11,7 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 /// <summary>
 /// Mapper between a Qdrant record and <see cref="VectorDBRecord"/>.
 /// </summary>
-public class QdrantMemoryRecordMapper : IMemoryRecordMapper<VectorDBRecord, PointStruct>
+public sealed class QdrantMemoryRecordMapper : IMemoryRecordMapper<VectorDBRecord, PointStruct>
 {
     /// <summary>Optional options to use when doing the model conversion.</summary>
     private readonly QdrantMemoryRecordMapperOptions _options;

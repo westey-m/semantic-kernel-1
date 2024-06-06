@@ -17,7 +17,7 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 /// Service for storing and retrieving memory records, that uses Qdrant as the underlying storage.
 /// </summary>
 /// <typeparam name="TDataModel">The data model to use for adding, updating and retrieving data from storage.</typeparam>
-public class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService<ulong, TDataModel>, IMemoryRecordService<Guid, TDataModel>
+public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService<ulong, TDataModel>, IMemoryRecordService<Guid, TDataModel>
     where TDataModel : class
 {
     /// <summary>Qdrant client that can be used to manage the collections and points in a Qdrant store.</summary>
@@ -230,8 +230,8 @@ public class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService<ulong,
     private async IAsyncEnumerable<TDataModel?> GetBatchByPointIdAsync<TKey>(
         IEnumerable<TKey> keys,
         Func<TKey, PointId> keyConverter,
-        GetRecordOptions? options = default,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        GetRecordOptions? options,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         Verify.NotNull(keys);
 

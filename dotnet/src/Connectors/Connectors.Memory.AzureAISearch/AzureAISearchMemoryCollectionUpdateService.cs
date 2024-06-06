@@ -13,7 +13,7 @@ namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 /// <summary>
 /// Provides collection retrieval and deletion for Azure AI Search.
 /// </summary>
-public class AzureAISearchMemoryCollectionUpdateService : IMemoryCollectionUpdateService
+public sealed class AzureAISearchMemoryCollectionUpdateService : IMemoryCollectionUpdateService
 {
     /// <summary>Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</summary>
     private readonly SearchIndexClient _searchIndexClient;

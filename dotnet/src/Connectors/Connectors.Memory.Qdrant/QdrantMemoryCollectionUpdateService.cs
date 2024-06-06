@@ -13,7 +13,7 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 /// <summary>
 /// Provides collection retrieval and deletion for Qdrant.
 /// </summary>
-public class QdrantMemoryCollectionUpdateService : IMemoryCollectionUpdateService
+public sealed class QdrantMemoryCollectionUpdateService : IMemoryCollectionUpdateService
 {
     /// <summary>Qdrant client that can be used to manage the collections and points in a Qdrant store.</summary>
     private readonly QdrantClient _qdrantClient;

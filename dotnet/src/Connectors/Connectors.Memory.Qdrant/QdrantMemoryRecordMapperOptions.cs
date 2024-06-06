@@ -7,7 +7,7 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 /// <summary>
 /// Options when creating a <see cref="QdrantMemoryRecordMapper"/>.
 /// </summary>
-public class QdrantMemoryRecordMapperOptions
+public sealed class QdrantMemoryRecordMapperOptions
 {
     /// <summary>Empty string list used for initialization.</summary>
     private static readonly List<string> s_emptyStringList = new();

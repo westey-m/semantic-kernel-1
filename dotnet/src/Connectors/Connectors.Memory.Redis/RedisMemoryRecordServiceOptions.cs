@@ -8,7 +8,7 @@ namespace Microsoft.SemanticKernel.Connectors.Redis;
 /// <summary>
 /// Options when creating a <see cref="RedisMemoryRecordService{TDataModel}"/>.
 /// </summary>
-public class RedisMemoryRecordServiceOptions<TDataModel>
+public sealed class RedisMemoryRecordServiceOptions<TDataModel>
     where TDataModel : class
 {
     /// <summary>

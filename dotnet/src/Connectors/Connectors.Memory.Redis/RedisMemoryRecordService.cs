@@ -21,7 +21,7 @@ namespace Microsoft.SemanticKernel.Connectors.Redis;
 /// Service for storing and retrieving memory records, that uses Redis as the underlying storage.
 /// </summary>
 /// <typeparam name="TDataModel">The data model to use for adding, updating and retrieving data from storage.</typeparam>
-public class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<string, TDataModel>
+public sealed class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<string, TDataModel>
     where TDataModel : class
 {
     /// <summary>A set of types that a key on the provided model may have.</summary>

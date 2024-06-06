@@ -19,7 +19,7 @@ namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 /// <remarks>
 /// NOTE: This class mutates the data objects that are passed to it during encoding.
 /// </remarks>
-public class KeyNormalizingAzureAISearchMemoryRecordService<TDataModel> : IMemoryRecordService<string, TDataModel>
+public sealed class KeyNormalizingAzureAISearchMemoryRecordService<TDataModel> : IMemoryRecordService<string, TDataModel>
     where TDataModel : class
 {
     /// <summary>The vector store instance that is being decorated.</summary>

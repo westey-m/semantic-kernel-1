@@ -13,7 +13,7 @@ namespace Microsoft.SemanticKernel.Connectors.Redis;
 /// <summary>
 /// Provides collection retrieval and deletion for Redis.
 /// </summary>
-public class RedisMemoryCollectionUpdateService : IMemoryCollectionUpdateService
+public sealed class RedisMemoryCollectionUpdateService : IMemoryCollectionUpdateService
 {
     /// <summary>The redis database to read/write indices from.</summary>
     private readonly IDatabase _database;

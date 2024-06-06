@@ -8,7 +8,7 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 /// <summary>
 /// Options when creating a <see cref="QdrantMemoryRecordService{TDataModel}"/>.
 /// </summary>
-public class QdrantMemoryRecordServiceOptions<TDataModel>
+public sealed class QdrantMemoryRecordServiceOptions<TDataModel>
     where TDataModel : class
 {
     /// <summary>
