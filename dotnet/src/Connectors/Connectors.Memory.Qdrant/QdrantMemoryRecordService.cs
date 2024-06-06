@@ -98,55 +98,55 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
     }
 
     /// <inheritdoc />
-    public async Task DeleteAsync(ulong key, DeleteRecordOptions? options = null, CancellationToken cancellationToken = default)
+    public Task DeleteAsync(ulong key, DeleteRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(key);
 
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
-        await this._qdrantClient.DeleteAsync(
+        return this._qdrantClient.DeleteAsync(
             collectionName,
             key,
             wait: true,
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+            cancellationToken: cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task DeleteAsync(Guid key, DeleteRecordOptions? options = null, CancellationToken cancellationToken = default)
+    public Task DeleteAsync(Guid key, DeleteRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(key);
 
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
-        await this._qdrantClient.DeleteAsync(
+        return this._qdrantClient.DeleteAsync(
             collectionName,
             key,
             wait: true,
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+            cancellationToken: cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task DeleteBatchAsync(IEnumerable<ulong> keys, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public Task DeleteBatchAsync(IEnumerable<ulong> keys, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(keys);
 
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
-        await this._qdrantClient.DeleteAsync(
+        return this._qdrantClient.DeleteAsync(
             collectionName,
             keys.ToList(),
             wait: true,
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+            cancellationToken: cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task DeleteBatchAsync(IEnumerable<Guid> keys, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public Task DeleteBatchAsync(IEnumerable<Guid> keys, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(keys);
 
         var collectionName = options?.CollectionName ?? this._defaultCollectionName;
-        var result = await this._qdrantClient.DeleteAsync(
+        return this._qdrantClient.DeleteAsync(
             collectionName,
             keys.ToList(),
             wait: true,
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+            cancellationToken: cancellationToken);
     }
 
     /// <inheritdoc />

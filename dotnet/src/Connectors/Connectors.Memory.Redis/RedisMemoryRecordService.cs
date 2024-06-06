@@ -176,7 +176,7 @@ public sealed class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<
     }
 
     /// <inheritdoc />
-    public async Task DeleteAsync(string key, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public Task DeleteAsync(string key, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNullOrWhiteSpace(key);
 
@@ -185,19 +185,19 @@ public sealed class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<
         var maybePrefixedKey = this.PrefixKeyIfNeeded(key, collectionName);
 
         // Remove.
-        await this._database
+        return this._database
             .JSON()
-            .DelAsync(maybePrefixedKey).ConfigureAwait(false);
+            .DelAsync(maybePrefixedKey);
     }
 
     /// <inheritdoc />
-    public async Task DeleteBatchAsync(IEnumerable<string> keys, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public Task DeleteBatchAsync(IEnumerable<string> keys, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(keys);
 
         // Remove records in parallel.
         var tasks = keys.Select(key => this.DeleteAsync(key, options, cancellationToken));
-        await Task.WhenAll(tasks).ConfigureAwait(false);
+        return Task.WhenAll(tasks);
     }
 
     /// <inheritdoc />
