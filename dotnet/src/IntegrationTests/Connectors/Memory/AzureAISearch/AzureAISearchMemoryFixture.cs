@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -32,11 +33,11 @@ public class AzureAISearchMemoryFixture : IAsyncLifetime
     /// Test Configuration setup.
     /// </summary>
     private readonly IConfigurationRoot _configuration = new ConfigurationBuilder()
-            .AddJsonFile(path: "testsettings.json", optional: false, reloadOnChange: true)
-            .AddJsonFile(path: "testsettings.development.json", optional: true, reloadOnChange: true)
-            .AddEnvironmentVariables()
-            .AddUserSecrets<AzureAISearchMemoryRecordServiceTests>()
-            .Build();
+        .AddJsonFile(path: "testsettings.json", optional: false, reloadOnChange: true)
+        .AddJsonFile(path: "testsettings.development.json", optional: true, reloadOnChange: true)
+        .AddEnvironmentVariables()
+        .AddUserSecrets<AzureAISearchMemoryRecordServiceTests>()
+        .Build();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AzureAISearchMemoryFixture"/> class.
@@ -46,6 +47,21 @@ public class AzureAISearchMemoryFixture : IAsyncLifetime
         var config = this._configuration.GetSection("AzureAISearch").Get<AzureAISearchConfiguration>();
         Assert.NotNull(config);
         this.SearchIndexClient = new SearchIndexClient(new Uri(config.ServiceUrl), new AzureKeyCredential(config.ApiKey));
+        this.MemoryRecordDefinition = new MemoryRecordDefinition
+        {
+            Properties = new List<MemoryRecordProperty>
+            {
+                new MemoryRecordKeyProperty("HotelId"),
+                new MemoryRecordDataProperty("HotelName"),
+                new MemoryRecordDataProperty("Description"),
+                new MemoryRecordVectorProperty("DescriptionEmbedding"),
+                new MemoryRecordDataProperty("Tags"),
+                new MemoryRecordDataProperty("ParkingIncluded"),
+                new MemoryRecordDataProperty("LastRenovationDate"),
+                new MemoryRecordDataProperty("Rating"),
+                new MemoryRecordDataProperty("Address")
+            }
+        };
     }
 
     /// <summary>
@@ -57,6 +73,11 @@ public class AzureAISearchMemoryFixture : IAsyncLifetime
     /// Gets the name of the index that this fixture sets up and tears down.
     /// </summary>
     public string TestIndexName { get => this._testIndexName; }
+
+    /// <summary>
+    /// Gets the manually created memory record definition for our test model.
+    /// </summary>
+    public MemoryRecordDefinition MemoryRecordDefinition { get; private set; }
 
     /// <summary>
     /// Create / Recreate index and upload documents before test run.
@@ -127,9 +148,9 @@ public class AzureAISearchMemoryFixture : IAsyncLifetime
             IndexDocumentsAction.Upload(
                 new Hotel()
                 {
-                    HotelId = "1",
-                    HotelName = "Secret Point Motel",
-                    Description = "The hotel is ideally located on the main commercial artery of the city in the heart of New York. A few minutes away is Time's Square and the historic centre of the city, as well as other places of interest that make New York one of America's most attractive and cosmopolitan cities.",
+                    HotelId = "BaseSet-1",
+                    HotelName = "Hotel 1",
+                    Description = "This is a great hotel",
                     DescriptionEmbedding = new[] { 30f, 31f, 32f, 33f },
                     Tags = new[] { "pool", "air conditioning", "concierge" },
                     ParkingIncluded = false,
@@ -144,9 +165,9 @@ public class AzureAISearchMemoryFixture : IAsyncLifetime
             IndexDocumentsAction.Upload(
                 new Hotel()
                 {
-                    HotelId = "2",
-                    HotelName = "Twin Dome Motel",
-                    Description = "The hotel is situated in a  nineteenth century plaza, which has been expanded and renovated to the highest architectural standards to create a modern, functional and first-class hotel in which art and unique historical elements coexist with the most modern comforts.",
+                    HotelId = "BaseSet-2",
+                    HotelName = "Hotel 2",
+                    Description = "This is a great hotel",
                     DescriptionEmbedding = new[] { 30f, 31f, 32f, 33f },
                     Tags = new[] { "pool", "free wifi", "concierge" },
                     ParkingIncluded = false,
@@ -161,9 +182,9 @@ public class AzureAISearchMemoryFixture : IAsyncLifetime
             IndexDocumentsAction.Upload(
                 new Hotel()
                 {
-                    HotelId = "3",
-                    HotelName = "Triple Landscape Hotel",
-                    Description = "The Hotel stands out for its gastronomic excellence under the management of William Dough, who advises on and oversees all of the Hotel’s restaurant services.",
+                    HotelId = "BaseSet-3",
+                    HotelName = "Hotel 3",
+                    Description = "This is a great hotel",
                     DescriptionEmbedding = new[] { 30f, 31f, 32f, 33f },
                     Tags = new[] { "air conditioning", "bar", "continental breakfast" },
                     ParkingIncluded = true,
@@ -178,9 +199,9 @@ public class AzureAISearchMemoryFixture : IAsyncLifetime
             IndexDocumentsAction.Upload(
                 new Hotel()
                 {
-                    HotelId = "4",
-                    HotelName = "Sublime Cliff Hotel",
-                    Description = "Sublime Cliff Hotel is located in the heart of the historic center of Sublime in an extremely vibrant and lively area within short walking distance to the sites and landmarks of the city and is surrounded by the extraordinary beauty of churches, buildings, shops and monuments. Sublime Cliff is part of a lovingly restored 1800 palace.",
+                    HotelId = "BaseSet-4",
+                    HotelName = "Hotel 4",
+                    Description = "This is a great hotel",
                     DescriptionEmbedding = new[] { 30f, 31f, 32f, 33f },
                     Tags = new[] { "concierge", "view", "24-hour front desk service" },
                     ParkingIncluded = true,
@@ -197,13 +218,8 @@ public class AzureAISearchMemoryFixture : IAsyncLifetime
         searchClient.IndexDocuments(batch);
     }
 
-    public record HotelShortInfo(
-        [property: MemoryRecordKey] string HotelId,
-        [property: MemoryRecordData] string HotelName,
-        [property: MemoryRecordData(HasEmbedding = true)] string Description);
-
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-    public record Hotel
+    public class Hotel
     {
         [SimpleField(IsKey = true, IsFilterable = true)]
         [MemoryRecordKey]
@@ -218,7 +234,7 @@ public class AzureAISearchMemoryFixture : IAsyncLifetime
         public string Description { get; set; }
 
         [MemoryRecordVector]
-        public ReadOnlyMemory<float> DescriptionEmbedding { get; set; }
+        public ReadOnlyMemory<float>? DescriptionEmbedding { get; set; }
 
         [SearchableField(IsFilterable = true, IsFacetable = true)]
         [MemoryRecordData]

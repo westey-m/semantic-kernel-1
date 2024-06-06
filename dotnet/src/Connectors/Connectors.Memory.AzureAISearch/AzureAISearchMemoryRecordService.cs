@@ -4,6 +4,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -43,7 +44,7 @@ public class AzureAISearchMemoryRecordService<TDataModel> : IMemoryRecordService
     private readonly string _defaultCollectionName;
 
     /// <summary>The name of the key field for the collections that this class is used with.</summary>
-    private readonly string _keyFieldName;
+    private readonly string _keyPropertyName;
 
     /// <summary>Azure AI Search clients that can be used to manage data in an Azure AI Search Service index.</summary>
     private readonly ConcurrentDictionary<string, SearchClient> _searchClientsByIndex = new();
@@ -52,7 +53,7 @@ public class AzureAISearchMemoryRecordService<TDataModel> : IMemoryRecordService
     private readonly AzureAISearchMemoryRecordServiceOptions<TDataModel> _options;
 
     /// <summary>The names of all non vector fields on the current model.</summary>
-    private readonly List<string> _nonVectorFieldNames;
+    private readonly List<string> _nonVectorPropertyNames;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AzureAISearchMemoryRecordService{TDataModel}"/> class.
@@ -79,14 +80,24 @@ public class AzureAISearchMemoryRecordService<TDataModel> : IMemoryRecordService
             throw new ArgumentException($"The {nameof(AzureAISearchMemoryRecordServiceOptions<TDataModel>.JsonObjectCustomMapper)} option needs to be set if a {nameof(AzureAISearchMemoryRecordServiceOptions<TDataModel>.MapperType)} of {nameof(AzureAISearchMemoryRecordMapperType.JsonObjectCustomerMapper)} has been chosen.", nameof(options));
         }
 
-        // Enumerate public properties/fields on model, validate, and store for later use.
-        var fields = MemoryServiceModelPropertyReader.FindFields(typeof(TDataModel), true);
-        MemoryServiceModelPropertyReader.VerifyFieldTypes([fields.keyField], s_supportedKeyTypes, "Key");
-        MemoryServiceModelPropertyReader.VerifyFieldTypes(fields.vectorFields, s_supportedVectorTypes, "Vector");
-        this._keyFieldName = fields.keyField.Name;
+        // Enumerate public properties using configuration or attributes.
+        (PropertyInfo keyProperty, List<PropertyInfo> dataProperties, List<PropertyInfo> vectorProperties) properties;
+        if (this._options.MemoryRecordDefinition is not null)
+        {
+            properties = MemoryServiceModelPropertyReader.FindProperties(typeof(TDataModel), this._options.MemoryRecordDefinition, true);
+        }
+        else
+        {
+            properties = MemoryServiceModelPropertyReader.FindProperties(typeof(TDataModel), true);
+        }
 
-        // Build the list of field names from the current model that are either key or data fields.
-        this._nonVectorFieldNames = fields.dataFields.Concat([fields.keyField]).Select(x => x.Name).ToList();
+        // Validate property types and store for later use.
+        MemoryServiceModelPropertyReader.VerifyPropertyTypes([properties.keyProperty], s_supportedKeyTypes, "Key");
+        MemoryServiceModelPropertyReader.VerifyPropertyTypes(properties.vectorProperties, s_supportedVectorTypes, "Vector");
+        this._keyPropertyName = properties.keyProperty.Name;
+
+        // Build the list of property names from the current model that are either key or data fields.
+        this._nonVectorPropertyNames = properties.dataProperties.Concat([properties.keyProperty]).Select(x => x.Name).ToList();
     }
 
     /// <inheritdoc />
@@ -100,7 +111,7 @@ public class AzureAISearchMemoryRecordService<TDataModel> : IMemoryRecordService
 
         // Get record.
         var searchClient = this.GetSearchClient(collectionName);
-        return await RunOperationAsync(() => this.GetDocumentAndMapToDataModelAsync(searchClient, key, innerOptions, cancellationToken)).ConfigureAwait(false);
+        return await this.GetDocumentAndMapToDataModelAsync(searchClient, collectionName, key, innerOptions, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -114,7 +125,7 @@ public class AzureAISearchMemoryRecordService<TDataModel> : IMemoryRecordService
 
         // Get records in parallel.
         var searchClient = this.GetSearchClient(collectionName);
-        var tasks = keys.Select(key => RunOperationAsync(() => this.GetDocumentAndMapToDataModelAsync(searchClient, key, innerOptions, cancellationToken)));
+        var tasks = keys.Select(key => this.GetDocumentAndMapToDataModelAsync(searchClient, collectionName, key, innerOptions, cancellationToken));
         var results = await Task.WhenAll(tasks).ConfigureAwait(false);
         foreach (var result in results) { yield return result; }
     }
@@ -129,7 +140,10 @@ public class AzureAISearchMemoryRecordService<TDataModel> : IMemoryRecordService
 
         // Remove record.
         var searchClient = this.GetSearchClient(collectionName);
-        var results = await RunOperationAsync(() => searchClient.DeleteDocumentsAsync(this._keyFieldName, [key], new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
+        var results = await RunOperationAsync(
+            () => searchClient.DeleteDocumentsAsync(this._keyPropertyName, [key], new IndexDocumentsOptions(), cancellationToken),
+            collectionName,
+            "DeleteDocuments").ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -142,7 +156,10 @@ public class AzureAISearchMemoryRecordService<TDataModel> : IMemoryRecordService
 
         // Remove records.
         var searchClient = this.GetSearchClient(collectionName);
-        var results = await RunOperationAsync(() => searchClient.DeleteDocumentsAsync(this._keyFieldName, keys, new IndexDocumentsOptions(), cancellationToken)).ConfigureAwait(false);
+        var results = await RunOperationAsync(
+            () => searchClient.DeleteDocumentsAsync(this._keyPropertyName, keys, new IndexDocumentsOptions(), cancellationToken),
+            collectionName,
+            "DeleteDocuments").ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -156,7 +173,7 @@ public class AzureAISearchMemoryRecordService<TDataModel> : IMemoryRecordService
 
         // Upsert record.
         var searchClient = this.GetSearchClient(collectionName);
-        var results = await RunOperationAsync(() => this.MapToStorageModelAndUploadDocumentAsync(searchClient, [record], innerOptions, cancellationToken)).ConfigureAwait(false);
+        var results = await this.MapToStorageModelAndUploadDocumentAsync(searchClient, collectionName, [record], innerOptions, cancellationToken).ConfigureAwait(false);
         return results.Value.Results[0].Key;
     }
 
@@ -171,7 +188,7 @@ public class AzureAISearchMemoryRecordService<TDataModel> : IMemoryRecordService
 
         // Upsert records
         var searchClient = this.GetSearchClient(collectionName);
-        var results = await RunOperationAsync(() => this.MapToStorageModelAndUploadDocumentAsync(searchClient, records, innerOptions, cancellationToken)).ConfigureAwait(false);
+        var results = await this.MapToStorageModelAndUploadDocumentAsync(searchClient, collectionName, records, innerOptions, cancellationToken).ConfigureAwait(false);
 
         // Get results
         var resultKeys = results.Value.Results.Select(x => x.Key).ToList();
@@ -182,38 +199,69 @@ public class AzureAISearchMemoryRecordService<TDataModel> : IMemoryRecordService
     /// Get the document with the given key and map it to the data model using the configured mapper type.
     /// </summary>
     /// <param name="searchClient">The search client to use when fetching the document.</param>
+    /// <param name="collectionName">The name of the collection to retrieve the record from.</param>
     /// <param name="key">The key of the record to get.</param>
     /// <param name="innerOptions">The azure ai search sdk options for geting a document.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>The retrieved document, mapped to the consumer data model.</returns>
-    private async Task<TDataModel> GetDocumentAndMapToDataModelAsync(SearchClient searchClient, string key, Azure.Search.Documents.GetDocumentOptions innerOptions, CancellationToken cancellationToken = default)
+    private async Task<TDataModel> GetDocumentAndMapToDataModelAsync(
+        SearchClient searchClient,
+        string collectionName,
+        string key,
+        GetDocumentOptions innerOptions,
+        CancellationToken cancellationToken = default)
     {
+        // Use the user provided mapper.
         if (this._options.MapperType == AzureAISearchMemoryRecordMapperType.JsonObjectCustomerMapper)
         {
-            var jsonObject = await searchClient.GetDocumentAsync<JsonObject>(key, innerOptions, cancellationToken).ConfigureAwait(false);
-            return this._options.JsonObjectCustomMapper!.MapFromStorageToDataModel(jsonObject);
+            var jsonObject = await RunOperationAsync(
+                () => searchClient.GetDocumentAsync<JsonObject>(key, innerOptions, cancellationToken),
+                collectionName,
+                "GetDocument").ConfigureAwait(false);
+
+            return RunModelConversion(
+                () => this._options.JsonObjectCustomMapper!.MapFromStorageToDataModel(jsonObject),
+                collectionName,
+                "GetDocument");
         }
 
-        return await searchClient.GetDocumentAsync<TDataModel>(key, innerOptions, cancellationToken).ConfigureAwait(false);
+        // Use the built in Azure AI Search mapper.
+        return await RunOperationAsync(
+            () => searchClient.GetDocumentAsync<TDataModel>(key, innerOptions, cancellationToken),
+            collectionName,
+            "GetDocument").ConfigureAwait(false);
     }
 
     /// <summary>
     /// Map the data model to the storage model and upload the document.
     /// </summary>
     /// <param name="searchClient">The search client to use when uploading the document.</param>
+    /// <param name="collectionName">The name of the collection to upsert the records to.</param>
     /// <param name="records">The records to upload.</param>
     /// <param name="innerOptions">The azure ai search sdk options for uploading a document.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>The document upload result.</returns>
-    private async Task<Response<IndexDocumentsResult>> MapToStorageModelAndUploadDocumentAsync(SearchClient searchClient, IEnumerable<TDataModel> records, IndexDocumentsOptions innerOptions, CancellationToken cancellationToken = default)
+    private async Task<Response<IndexDocumentsResult>> MapToStorageModelAndUploadDocumentAsync(SearchClient searchClient, string collectionName, IEnumerable<TDataModel> records, IndexDocumentsOptions innerOptions, CancellationToken cancellationToken = default)
     {
+        // Use the user provided mapper.
         if (this._options.MapperType == AzureAISearchMemoryRecordMapperType.JsonObjectCustomerMapper)
         {
-            var jsonObjects = records.Select(this._options.JsonObjectCustomMapper!.MapFromDataToStorageModel);
-            return await searchClient.UploadDocumentsAsync<JsonObject>(jsonObjects, innerOptions, cancellationToken).ConfigureAwait(false);
+            var jsonObjects = RunModelConversion(
+                () => records.Select(this._options.JsonObjectCustomMapper!.MapFromDataToStorageModel),
+                collectionName,
+                "UploadDocuments");
+
+            return await RunOperationAsync(
+                () => searchClient.UploadDocumentsAsync<JsonObject>(jsonObjects, innerOptions, cancellationToken),
+                collectionName,
+                "UploadDocuments").ConfigureAwait(false);
         }
 
-        return await searchClient.UploadDocumentsAsync<TDataModel>(records, innerOptions, cancellationToken).ConfigureAwait(false);
+        // Use the built in Azure AI Search mapper.
+        return await RunOperationAsync(
+            () => searchClient.UploadDocumentsAsync<TDataModel>(records, innerOptions, cancellationToken),
+            collectionName,
+            "UploadDocuments").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -244,27 +292,61 @@ public class AzureAISearchMemoryRecordService<TDataModel> : IMemoryRecordService
         var innerOptions = new Azure.Search.Documents.GetDocumentOptions();
         if (options?.IncludeVectors is false)
         {
-            innerOptions.SelectedFields.AddRange(this._nonVectorFieldNames);
+            innerOptions.SelectedFields.AddRange(this._nonVectorPropertyNames);
         }
 
         return innerOptions;
     }
 
     /// <summary>
-    /// Run the given operation and convert any <see cref="RequestFailedException"/> to <see cref="HttpOperationException"/>."/>
+    /// Run the given operation and wrap any <see cref="RequestFailedException"/> with <see cref="HttpOperationException"/>."/>
     /// </summary>
     /// <typeparam name="T">The response type of the operation.</typeparam>
     /// <param name="operation">The operation to run.</param>
+    /// <param name="collectionName">The name of the collection the operation is being run on.</param>
+    /// <param name="operationName">The type of database operation being run.</param>
     /// <returns>The result of the operation.</returns>
-    private static async Task<T> RunOperationAsync<T>(Func<Task<T>> operation)
+    private static async Task<T> RunOperationAsync<T>(Func<Task<T>> operation, string collectionName, string operationName)
     {
         try
         {
             return await operation.Invoke().ConfigureAwait(false);
         }
-        catch (RequestFailedException e)
+        catch (RequestFailedException ex)
         {
-            throw e.ToHttpOperationException();
+            var wrapperException = new MemoryServiceOperationException("Call to memory service failed.", ex);
+
+            wrapperException.Data.Add("db.system", "AzureAISearch");
+            wrapperException.Data.Add("db.collection.name", collectionName);
+            wrapperException.Data.Add("db.operation.name", operationName);
+
+            throw wrapperException;
+        }
+    }
+
+    /// <summary>
+    /// Run the given model conversion and wrap any exceptions with <see cref="MemoryModelException"/>.
+    /// </summary>
+    /// <typeparam name="T">The response type of the operation.</typeparam>
+    /// <param name="operation">The operation to run.</param>
+    /// <param name="collectionName">The name of the collection the operation is being run on.</param>
+    /// <param name="operationName">The type of database operation being run.</param>
+    /// <returns>The result of the operation.</returns>
+    private static T RunModelConversion<T>(Func<T> operation, string collectionName, string operationName)
+    {
+        try
+        {
+            return operation.Invoke();
+        }
+        catch (Exception ex)
+        {
+            var wrapperException = new MemoryModelException("Failed to convert memory model.", ex);
+
+            wrapperException.Data.Add("db.system", "AzureAISearch");
+            wrapperException.Data.Add("db.collection.name", collectionName);
+            wrapperException.Data.Add("db.operation.name", operationName);
+
+            throw wrapperException;
         }
     }
 }

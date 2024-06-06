@@ -25,8 +25,8 @@ internal sealed class QdrantMemoryRecordJsonMapper<TDataModel> : IMemoryRecordMa
         typeof(Guid)
     };
 
-    /// <summary>A set of types that fields on the provided model may have.</summary>
-    private static readonly HashSet<Type> s_supportedFieldTypes = new()
+    /// <summary>A set of types that data properties on the provided model may have.</summary>
+    private static readonly HashSet<Type> s_supportedDataTypes = new()
     {
         typeof(List<string>),
         typeof(List<int>),
@@ -60,14 +60,14 @@ internal sealed class QdrantMemoryRecordJsonMapper<TDataModel> : IMemoryRecordMa
         typeof(ReadOnlyMemory<double>?)
     };
 
-    /// <summary>A list of property info objects that point at the payload fields in the current model, and allows easy reading and writing of these properties.</summary>
-    private readonly List<PropertyInfo> _payloadFieldsPropertyInfo = new();
+    /// <summary>A list of property info objects that point at the payload properties in the current model, and allows easy reading and writing of these properties.</summary>
+    private readonly List<PropertyInfo> _payloadPropertiesInfo = new();
 
-    /// <summary>A list of property info objects that point at the vector fields in the current model, and allows easy reading and writing of these properties.</summary>
-    private readonly List<PropertyInfo> _vectorFieldsPropertyInfo = new();
+    /// <summary>A list of property info objects that point at the vector properties in the current model, and allows easy reading and writing of these properties.</summary>
+    private readonly List<PropertyInfo> _vectorPropertiesInfo = new();
 
-    /// <summary>A property info object that points at the key field for the current model, allowing easy reading and writing of this property.</summary>
-    private readonly PropertyInfo _keyFieldPropertyInfo;
+    /// <summary>A property info object that points at the key property for the current model, allowing easy reading and writing of this property.</summary>
+    private readonly PropertyInfo _keyPropertyInfo;
 
     /// <summary>Optional configuration options for this class.</summary>
     private readonly QdrantMemoryRecordJsonMapperOptions _options;
@@ -80,35 +80,35 @@ internal sealed class QdrantMemoryRecordJsonMapper<TDataModel> : IMemoryRecordMa
     {
         this._options = options ?? new QdrantMemoryRecordJsonMapperOptions();
 
-        // Enumerate/verify public properties/fields on model.
-        var fields = MemoryServiceModelPropertyReader.FindFields(typeof(TDataModel), this._options.HasNamedVectors);
-        MemoryServiceModelPropertyReader.VerifyFieldTypes([fields.keyField], s_supportedKeyTypes, "Key");
-        MemoryServiceModelPropertyReader.VerifyFieldTypes(fields.dataFields, s_supportedFieldTypes, "Data");
-        MemoryServiceModelPropertyReader.VerifyFieldTypes(fields.vectorFields, s_supportedVectorTypes, "Vector");
+        // Enumerate/verify public properties on model.
+        var properties = MemoryServiceModelPropertyReader.FindProperties(typeof(TDataModel), this._options.HasNamedVectors);
+        MemoryServiceModelPropertyReader.VerifyPropertyTypes([properties.keyProperty], s_supportedKeyTypes, "Key");
+        MemoryServiceModelPropertyReader.VerifyPropertyTypes(properties.dataProperties, s_supportedDataTypes, "Data");
+        MemoryServiceModelPropertyReader.VerifyPropertyTypes(properties.vectorProperties, s_supportedVectorTypes, "Vector");
 
         // Store properties for later use.
-        this._keyFieldPropertyInfo = fields.keyField;
-        this._payloadFieldsPropertyInfo = fields.dataFields;
-        this._vectorFieldsPropertyInfo = fields.vectorFields;
+        this._keyPropertyInfo = properties.keyProperty;
+        this._payloadPropertiesInfo = properties.dataProperties;
+        this._vectorPropertiesInfo = properties.vectorProperties;
     }
 
     /// <inheritdoc />
     public PointStruct MapFromDataToStorageModel(TDataModel dataModel)
     {
         PointId pointId;
-        if (this._keyFieldPropertyInfo.PropertyType == typeof(ulong))
+        if (this._keyPropertyInfo.PropertyType == typeof(ulong))
         {
-            var key = this._keyFieldPropertyInfo.GetValue(dataModel) as ulong? ?? throw new ArgumentException($"Missing key field {this._keyFieldPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.", nameof(dataModel));
+            var key = this._keyPropertyInfo.GetValue(dataModel) as ulong? ?? throw new ArgumentException($"Missing key property {this._keyPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.", nameof(dataModel));
             pointId = new PointId { Num = key };
         }
-        else if (this._keyFieldPropertyInfo.PropertyType == typeof(Guid))
+        else if (this._keyPropertyInfo.PropertyType == typeof(Guid))
         {
-            var key = this._keyFieldPropertyInfo.GetValue(dataModel) as Guid? ?? throw new ArgumentException($"Missing key field {this._keyFieldPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.", nameof(dataModel));
+            var key = this._keyPropertyInfo.GetValue(dataModel) as Guid? ?? throw new ArgumentException($"Missing key property {this._keyPropertyInfo.Name} on provided record of type {typeof(TDataModel).FullName}.", nameof(dataModel));
             pointId = new PointId { Uuid = key.ToString("D") };
         }
         else
         {
-            throw new InvalidOperationException($"Unsupported key type {this._keyFieldPropertyInfo.PropertyType.FullName}.");
+            throw new InvalidOperationException($"Unsupported key type {this._keyPropertyInfo.PropertyType.FullName}.");
         }
 
         // Create point.
@@ -120,10 +120,10 @@ internal sealed class QdrantMemoryRecordJsonMapper<TDataModel> : IMemoryRecordMa
         };
 
         // Add point payload.
-        foreach (var payloadFieldPropertyInfo in this._payloadFieldsPropertyInfo)
+        foreach (var payloadPropertyInfo in this._payloadPropertiesInfo)
         {
-            var propertyName = MemoryServiceModelPropertyReader.GetSerializedPropertyName(payloadFieldPropertyInfo);
-            var propertyValue = payloadFieldPropertyInfo.GetValue(dataModel);
+            var propertyName = MemoryServiceModelPropertyReader.GetSerializedPropertyName(payloadPropertyInfo);
+            var propertyValue = payloadPropertyInfo.GetValue(dataModel);
             pointStruct.Payload.Add(propertyName, ConvertToGrpcFieldValue(propertyValue));
         }
 
@@ -131,10 +131,10 @@ internal sealed class QdrantMemoryRecordJsonMapper<TDataModel> : IMemoryRecordMa
         if (this._options.HasNamedVectors)
         {
             var namedVectors = new NamedVectors();
-            foreach (var vectorFieldPropertyInfo in this._vectorFieldsPropertyInfo)
+            foreach (var vectorPropertyInfo in this._vectorPropertiesInfo)
             {
-                var propertyName = MemoryServiceModelPropertyReader.GetSerializedPropertyName(vectorFieldPropertyInfo);
-                var propertyValue = vectorFieldPropertyInfo.GetValue(dataModel);
+                var propertyName = MemoryServiceModelPropertyReader.GetSerializedPropertyName(vectorPropertyInfo);
+                var propertyValue = vectorPropertyInfo.GetValue(dataModel);
                 if (propertyValue is not null)
                 {
                     var castPropertyValue = (ReadOnlyMemory<float>)propertyValue;
@@ -146,8 +146,8 @@ internal sealed class QdrantMemoryRecordJsonMapper<TDataModel> : IMemoryRecordMa
         }
         else
         {
-            var vectorFieldPropertyInfo = this._vectorFieldsPropertyInfo.First();
-            var propertyValue = (ReadOnlyMemory<float>)vectorFieldPropertyInfo.GetValue(dataModel);
+            var vectorPropertyInfo = this._vectorPropertiesInfo.First();
+            var propertyValue = (ReadOnlyMemory<float>)vectorPropertyInfo.GetValue(dataModel);
             pointStruct.Vectors.Vector = propertyValue.ToArray();
         }
 
@@ -158,7 +158,7 @@ internal sealed class QdrantMemoryRecordJsonMapper<TDataModel> : IMemoryRecordMa
     public TDataModel MapFromStorageToDataModel(PointStruct storageModel, GetRecordOptions? options = default)
     {
         // Get the key property name and value.
-        var keyPropertyName = MemoryServiceModelPropertyReader.GetSerializedPropertyName(this._keyFieldPropertyInfo);
+        var keyPropertyName = MemoryServiceModelPropertyReader.GetSerializedPropertyName(this._keyPropertyInfo);
         var keyPropertyValue = storageModel.Id.HasNum ? storageModel.Id.Num as object : storageModel.Id.Uuid as object;
 
         // Create a json object to represent the point.
@@ -167,10 +167,10 @@ internal sealed class QdrantMemoryRecordJsonMapper<TDataModel> : IMemoryRecordMa
             { keyPropertyName, JsonValue.Create(keyPropertyValue) },
         };
 
-        // Add each vector field if embeddings are included in the point.
+        // Add each vector property if embeddings are included in the point.
         if (options?.IncludeVectors is true)
         {
-            foreach (var vectorProperty in this._vectorFieldsPropertyInfo)
+            foreach (var vectorProperty in this._vectorPropertiesInfo)
             {
                 var propertyName = MemoryServiceModelPropertyReader.GetSerializedPropertyName(vectorProperty);
 
@@ -188,8 +188,8 @@ internal sealed class QdrantMemoryRecordJsonMapper<TDataModel> : IMemoryRecordMa
             }
         }
 
-        // Add each payload field.
-        foreach (var payloadProperty in this._payloadFieldsPropertyInfo)
+        // Add each payload property.
+        foreach (var payloadProperty in this._payloadPropertiesInfo)
         {
             var propertyName = MemoryServiceModelPropertyReader.GetSerializedPropertyName(payloadProperty);
             if (storageModel.Payload.TryGetValue(propertyName, out var value))

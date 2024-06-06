@@ -23,4 +23,14 @@ public class AzureAISearchMemoryRecordServiceOptions<TDataModel>
     /// Set <see cref="MapperType"/> to <see cref="AzureAISearchMemoryRecordMapperType.JsonObjectCustomerMapper"/> to use this mapper."/>
     /// </remarks>
     public IMemoryRecordMapper<TDataModel, JsonObject>? JsonObjectCustomMapper { get; init; } = null;
+
+    /// <summary>
+    /// Gets or sets an optional memory record definition that defines the schema of the memory record type.
+    /// </summary>
+    /// <remarks>
+    /// If not provided, the schema will be inferred from the data model using reflection.
+    /// In this case, the data model properties must be annotated with the appropriate attributes to indicate their usage.
+    /// See <see cref="MemoryRecordKeyAttribute"/>, <see cref="MemoryRecordDataAttribute"/> and <see cref="MemoryRecordVectorAttribute"/>.
+    /// </remarks>
+    public MemoryRecordDefinition? MemoryRecordDefinition { get; init; } = null;
 }

@@ -3,7 +3,6 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.AzureAISearch;
 using Microsoft.SemanticKernel.Memory;
 using Xunit;
@@ -22,17 +21,23 @@ public sealed class AzureAISearchMemoryRecordServiceTests(ITestOutputHelper outp
     // If null, all tests will be enabled
     private const string SkipReason = null; //"Requires Azure AI Search Service instance up and running";
 
-    [Fact(Skip = SkipReason)]
-    public async Task ItCanUpsertDocumentToMemoryStoreAsync()
+    [Theory(Skip = SkipReason)]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ItCanUpsertDocumentToMemoryStoreAsync(bool useRecordDefinition)
     {
         // Arrange
-        var sut = new AzureAISearchMemoryRecordService<Hotel>(fixture.SearchIndexClient, fixture.TestIndexName);
+        var options = new AzureAISearchMemoryRecordServiceOptions<Hotel>
+        {
+            MemoryRecordDefinition = useRecordDefinition ? fixture.MemoryRecordDefinition : null
+        };
+        var sut = new AzureAISearchMemoryRecordService<Hotel>(fixture.SearchIndexClient, fixture.TestIndexName, options);
 
         // Act
         var hotel = new Hotel()
         {
-            HotelId = "mh5",
-            HotelName = "MyHotel5",
+            HotelId = "Upsert-1",
+            HotelName = "MyHotel1",
             Description = "My Hotel is great.",
             DescriptionEmbedding = new[] { 30f, 31f, 32f, 33f },
             Tags = new[] { "pool", "air conditioning", "concierge" },
@@ -46,16 +51,17 @@ public sealed class AzureAISearchMemoryRecordServiceTests(ITestOutputHelper outp
             }
         };
         var upsertResult = await sut.UpsertAsync(hotel);
-        var getResult = await sut.GetAsync("mh5");
+        var getResult = await sut.GetAsync("Upsert-1");
 
         // Assert
         Assert.NotNull(upsertResult);
-        Assert.Equal("mh5", upsertResult);
+        Assert.Equal("Upsert-1", upsertResult);
 
         Assert.NotNull(getResult);
         Assert.Equal(hotel.HotelName, getResult.HotelName);
         Assert.Equal(hotel.Description, getResult.Description);
-        Assert.Equal(hotel.DescriptionEmbedding, getResult.DescriptionEmbedding);
+        Assert.NotNull(getResult.DescriptionEmbedding);
+        Assert.Equal(hotel.DescriptionEmbedding.Value, getResult.DescriptionEmbedding.Value);
         Assert.Equal(hotel.Tags, getResult.Tags);
         Assert.Equal(hotel.ParkingIncluded, getResult.ParkingIncluded);
         Assert.Equal(hotel.LastRenovationDate, getResult.LastRenovationDate);
@@ -72,14 +78,14 @@ public sealed class AzureAISearchMemoryRecordServiceTests(ITestOutputHelper outp
     public async Task ItCanUpsertManyDocumentsToMemoryStoreAsync()
     {
         // Arrange
-        var sut = new AzureAISearchMemoryRecordService<HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName);
+        var sut = new AzureAISearchMemoryRecordService<Hotel>(fixture.SearchIndexClient, fixture.TestIndexName);
 
         // Act
         var results = sut.UpsertBatchAsync(
             [
-                new HotelShortInfo("mh1", "MyHotel1", "My Hotel is great 1."),
-                new HotelShortInfo("mh2", "MyHotel2", "My Hotel is great 2."),
-                new HotelShortInfo("mh3", "MyHotel3", "My Hotel is great 2."),
+                CreateTestHotel("UpsertMany-1"),
+                CreateTestHotel("UpsertMany-2"),
+                CreateTestHotel("UpsertMany-3"),
             ]);
 
         // Assert
@@ -87,9 +93,9 @@ public sealed class AzureAISearchMemoryRecordServiceTests(ITestOutputHelper outp
         var resultsList = await results.ToListAsync();
 
         Assert.Equal(3, resultsList.Count);
-        Assert.Contains("mh1", resultsList);
-        Assert.Contains("mh2", resultsList);
-        Assert.Contains("mh3", resultsList);
+        Assert.Contains("UpsertMany-1", resultsList);
+        Assert.Contains("UpsertMany-2", resultsList);
+        Assert.Contains("UpsertMany-3", resultsList);
 
         // Output
         foreach (var result in resultsList)
@@ -98,30 +104,52 @@ public sealed class AzureAISearchMemoryRecordServiceTests(ITestOutputHelper outp
         }
     }
 
-    [Fact(Skip = SkipReason)]
-    public async Task ItCanGetDocumentFromMemoryStoreAsync()
+    [Theory(Skip = SkipReason)]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public async Task ItCanGetDocumentFromMemoryStoreAsync(bool includeVectors, bool useRecordDefinition)
     {
         // Arrange
-        var sut = new AzureAISearchMemoryRecordService<HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName);
+        var options = new AzureAISearchMemoryRecordServiceOptions<Hotel>
+        {
+            MemoryRecordDefinition = useRecordDefinition ? fixture.MemoryRecordDefinition : null
+        };
+        var sut = new AzureAISearchMemoryRecordService<Hotel>(fixture.SearchIndexClient, fixture.TestIndexName, options);
 
         // Act
-        var hotel1 = await sut.GetAsync("1", new GetRecordOptions { IncludeVectors = true });
+        var getResult = await sut.GetAsync("BaseSet-1", new GetRecordOptions { IncludeVectors = includeVectors });
 
         // Assert
-        Assert.NotNull(hotel1);
+        Assert.NotNull(getResult);
+
+        Assert.Equal("Hotel 1", getResult.HotelName);
+        Assert.Equal("This is a great hotel", getResult.Description);
+        Assert.Equal(includeVectors, getResult.DescriptionEmbedding != null);
+        if (includeVectors)
+        {
+            Assert.Equal(new[] { 30f, 31f, 32f, 33f }, getResult.DescriptionEmbedding!.Value.ToArray());
+        }
+        Assert.Equal(new[] { "pool", "air conditioning", "concierge" }, getResult.Tags);
+        Assert.False(getResult.ParkingIncluded);
+        Assert.Equal(new DateTimeOffset(1970, 1, 18, 0, 0, 0, TimeSpan.Zero), getResult.LastRenovationDate);
+        Assert.Equal(3.6, getResult.Rating);
+        Assert.Equal("New York", getResult.Address.City);
+        Assert.Equal("USA", getResult.Address.Country);
 
         // Output
-        output.WriteLine(hotel1.ToString());
+        output.WriteLine(getResult.ToString());
     }
 
     [Fact(Skip = SkipReason)]
     public async Task ItCanGetManyDocumentsFromMemoryStoreAsync()
     {
         // Arrange
-        var sut = new AzureAISearchMemoryRecordService<HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName);
+        var sut = new AzureAISearchMemoryRecordService<Hotel>(fixture.SearchIndexClient, fixture.TestIndexName);
 
         // Act
-        var hotels = sut.GetBatchAsync(["1", "2", "3", "4"], new GetRecordOptions { IncludeVectors = true });
+        var hotels = sut.GetBatchAsync(["BaseSet-1", "BaseSet-2", "BaseSet-3", "BaseSet-4"], new GetRecordOptions { IncludeVectors = true });
 
         // Assert
         Assert.NotNull(hotels);
@@ -136,44 +164,67 @@ public sealed class AzureAISearchMemoryRecordServiceTests(ITestOutputHelper outp
     }
 
     [Fact]
-    public async Task ItThrowsForPartialBatchResultAsync()
+    public async Task ItThrowsForPartialGetBatchResultAsync()
     {
         // Arrange.
-        var sut = new AzureAISearchMemoryRecordService<HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName);
+        var sut = new AzureAISearchMemoryRecordService<Hotel>(fixture.SearchIndexClient, fixture.TestIndexName);
 
         // Act.
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetBatchAsync(["1", "5", "2"]).ToListAsync());
+        await Assert.ThrowsAsync<MemoryServiceOperationException>(async () => await sut.GetBatchAsync(["BaseSet-1", "BaseSet-5", "BaseSet-2"]).ToListAsync());
     }
 
-    [Fact(Skip = SkipReason)]
-    public async Task ItCanRemoveDocumentFromMemoryStoreAsync()
+    [Theory(Skip = SkipReason)]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ItCanRemoveDocumentFromMemoryStoreAsync(bool useRecordDefinition)
     {
         // Arrange
-        var sut = new AzureAISearchMemoryRecordService<HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName);
-        await sut.UpsertAsync(new HotelShortInfo("tmp1", "TempHotel1", "This hotel will be deleted."));
+        var options = new AzureAISearchMemoryRecordServiceOptions<Hotel>
+        {
+            MemoryRecordDefinition = useRecordDefinition ? fixture.MemoryRecordDefinition : null
+        };
+        var sut = new AzureAISearchMemoryRecordService<Hotel>(fixture.SearchIndexClient, fixture.TestIndexName, options);
+        await sut.UpsertAsync(CreateTestHotel("Remove-1"));
 
         // Act
-        await sut.DeleteAsync("tmp1");
+        await sut.DeleteAsync("Remove-1");
 
         // Assert
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp1", new GetRecordOptions { IncludeVectors = true }));
+        await Assert.ThrowsAsync<MemoryServiceOperationException>(async () => await sut.GetAsync("Remove-1", new GetRecordOptions { IncludeVectors = true }));
     }
 
     [Fact(Skip = SkipReason)]
     public async Task ItCanRemoveManyDocumentsFromMemoryStoreAsync()
     {
         // Arrange
-        var sut = new AzureAISearchMemoryRecordService<HotelShortInfo>(fixture.SearchIndexClient, fixture.TestIndexName);
-        await sut.UpsertAsync(new HotelShortInfo("tmp5", "TempHotel5", "This hotel will be deleted."));
-        await sut.UpsertAsync(new HotelShortInfo("tmp6", "TempHotel6", "This hotel will be deleted."));
-        await sut.UpsertAsync(new HotelShortInfo("tmp7", "TempHotel7", "This hotel will be deleted."));
+        var sut = new AzureAISearchMemoryRecordService<Hotel>(fixture.SearchIndexClient, fixture.TestIndexName);
+        await sut.UpsertAsync(CreateTestHotel("RemoveMany-1"));
+        await sut.UpsertAsync(CreateTestHotel("RemoveMany-2"));
+        await sut.UpsertAsync(CreateTestHotel("RemoveMany-3"));
 
         // Act
-        await sut.DeleteBatchAsync(["tmp5", "tmp6", "tmp7"]);
+        await sut.DeleteBatchAsync(["RemoveMany-1", "RemoveMany-2", "RemoveMany-3"]);
 
         // Assert
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp5", new GetRecordOptions { IncludeVectors = true }));
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp6", new GetRecordOptions { IncludeVectors = true }));
-        await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("tmp7", new GetRecordOptions { IncludeVectors = true }));
+        await Assert.ThrowsAsync<MemoryServiceOperationException>(async () => await sut.GetAsync("RemoveMany-1", new GetRecordOptions { IncludeVectors = true }));
+        await Assert.ThrowsAsync<MemoryServiceOperationException>(async () => await sut.GetAsync("RemoveMany-2", new GetRecordOptions { IncludeVectors = true }));
+        await Assert.ThrowsAsync<MemoryServiceOperationException>(async () => await sut.GetAsync("RemoveMany-3", new GetRecordOptions { IncludeVectors = true }));
     }
+
+    private static Hotel CreateTestHotel(string hotelId) => new()
+    {
+        HotelId = hotelId,
+        HotelName = $"MyHotel {hotelId}",
+        Description = "My Hotel is great.",
+        DescriptionEmbedding = new[] { 30f, 31f, 32f, 33f },
+        Tags = new[] { "pool", "air conditioning", "concierge" },
+        ParkingIncluded = true,
+        LastRenovationDate = new DateTimeOffset(1970, 1, 18, 0, 0, 0, TimeSpan.Zero),
+        Rating = 3.6,
+        Address = new Address
+        {
+            City = "New York",
+            Country = "USA"
+        }
+    };
 }

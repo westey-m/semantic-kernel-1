@@ -48,17 +48,17 @@ public class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<string,
     /// <summary>Optional configuration options for this class.</summary>
     private readonly RedisMemoryRecordServiceOptions<TDataModel> _options;
 
-    /// <summary>A property info object that points at the key field for the current model, allowing easy reading and writing of this property.</summary>
-    private readonly PropertyInfo _keyFieldPropertyInfo;
+    /// <summary>A property info object that points at the key property for the current model, allowing easy reading and writing of this property.</summary>
+    private readonly PropertyInfo _keyPropertyInfo;
 
-    /// <summary>The name of the temporary json property that the key field will be serialized / parsed from.</summary>
-    private readonly string _keyFieldJsonPropertyName;
+    /// <summary>The name of the temporary json property that the key property will be serialized / parsed from.</summary>
+    private readonly string _keyJsonPropertyName;
 
-    /// <summary>An array of the names of all the data and metadata properties that are part of the redis payload, i.e. all fields except the vector fields.</summary>
-    private readonly string[] _dataAndMetadataFieldNames;
+    /// <summary>An array of the names of all the data properties that are part of the redis payload, i.e. all properties except the vector properties.</summary>
+    private readonly string[] _dataPropertyNames;
 
-    /// <summary>An array of the names of all the data, metadata and vector properties that are part of the redis payload.</summary>
-    private readonly string[] _dataAndMetadataAndVectorFieldNames;
+    /// <summary>An array of the names of all the data and vector properties that are part of the redis payload.</summary>
+    private readonly string[] _dataAndVectorPropertyNames;
 
     /// <summary>The mapper to use when mapping between the consumer data model and the redis record.</summary>
     private readonly IMemoryRecordMapper<TDataModel, (string Key, JsonNode Node)> _mapper;
@@ -81,21 +81,21 @@ public class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<string,
         this._defaultCollectionName = defaultCollectionName;
         this._options = options ?? new RedisMemoryRecordServiceOptions<TDataModel>();
 
-        // Enumerate public properties/fields on model and store for later use.
-        var fields = MemoryServiceModelPropertyReader.FindFields(typeof(TDataModel), true);
-        MemoryServiceModelPropertyReader.VerifyFieldTypes([fields.keyField], s_supportedKeyTypes, "Key");
-        MemoryServiceModelPropertyReader.VerifyFieldTypes(fields.vectorFields, s_supportedVectorTypes, "Vector");
+        // Enumerate public properties on model and store for later use.
+        var properties = MemoryServiceModelPropertyReader.FindProperties(typeof(TDataModel), true);
+        MemoryServiceModelPropertyReader.VerifyPropertyTypes([properties.keyProperty], s_supportedKeyTypes, "Key");
+        MemoryServiceModelPropertyReader.VerifyPropertyTypes(properties.vectorProperties, s_supportedVectorTypes, "Vector");
 
-        this._keyFieldPropertyInfo = fields.keyField;
-        this._keyFieldJsonPropertyName = MemoryServiceModelPropertyReader.GetSerializedPropertyName(this._keyFieldPropertyInfo);
+        this._keyPropertyInfo = properties.keyProperty;
+        this._keyJsonPropertyName = MemoryServiceModelPropertyReader.GetSerializedPropertyName(this._keyPropertyInfo);
 
-        this._dataAndMetadataFieldNames = fields
-            .dataFields
+        this._dataPropertyNames = properties
+            .dataProperties
             .Select(MemoryServiceModelPropertyReader.GetSerializedPropertyName)
             .ToArray();
 
-        this._dataAndMetadataAndVectorFieldNames = this._dataAndMetadataFieldNames
-            .Concat(fields.vectorFields.Select(MemoryServiceModelPropertyReader.GetSerializedPropertyName))
+        this._dataAndVectorPropertyNames = this._dataPropertyNames
+            .Concat(properties.vectorProperties.Select(MemoryServiceModelPropertyReader.GetSerializedPropertyName))
             .ToArray();
 
         // Assign Mapper.
@@ -110,7 +110,7 @@ public class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<string,
         }
         else
         {
-            this._mapper = new RedisMemoryRecordMapper<TDataModel>(this._keyFieldJsonPropertyName);
+            this._mapper = new RedisMemoryRecordMapper<TDataModel>(this._keyJsonPropertyName);
         }
     }
 
@@ -130,7 +130,7 @@ public class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<string,
                 .GetAsync(maybePrefixedKey).ConfigureAwait(false) :
             await this._database
                 .JSON()
-                .GetAsync(maybePrefixedKey, this._dataAndMetadataFieldNames).ConfigureAwait(false);
+                .GetAsync(maybePrefixedKey, this._dataPropertyNames).ConfigureAwait(false);
 
         // Check if the key was found before trying to serialize the result.
         if (redisResult.IsNull)

@@ -50,8 +50,9 @@ public class AzureAISearchMemoryCollectionUpdateServiceTests(ITestOutputHelper o
     public async Task ItCanGetAListOfExistingCollectionNamesAsync()
     {
         // Arrange
-        await AzureAISearchMemoryFixture.DeleteIndexIfExistsAsync(fixture.TestIndexName + "-additional", fixture.SearchIndexClient);
-        await AzureAISearchMemoryFixture.CreateIndexAsync(fixture.TestIndexName + "-additional", fixture.SearchIndexClient);
+        var additionalCollectionName = fixture.TestIndexName + "-listnames";
+        await AzureAISearchMemoryFixture.DeleteIndexIfExistsAsync(additionalCollectionName, fixture.SearchIndexClient);
+        await AzureAISearchMemoryFixture.CreateIndexAsync(additionalCollectionName, fixture.SearchIndexClient);
         var sut = new AzureAISearchMemoryCollectionUpdateService(fixture.SearchIndexClient);
 
         // Act
@@ -60,20 +61,20 @@ public class AzureAISearchMemoryCollectionUpdateServiceTests(ITestOutputHelper o
         // Assert
         Assert.Equal(2, collectionNames.Count);
         Assert.Contains(fixture.TestIndexName, collectionNames);
-        Assert.Contains(fixture.TestIndexName + "-additional", collectionNames);
+        Assert.Contains(additionalCollectionName, collectionNames);
 
         // Output
         output.WriteLine(string.Join(",", collectionNames));
 
         // Cleanup
-        await AzureAISearchMemoryFixture.DeleteIndexIfExistsAsync(fixture.TestIndexName + "-additional", fixture.SearchIndexClient);
+        await AzureAISearchMemoryFixture.DeleteIndexIfExistsAsync(additionalCollectionName, fixture.SearchIndexClient);
     }
 
     [Fact(Skip = SkipReason)]
     public async Task ItCanDeleteACollectionAsync()
     {
         // Arrange
-        var tempCollectionName = fixture.TestIndexName + "-temp";
+        var tempCollectionName = fixture.TestIndexName + "-delete";
         await AzureAISearchMemoryFixture.CreateIndexAsync(tempCollectionName, fixture.SearchIndexClient);
         var sut = new AzureAISearchMemoryCollectionUpdateService(fixture.SearchIndexClient);
 
