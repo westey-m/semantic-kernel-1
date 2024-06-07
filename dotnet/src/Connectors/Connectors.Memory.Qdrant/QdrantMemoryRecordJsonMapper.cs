@@ -19,15 +19,15 @@ internal sealed class QdrantMemoryRecordJsonMapper<TDataModel> : IMemoryRecordMa
     where TDataModel : class
 {
     /// <summary>A set of types that a key on the provided model may have.</summary>
-    private static readonly HashSet<Type> s_supportedKeyTypes = new()
-    {
+    private static readonly HashSet<Type> s_supportedKeyTypes =
+    [
         typeof(ulong),
         typeof(Guid)
-    };
+    ];
 
     /// <summary>A set of types that data properties on the provided model may have.</summary>
-    private static readonly HashSet<Type> s_supportedDataTypes = new()
-    {
+    private static readonly HashSet<Type> s_supportedDataTypes =
+    [
         typeof(List<string>),
         typeof(List<int>),
         typeof(List<long>),
@@ -45,20 +45,20 @@ internal sealed class QdrantMemoryRecordJsonMapper<TDataModel> : IMemoryRecordMa
         typeof(double?),
         typeof(float?),
         typeof(bool?)
-    };
+    ];
 
     /// <summary>A set of types that vectors on the provided model may have.</summary>
     /// <remarks>
     /// While qdrant supports float32 and uint64, the api only supports float64, therefore
     /// any float32 vectors will be converted to float64 before being sent to qdrant.
     /// </remarks>
-    private static readonly HashSet<Type> s_supportedVectorTypes = new()
-    {
+    private static readonly HashSet<Type> s_supportedVectorTypes =
+    [
         typeof(ReadOnlyMemory<float>),
         typeof(ReadOnlyMemory<float>?),
         typeof(ReadOnlyMemory<double>),
         typeof(ReadOnlyMemory<double>?)
-    };
+    ];
 
     /// <summary>A list of property info objects that point at the payload properties in the current model, and allows easy reading and writing of these properties.</summary>
     private readonly List<PropertyInfo> _payloadPropertiesInfo = new();
@@ -81,7 +81,7 @@ internal sealed class QdrantMemoryRecordJsonMapper<TDataModel> : IMemoryRecordMa
         this._options = options ?? new QdrantMemoryRecordJsonMapperOptions();
 
         // Enumerate/verify public properties on model.
-        var properties = MemoryServiceModelPropertyReader.FindProperties(typeof(TDataModel), this._options.HasNamedVectors);
+        var properties = MemoryServiceModelPropertyReader.FindProperties(typeof(TDataModel), supportsMultipleVectors: this._options.HasNamedVectors);
         MemoryServiceModelPropertyReader.VerifyPropertyTypes([properties.keyProperty], s_supportedKeyTypes, "Key");
         MemoryServiceModelPropertyReader.VerifyPropertyTypes(properties.dataProperties, s_supportedDataTypes, "Data");
         MemoryServiceModelPropertyReader.VerifyPropertyTypes(properties.vectorProperties, s_supportedVectorTypes, "Vector");

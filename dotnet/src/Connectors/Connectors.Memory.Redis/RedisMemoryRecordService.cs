@@ -25,19 +25,19 @@ public sealed class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<
     where TDataModel : class
 {
     /// <summary>A set of types that a key on the provided model may have.</summary>
-    private static readonly HashSet<Type> s_supportedKeyTypes = new()
-    {
+    private static readonly HashSet<Type> s_supportedKeyTypes =
+    [
         typeof(string)
-    };
+    ];
 
     /// <summary>A set of types that vectors on the provided model may have.</summary>
-    private static readonly HashSet<Type> s_supportedVectorTypes = new()
-    {
+    private static readonly HashSet<Type> s_supportedVectorTypes =
+    [
         typeof(ReadOnlyMemory<float>),
         typeof(ReadOnlyMemory<double>),
         typeof(ReadOnlyMemory<float>?),
         typeof(ReadOnlyMemory<double>?)
-    };
+    ];
 
     /// <summary>The redis database to read/write records from.</summary>
     private readonly IDatabase _database;
@@ -82,7 +82,7 @@ public sealed class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<
         this._options = options ?? new RedisMemoryRecordServiceOptions<TDataModel>();
 
         // Enumerate public properties on model and store for later use.
-        var properties = MemoryServiceModelPropertyReader.FindProperties(typeof(TDataModel), true);
+        var properties = MemoryServiceModelPropertyReader.FindProperties(typeof(TDataModel), supportsMultipleVectors: true);
         MemoryServiceModelPropertyReader.VerifyPropertyTypes([properties.keyProperty], s_supportedKeyTypes, "Key");
         MemoryServiceModelPropertyReader.VerifyPropertyTypes(properties.vectorProperties, s_supportedVectorTypes, "Vector");
 
