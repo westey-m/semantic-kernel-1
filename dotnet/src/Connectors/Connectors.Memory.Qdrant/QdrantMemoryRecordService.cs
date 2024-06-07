@@ -23,9 +23,6 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
     /// <summary>Qdrant client that can be used to manage the collections and points in a Qdrant store.</summary>
     private readonly QdrantClient _qdrantClient;
 
-    /// <summary>The name of the collection to use with this store if none is provided for any individual operation.</summary>
-    private readonly string _defaultCollectionName;
-
     /// <summary>Optional configuration options for this class.</summary>
     private readonly QdrantMemoryRecordServiceOptions<TDataModel> _options;
 
@@ -36,19 +33,16 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
     /// Initializes a new instance of the <see cref="QdrantMemoryRecordService{TDataModel}"/> class.
     /// </summary>
     /// <param name="qdrantClient">Qdrant client that can be used to manage the collections and points in a Qdrant store.</param>
-    /// <param name="defaultCollectionName">The name of the collection to use with this store if none is provided for any individual operation.</param>
     /// <param name="options">Optional configuration options for this class.</param>
     /// <exception cref="ArgumentNullException"></exception>
     /// <exception cref="ArgumentException"></exception>
-    public QdrantMemoryRecordService(QdrantClient qdrantClient, string defaultCollectionName, QdrantMemoryRecordServiceOptions<TDataModel>? options = null)
+    public QdrantMemoryRecordService(QdrantClient qdrantClient, QdrantMemoryRecordServiceOptions<TDataModel>? options = null)
     {
         // Verify.
         Verify.NotNull(qdrantClient);
-        Verify.NotNullOrWhiteSpace(defaultCollectionName);
 
         // Assign.
         this._qdrantClient = qdrantClient;
-        this._defaultCollectionName = defaultCollectionName;
         this._options = options ?? new QdrantMemoryRecordServiceOptions<TDataModel>();
 
         // Assign Mapper.
@@ -68,7 +62,7 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
     }
 
     /// <inheritdoc />
-    public async Task<TDataModel?> GetAsync(ulong key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<TDataModel> GetAsync(ulong key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(key);
 
@@ -77,7 +71,7 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
     }
 
     /// <inheritdoc />
-    public async Task<TDataModel?> GetAsync(Guid key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<TDataModel> GetAsync(Guid key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         Verify.NotNull(key);
 
@@ -86,13 +80,13 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
     }
 
     /// <inheritdoc />
-    public IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<ulong> keys, GetRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<TDataModel> GetBatchAsync(IEnumerable<ulong> keys, GetRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         return this.GetBatchByPointIdAsync(keys, key => new PointId { Num = key }, options, cancellationToken);
     }
 
     /// <inheritdoc />
-    public IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<Guid> keys, GetRecordOptions? options = default, CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<TDataModel> GetBatchAsync(IEnumerable<Guid> keys, GetRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
         return this.GetBatchByPointIdAsync(keys, key => new PointId { Uuid = key.ToString("D") }, options, cancellationToken);
     }
@@ -102,7 +96,7 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
     {
         Verify.NotNull(key);
 
-        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var collectionName = this.ChooseCollectionName(options?.CollectionName);
         return this._qdrantClient.DeleteAsync(
             collectionName,
             key,
@@ -115,7 +109,7 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
     {
         Verify.NotNull(key);
 
-        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var collectionName = this.ChooseCollectionName(options?.CollectionName);
         return this._qdrantClient.DeleteAsync(
             collectionName,
             key,
@@ -128,7 +122,7 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
     {
         Verify.NotNull(keys);
 
-        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var collectionName = this.ChooseCollectionName(options?.CollectionName);
         return this._qdrantClient.DeleteAsync(
             collectionName,
             keys.ToList(),
@@ -141,7 +135,7 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
     {
         Verify.NotNull(keys);
 
-        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var collectionName = this.ChooseCollectionName(options?.CollectionName);
         return this._qdrantClient.DeleteAsync(
             collectionName,
             keys.ToList(),
@@ -155,7 +149,7 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
         Verify.NotNull(record);
 
         // Create options.
-        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var collectionName = this.ChooseCollectionName(options?.CollectionName);
 
         // Create point from record.
         var pointStruct = this._mapper.MapFromDataToStorageModel(record);
@@ -171,7 +165,7 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
         Verify.NotNull(record);
 
         // Create options.
-        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var collectionName = this.ChooseCollectionName(options?.CollectionName);
 
         // Create point from record.
         var pointStruct = this._mapper.MapFromDataToStorageModel(record);
@@ -187,7 +181,7 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
         Verify.NotNull(records);
 
         // Create Options
-        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var collectionName = this.ChooseCollectionName(options?.CollectionName);
 
         // Create points from records.
         var pointStructs = records.Select(this._mapper.MapFromDataToStorageModel).ToList();
@@ -206,7 +200,7 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
         Verify.NotNull(records);
 
         // Create Options
-        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var collectionName = this.ChooseCollectionName(options?.CollectionName);
 
         // Create points from records.
         var pointStructs = records.Select(this._mapper.MapFromDataToStorageModel).ToList();
@@ -227,7 +221,7 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
     /// <param name="options">The retrieval options.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>The retrieved points.</returns>
-    private async IAsyncEnumerable<TDataModel?> GetBatchByPointIdAsync<TKey>(
+    private async IAsyncEnumerable<TDataModel> GetBatchByPointIdAsync<TKey>(
         IEnumerable<TKey> keys,
         Func<TKey, PointId> keyConverter,
         GetRecordOptions? options,
@@ -236,7 +230,7 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
         Verify.NotNull(keys);
 
         // Create options.
-        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var collectionName = this.ChooseCollectionName(options?.CollectionName);
         var pointsIds = keys.Select(key => keyConverter(key)).ToArray();
 
         // Retrieve data points.
@@ -265,5 +259,24 @@ public sealed class QdrantMemoryRecordService<TDataModel> : IMemoryRecordService
 
             yield return this._mapper.MapFromStorageToDataModel(pointStruct, options);
         }
+    }
+
+    /// <summary>
+    /// Choose the right collection name to use for the operation by using the one provided
+    /// as part of the operation options, or the default one provided at construction time.
+    /// </summary>
+    /// <param name="operationCollectionName">The collection name provided on the operation options.</param>
+    /// <returns>The collection name to use.</returns>
+    private string ChooseCollectionName(string? operationCollectionName)
+    {
+        var collectionName = operationCollectionName ?? this._options.DefaultCollectionName;
+        if (collectionName is null)
+        {
+#pragma warning disable CA2208 // Instantiate argument exceptions correctly
+            throw new ArgumentException("Collection name must be provided in the operation options, since no default was provided at construction time.", "options");
+#pragma warning restore CA2208 // Instantiate argument exceptions correctly
+        }
+
+        return collectionName;
     }
 }

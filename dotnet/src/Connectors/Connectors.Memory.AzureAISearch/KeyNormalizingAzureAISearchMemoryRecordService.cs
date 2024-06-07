@@ -90,7 +90,7 @@ public sealed class KeyNormalizingAzureAISearchMemoryRecordService<TDataModel> :
     }
 
     /// <inheritdoc />
-    public async Task<TDataModel?> GetAsync(string key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<TDataModel> GetAsync(string key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         var innerOptions = this.EncodeCollectionName(options);
 
@@ -99,16 +99,13 @@ public sealed class KeyNormalizingAzureAISearchMemoryRecordService<TDataModel> :
             innerOptions,
             cancellationToken).ConfigureAwait(false);
 
-        if (result != null)
-        {
-            this.DecodeKeyField(result);
-        }
+        this.DecodeKeyField(result);
 
         return result;
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<string> keys, GetRecordOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<TDataModel> GetBatchAsync(IEnumerable<string> keys, GetRecordOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var innerOptions = this.EncodeCollectionName(options);
 
@@ -120,15 +117,8 @@ public sealed class KeyNormalizingAzureAISearchMemoryRecordService<TDataModel> :
 
         await foreach (var result in results.ConfigureAwait(false))
         {
-            if (result != null)
-            {
-                this.DecodeKeyField(result);
-                yield return result;
-            }
-            else
-            {
-                yield return null;
-            }
+            this.DecodeKeyField(result);
+            yield return result;
         }
     }
 

@@ -42,9 +42,6 @@ public sealed class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<
     /// <summary>The redis database to read/write records from.</summary>
     private readonly IDatabase _database;
 
-    /// <summary>The name of the collection to use with this store if none is provided for any individual operation.</summary>
-    private readonly string _defaultCollectionName;
-
     /// <summary>Optional configuration options for this class.</summary>
     private readonly RedisMemoryRecordServiceOptions<TDataModel> _options;
 
@@ -67,18 +64,15 @@ public sealed class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<
     /// Initializes a new instance of the <see cref="RedisMemoryRecordService{TDataModel}"/> class.
     /// </summary>
     /// <param name="database">The redis database to read/write records from.</param>
-    /// <param name="defaultCollectionName">The name of the collection to use with this store if none is provided for any individual operation.</param>
     /// <param name="options">Optional configuration options for this class.</param>
     /// <exception cref="ArgumentNullException">Throw when parameters are invalid.</exception>
-    public RedisMemoryRecordService(IDatabase database, string defaultCollectionName, RedisMemoryRecordServiceOptions<TDataModel>? options)
+    public RedisMemoryRecordService(IDatabase database, RedisMemoryRecordServiceOptions<TDataModel>? options)
     {
         // Verify.
         Verify.NotNull(database);
-        Verify.NotNullOrWhiteSpace(defaultCollectionName);
 
         // Assign.
         this._database = database;
-        this._defaultCollectionName = defaultCollectionName;
         this._options = options ?? new RedisMemoryRecordServiceOptions<TDataModel>();
 
         // Enumerate public properties on model and store for later use.
@@ -115,12 +109,12 @@ public sealed class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<
     }
 
     /// <inheritdoc />
-    public async Task<TDataModel?> GetAsync(string key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<TDataModel> GetAsync(string key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         Verify.NotNullOrWhiteSpace(key);
 
         // Create Options
-        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var collectionName = this.ChooseCollectionName(options?.CollectionName);
         var maybePrefixedKey = this.PrefixKeyIfNeeded(key, collectionName);
 
         // Get the redis value.
@@ -143,14 +137,14 @@ public sealed class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<TDataModel?> GetBatchAsync(IEnumerable<string> keys, GetRecordOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<TDataModel> GetBatchAsync(IEnumerable<string> keys, GetRecordOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         Verify.NotNull(keys);
 
         var keysList = keys.ToList();
 
         // Create Options
-        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var collectionName = this.ChooseCollectionName(options?.CollectionName);
         var maybePrefixedKeys = keysList.Select(key => this.PrefixKeyIfNeeded(key, collectionName));
 
         // Get the list of redis results.
@@ -181,7 +175,7 @@ public sealed class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<
         Verify.NotNullOrWhiteSpace(key);
 
         // Create Options
-        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var collectionName = this.ChooseCollectionName(options?.CollectionName);
         var maybePrefixedKey = this.PrefixKeyIfNeeded(key, collectionName);
 
         // Remove.
@@ -206,7 +200,7 @@ public sealed class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<
         Verify.NotNull(record);
 
         // Create Options
-        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var collectionName = this.ChooseCollectionName(options?.CollectionName);
 
         // Map.
         var redisJsonRecord = this._mapper.MapFromDataToStorageModel(record);
@@ -229,7 +223,7 @@ public sealed class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<
         Verify.NotNull(records);
 
         // Create Options
-        var collectionName = options?.CollectionName ?? this._defaultCollectionName;
+        var collectionName = this.ChooseCollectionName(options?.CollectionName);
 
         // Map.
         var redisRecords = new List<(string maybePrefixedKey, string originalKey, JsonNode jsonNode)>();
@@ -256,16 +250,34 @@ public sealed class RedisMemoryRecordService<TDataModel> : IMemoryRecordService<
     /// Prefix the key with the collection name if the option is set.
     /// </summary>
     /// <param name="key">The key to prefix.</param>
-    /// <param name="operationCollectionName">The optional collection name that may have been provided as part of an operation to override the default.</param>
+    /// <param name="collectionName">The collection name that was provided as part of an operation to override the default or the default if not.</param>
     /// <returns>The updated key if updating is required, otherwise the input key.</returns>
-    private string PrefixKeyIfNeeded(string key, string? operationCollectionName)
+    private string PrefixKeyIfNeeded(string key, string? collectionName)
     {
         if (this._options.PrefixCollectionNameToKeyNames)
         {
-            var collectionName = operationCollectionName ?? this._defaultCollectionName;
             return $"{collectionName}:{key}";
         }
 
         return key;
+    }
+
+    /// <summary>
+    /// Choose the right collection name to use for the operation by using the one provided
+    /// as part of the operation options, or the default one provided at construction time.
+    /// </summary>
+    /// <param name="operationCollectionName">The collection name provided on the operation options.</param>
+    /// <returns>The collection name to use.</returns>
+    private string ChooseCollectionName(string? operationCollectionName)
+    {
+        var collectionName = operationCollectionName ?? this._options.DefaultCollectionName;
+        if (collectionName is null)
+        {
+#pragma warning disable CA2208 // Instantiate argument exceptions correctly
+            throw new ArgumentException("Collection name must be provided in the operation options, since no default was provided at construction time.", "options");
+#pragma warning restore CA2208 // Instantiate argument exceptions correctly
+        }
+
+        return collectionName;
     }
 }

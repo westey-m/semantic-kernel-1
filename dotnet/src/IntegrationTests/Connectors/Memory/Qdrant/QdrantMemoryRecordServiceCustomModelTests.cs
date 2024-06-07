@@ -25,7 +25,8 @@ public sealed class QdrantMemoryRecordServiceCustomModelTests(ITestOutputHelper 
     public async Task ItCanGetDocumentFromMemoryStoreAsync()
     {
         // Arrange.
-        var sut = new QdrantMemoryRecordService<HotelInfo>(fixture.QdrantClient, "singleVectorHotels", new QdrantMemoryRecordServiceOptions<HotelInfo> { HasNamedVectors = false });
+        var options = new QdrantMemoryRecordServiceOptions<HotelInfo> { HasNamedVectors = false, DefaultCollectionName = "singleVectorHotels" };
+        var sut = new QdrantMemoryRecordService<HotelInfo>(fixture.QdrantClient, options);
 
         // Act.
         var getResult = await sut.GetAsync(11);
@@ -50,7 +51,8 @@ public sealed class QdrantMemoryRecordServiceCustomModelTests(ITestOutputHelper 
     public async Task ItCanGetDocumentWithGuidIdFromMemoryStoreAsync()
     {
         // Arrange.
-        var sut = new QdrantMemoryRecordService<HotelInfoWithGuidId>(fixture.QdrantClient, "singleVectorGuidIdHotels", new QdrantMemoryRecordServiceOptions<HotelInfoWithGuidId> { HasNamedVectors = false });
+        var options = new QdrantMemoryRecordServiceOptions<HotelInfoWithGuidId> { HasNamedVectors = false, DefaultCollectionName = "singleVectorGuidIdHotels" };
+        var sut = new QdrantMemoryRecordService<HotelInfoWithGuidId>(fixture.QdrantClient, options);
 
         // Act.
         var getResult = await sut.GetAsync(Guid.Parse("11111111-1111-1111-1111-111111111111"));
@@ -69,7 +71,8 @@ public sealed class QdrantMemoryRecordServiceCustomModelTests(ITestOutputHelper 
     public async Task ItCanGetDocumentFromMemoryStoreWithEmbeddingsAsync()
     {
         // Arrange.
-        var sut = new QdrantMemoryRecordService<HotelInfo>(fixture.QdrantClient, "singleVectorHotels", new QdrantMemoryRecordServiceOptions<HotelInfo> { HasNamedVectors = false });
+        var options = new QdrantMemoryRecordServiceOptions<HotelInfo> { HasNamedVectors = false, DefaultCollectionName = "singleVectorHotels" };
+        var sut = new QdrantMemoryRecordService<HotelInfo>(fixture.QdrantClient, options);
 
         // Act.
         var getResult = await sut.GetAsync(11, new GetRecordOptions { IncludeVectors = true });
@@ -94,7 +97,8 @@ public sealed class QdrantMemoryRecordServiceCustomModelTests(ITestOutputHelper 
     public async Task ItCanGetDocumentWithNamedVectorsFromMemoryStoreAsync()
     {
         // Arrange.
-        var sut = new QdrantMemoryRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantMemoryRecordServiceOptions<HotelInfo> { HasNamedVectors = true });
+        var options = new QdrantMemoryRecordServiceOptions<HotelInfo> { HasNamedVectors = true, DefaultCollectionName = "namedVectorsHotels" };
+        var sut = new QdrantMemoryRecordService<HotelInfo>(fixture.QdrantClient, options);
 
         // Act.
         var getResult = await sut.GetAsync(1);
@@ -119,7 +123,8 @@ public sealed class QdrantMemoryRecordServiceCustomModelTests(ITestOutputHelper 
     public async Task ItCanGetDocumentWithNamedVectorsFromMemoryStoreWithEmbeddingsAsync()
     {
         // Arrange.
-        var sut = new QdrantMemoryRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantMemoryRecordServiceOptions<HotelInfo> { HasNamedVectors = true });
+        var options = new QdrantMemoryRecordServiceOptions<HotelInfo> { HasNamedVectors = true, DefaultCollectionName = "namedVectorsHotels" };
+        var sut = new QdrantMemoryRecordService<HotelInfo>(fixture.QdrantClient, options);
 
         // Act.
         var getResult = await sut.GetAsync(1, new GetRecordOptions { IncludeVectors = true });
@@ -144,7 +149,8 @@ public sealed class QdrantMemoryRecordServiceCustomModelTests(ITestOutputHelper 
     public async Task ItCanGetManyDocumentsFromMemoryStoreAsync()
     {
         // Arrange
-        var sut = new QdrantMemoryRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantMemoryRecordServiceOptions<HotelInfo> { HasNamedVectors = true });
+        var options = new QdrantMemoryRecordServiceOptions<HotelInfo> { HasNamedVectors = true, DefaultCollectionName = "namedVectorsHotels" };
+        var sut = new QdrantMemoryRecordService<HotelInfo>(fixture.QdrantClient, options);
 
         // Act
         var hotels = sut.GetBatchAsync([1, 2], new GetRecordOptions { IncludeVectors = true });
@@ -165,7 +171,8 @@ public sealed class QdrantMemoryRecordServiceCustomModelTests(ITestOutputHelper 
     public async Task ItThrowsForPartialBatchResultAsync()
     {
         // Arrange.
-        var sut = new QdrantMemoryRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantMemoryRecordServiceOptions<HotelInfo> { HasNamedVectors = true });
+        var options = new QdrantMemoryRecordServiceOptions<HotelInfo> { HasNamedVectors = true, DefaultCollectionName = "namedVectorsHotels" };
+        var sut = new QdrantMemoryRecordService<HotelInfo>(fixture.QdrantClient, options);
 
         // Act.
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetBatchAsync([1, 5, 2]).ToListAsync());
@@ -175,7 +182,8 @@ public sealed class QdrantMemoryRecordServiceCustomModelTests(ITestOutputHelper 
     public async Task ItCanRemoveDocumentFromMemoryStoreAsync()
     {
         // Arrange.
-        var sut = new QdrantMemoryRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantMemoryRecordServiceOptions<HotelInfo> { HasNamedVectors = true });
+        var options = new QdrantMemoryRecordServiceOptions<HotelInfo> { HasNamedVectors = true, DefaultCollectionName = "namedVectorsHotels" };
+        var sut = new QdrantMemoryRecordService<HotelInfo>(fixture.QdrantClient, options);
 
         var record = new HotelInfo
         {
@@ -199,7 +207,8 @@ public sealed class QdrantMemoryRecordServiceCustomModelTests(ITestOutputHelper 
     public async Task ItCanUpsertDocumentToMemoryStoreAsync()
     {
         // Arrange.
-        var sut = new QdrantMemoryRecordService<HotelInfo>(fixture.QdrantClient, "namedVectorsHotels", new QdrantMemoryRecordServiceOptions<HotelInfo> { HasNamedVectors = true });
+        var options = new QdrantMemoryRecordServiceOptions<HotelInfo> { HasNamedVectors = true, DefaultCollectionName = "namedVectorsHotels" };
+        var sut = new QdrantMemoryRecordService<HotelInfo>(fixture.QdrantClient, options);
 
         var record = new HotelInfo
         {
@@ -239,7 +248,8 @@ public sealed class QdrantMemoryRecordServiceCustomModelTests(ITestOutputHelper 
     public async Task ItCanUpsertAndRemoveDocumentWithGuidIdToMemoryStoreAsync()
     {
         // Arrange.
-        IMemoryRecordService<Guid, HotelInfoWithGuidId> sut = new QdrantMemoryRecordService<HotelInfoWithGuidId>(fixture.QdrantClient, "singleVectorGuidIdHotels", new QdrantMemoryRecordServiceOptions<HotelInfoWithGuidId> { HasNamedVectors = false });
+        var options = new QdrantMemoryRecordServiceOptions<HotelInfoWithGuidId> { HasNamedVectors = false, DefaultCollectionName = "singleVectorGuidIdHotels" };
+        IMemoryRecordService<Guid, HotelInfoWithGuidId> sut = new QdrantMemoryRecordService<HotelInfoWithGuidId>(fixture.QdrantClient, options);
 
         var record = new HotelInfoWithGuidId
         {

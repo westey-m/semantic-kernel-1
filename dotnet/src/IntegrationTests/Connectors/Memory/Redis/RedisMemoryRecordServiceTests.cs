@@ -24,7 +24,8 @@ public sealed class RedisMemoryRecordServiceTests(ITestOutputHelper output, Redi
     public async Task ItCanGetDocumentFromMemoryStoreAsync()
     {
         // Arrange.
-        var sut = new RedisMemoryRecordService<HotelInfo>(fixture.Database, "hotels", new RedisMemoryRecordServiceOptions<HotelInfo> { PrefixCollectionNameToKeyNames = true });
+        var options = new RedisMemoryRecordServiceOptions<HotelInfo> { DefaultCollectionName = "hotels", PrefixCollectionNameToKeyNames = true };
+        var sut = new RedisMemoryRecordService<HotelInfo>(fixture.Database, options);
 
         // Act.
         var getResult = await sut.GetAsync("H10");
@@ -46,7 +47,8 @@ public sealed class RedisMemoryRecordServiceTests(ITestOutputHelper output, Redi
     public async Task ItCanGetDocumentFromMemoryStoreWithEmbeddingsAsync()
     {
         // Arrange.
-        var sut = new RedisMemoryRecordService<HotelInfo>(fixture.Database, "hotels", new RedisMemoryRecordServiceOptions<HotelInfo> { PrefixCollectionNameToKeyNames = true });
+        var options = new RedisMemoryRecordServiceOptions<HotelInfo> { DefaultCollectionName = "hotels", PrefixCollectionNameToKeyNames = true };
+        var sut = new RedisMemoryRecordService<HotelInfo>(fixture.Database, options);
 
         // Act.
         var getResult = await sut.GetAsync("H10", new GetRecordOptions { IncludeVectors = true });
@@ -68,7 +70,8 @@ public sealed class RedisMemoryRecordServiceTests(ITestOutputHelper output, Redi
     public async Task ItFailsToGetDocumentsWithInvalidSchemaAsync()
     {
         // Arrange.
-        var sut = new RedisMemoryRecordService<HotelInfo>(fixture.Database, "hotels", new RedisMemoryRecordServiceOptions<HotelInfo> { PrefixCollectionNameToKeyNames = true });
+        var options = new RedisMemoryRecordServiceOptions<HotelInfo> { DefaultCollectionName = "hotels", PrefixCollectionNameToKeyNames = true };
+        var sut = new RedisMemoryRecordService<HotelInfo>(fixture.Database, options);
 
         // Act & Assert.
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetAsync("H13-Invalid", new GetRecordOptions { IncludeVectors = true }));
@@ -78,7 +81,8 @@ public sealed class RedisMemoryRecordServiceTests(ITestOutputHelper output, Redi
     public async Task ItCanGetManyDocumentsFromMemoryStoreAsync()
     {
         // Arrange
-        var sut = new RedisMemoryRecordService<HotelInfo>(fixture.Database, "hotels", new RedisMemoryRecordServiceOptions<HotelInfo> { PrefixCollectionNameToKeyNames = true });
+        var options = new RedisMemoryRecordServiceOptions<HotelInfo> { DefaultCollectionName = "hotels", PrefixCollectionNameToKeyNames = true };
+        var sut = new RedisMemoryRecordService<HotelInfo>(fixture.Database, options);
 
         // Act
         var hotels = sut.GetBatchAsync(["H10", "H11"], new GetRecordOptions { IncludeVectors = true });
@@ -99,7 +103,8 @@ public sealed class RedisMemoryRecordServiceTests(ITestOutputHelper output, Redi
     public async Task ItThrowsForPartialBatchResultAsync()
     {
         // Arrange.
-        var sut = new RedisMemoryRecordService<HotelInfo>(fixture.Database, "hotels", new RedisMemoryRecordServiceOptions<HotelInfo> { PrefixCollectionNameToKeyNames = true });
+        var options = new RedisMemoryRecordServiceOptions<HotelInfo> { DefaultCollectionName = "hotels", PrefixCollectionNameToKeyNames = true };
+        var sut = new RedisMemoryRecordService<HotelInfo>(fixture.Database, options);
 
         // Act & Assert.
         await Assert.ThrowsAsync<HttpOperationException>(async () => await sut.GetBatchAsync(["H10", "H15", "H11"], new GetRecordOptions { IncludeVectors = true }).ToListAsync());
@@ -109,7 +114,8 @@ public sealed class RedisMemoryRecordServiceTests(ITestOutputHelper output, Redi
     public async Task ItCanRemoveDocumentFromMemoryStoreAsync()
     {
         // Arrange.
-        var sut = new RedisMemoryRecordService<HotelInfo>(fixture.Database, "hotels", new RedisMemoryRecordServiceOptions<HotelInfo> { PrefixCollectionNameToKeyNames = true });
+        var options = new RedisMemoryRecordServiceOptions<HotelInfo> { DefaultCollectionName = "hotels", PrefixCollectionNameToKeyNames = true };
+        var sut = new RedisMemoryRecordService<HotelInfo>(fixture.Database, options);
         var address = new HotelAddress("Seattle", "USA");
         var record = new HotelInfo("TMP20", "My Hotel 20", 20, true, address, "This is a great hotel.", Array.Empty<float>());
         await sut.UpsertAsync(record);
@@ -125,7 +131,8 @@ public sealed class RedisMemoryRecordServiceTests(ITestOutputHelper output, Redi
     public async Task ItCanUpsertDocumentToMemoryStoreAsync()
     {
         // Arrange.
-        var sut = new RedisMemoryRecordService<HotelInfo>(fixture.Database, "hotels", new RedisMemoryRecordServiceOptions<HotelInfo> { PrefixCollectionNameToKeyNames = true });
+        var options = new RedisMemoryRecordServiceOptions<HotelInfo> { DefaultCollectionName = "hotels", PrefixCollectionNameToKeyNames = true };
+        var sut = new RedisMemoryRecordService<HotelInfo>(fixture.Database, options);
         var address = new HotelAddress("Seattle", "USA");
         var record = new HotelInfo("H1", "My Hotel 1", 1, true, address, "This is a great hotel.", new[] { 30f, 31f, 32f, 33f });
 
