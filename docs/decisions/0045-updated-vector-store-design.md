@@ -859,12 +859,12 @@ builder
     // Collection Registration:
     // Variant 1: Register just create.
     .AddNamedAzureAISearchCollectionCreate(name: "CacheCreate", azureAISearchEndpoint, apiKey, createConfiguration)         // Config
-    .AddNamedAzureAISearchCollectionCreate<CacheCreate>(name: "CacheCreate", azureAISearchEndpoint, apiKey)                 // Custom implementation
+    .AddNamedAzureAISearchCollectionCreate(name: "CacheCreate", sp => new CacheCreate(...));                                // Custom implementation
     // Create combined collection management that references the previously registered create instance.
     .AddNamedAzureAISearchCollectionService(name: "Cache", azureAISearchEndpoint, apiKey, createName: "CacheCreate")
     // Variant 2: Register collection service in one line with config or custom create implementation.
-    .AddNamedAzureAISearchCollectionService(name: "Cache", azureAISearchEndpoint, apiKey, createConfiguration)    // Config
-    .AddNamedAzureAISearchCollectionService<CacheCreate>(name: "Cache", azureAISearchEndpoint, apiKey)            // Custom implementation
+    .AddNamedAzureAISearchCollectionService(name: "Cache", azureAISearchEndpoint, apiKey, createConfiguration)              // Config
+    .AddNamedAzureAISearchCollectionService(name: "Cache", azureAISearchEndpoint, apiKey, sp => new CacheCreate(...))       // Custom implementation
 
     // Record Registration with variants 1 and 2:
     // Add record services.
@@ -872,8 +872,8 @@ builder
 
     // Variant 3: Register collection and record service in one line with config or custom create implementation.
     // Does all of the preious variants in one line.
-    .AddAzureAISearchStorageService<CacheEntryModel>(name: "Cache", azureAISearchEndpoint, apiKey, createConfiguration)    // Config
-    .AddAzureAISearchStorageService<CacheEntryModel, CacheCreate>(name: "Cache", azureAISearchEndpoint, apiKey)            // Custom implementation
+    .AddAzureAISearchStorageServices<CacheEntryModel>(name: "Cache", azureAISearchEndpoint, apiKey, createConfiguration)         // Config
+    .AddAzureAISearchStorageServices<CacheEntryModel>(name: "Cache", azureAISearchEndpoint, apiKey, sp => new CacheCreate(...))  // Custom implementation
 
     // Add semantic text memory referencing collection and record services.
     // This would register ISemanticTextMemory<CacheEntryModel> in the services container.
@@ -903,8 +903,8 @@ builder
     
     // Collection and record registration with config or custom create implementation.
     // This will register both IMemoryCollectionService and IMemoryRecordService<CacheEntryModel> and tie it to usage with SemanticTextMemory<CacheEntryModel>.
-    .AddAzureAISearchStorage<SemanticTextMemory<CacheEntryModel>>(azureAISearchEndpoint, apiKey, createConfiguration)   // Config
-    .AddAzureAISearchStorage<SemanticTextMemory<CacheEntryModel>, CacheCreate>(azureAISearchEndpoint, apiKey);          // Custom implementation
+    .AddAzureAISearchStorage<SemanticTextMemory<CacheEntryModel>>(azureAISearchEndpoint, apiKey, createConfiguration)           // Config
+    .AddAzureAISearchStorage<SemanticTextMemory<CacheEntryModel>>(azureAISearchEndpoint, apiKey, sp => new CacheCreate(...));   // Custom implementation
 
 // Add Semantic Cache Memory for the cache entry model.
 builder.Services.AddTransient<ISemanticTextMemory<CacheEntryModel>, SemanticTextMemory<CacheEntryModel>>();
@@ -923,7 +923,7 @@ builder
 
     // Collection and record registration with config or custom create implementation.
     .AddAzureAISearchStorageKeyedTransient<CacheEntryModel>("Cache", azureAISearchEndpoint, apiKey, createConfiguration)
-    .AddAzureAISearchStorageKeyedTransient<CacheEntryModel, CacheCreate>("Cache", azureAISearchEndpoint, apiKey);
+    .AddAzureAISearchStorageKeyedTransient<CacheEntryModel>("Cache", azureAISearchEndpoint, apiKey, sp => new CacheCreate(...));
 
 // Add Semantic Cache Memory for the cache entry model.
 builder.Services.AddTransient<ISemanticTextMemory<CacheEntryModel>>(sp => {
@@ -945,10 +945,7 @@ Shows a simple example of adding a prompt filter to retrieve data related to the
 and add it to the prompt before sending it to the LLM.
 
 ```cs
-class AzureAISearchFilteredSearchService(ITextEmbeddingService textEmbeddingService, SearchIndexClient searchIndexClient): IFilteredVectorSearchService;
-class FilteredVectorTextSearchService(IFilteredVectorSearchService filteredVectorSearchService, FilterConfig filterConfig): ITextSearchService;
-class BingSearchService(string apiKey): ITextSearchService;
-
+// Basic RAG implementation that just takes the user input and searches for related data, which is added to the prompt.
 class RAGPromptFilter(ITextSearchService textSearchService): IPromptRenderFilter
 {
     public async Task OnPromptRenderAsync(PromptRenderContext context, Func<PromptRenderContext, Task> next)
@@ -968,24 +965,48 @@ class RAGPromptFilter(ITextSearchService textSearchService): IPromptRenderFilter
     }
 }
 
+// Variant 1: AzureAISearchFilteredSearchService allows any type of data model to be returned, but FilteredVectorTextSearchService expects Json as input
+// so we construct AzureAISearchFilteredSearchService with a json model and just use serialized json as the LLM input.
+class AzureAISearchFilteredSearchService<TDataModel>(ITextEmbeddingService textEmbeddingService, SearchIndexClient searchIndexClient): IFilteredVectorSearchService<TDataModel>;
+class FilteredVectorTextSearchService(IFilteredVectorSearchService<JsonNode> filteredVectorSearchService, FilterConfig filterConfig): ITextSearchService;
+
+// Variant 2: AzureAISearchFilteredSearchService allows any type of data model to be returned, and we can provide our custom data model there too, i.e. BookingFaq, but we want
+// a custom serialization method when serializing the search output to a string for LLM input, so we create the FilteredVectorTextSearchService in a way that it expects string
+// output from the IFilteredVectorSearchService and we add a IFilteredVectorSearchService decorator that can do the custom conversion.
+// Construction looks similar to this:
+// new FilteredVectorTextSearchService(
+//      new SerializingFiteredVectorSearchService(
+//          new AzureAISearchFilteredSearchService<BookingFaq>(sp.GetRequiredService<ITextEmbeddingService>(), new SearchIndexClient(new Uri(azureAISearchEndpoint), apiKey))
+//          converter),
+//      new FilterConfig { VectorSearchFieldName = vectorSearchFieldName });
+class AzureAISearchFilteredSearchService<TDataModel>(ITextEmbeddingService textEmbeddingService, SearchIndexClient searchIndexClient): IFilteredVectorSearchService<TDataModel>;
+class SerializingFiteredVectorSearchService(IFilteredVectorSearchService<TDataModel> fitleredVectorSearchService, Func<BookingFaq, string> converter): IFilteredVectorSearchService<string>;
+class FilteredVectorTextSearchService(IFilteredVectorSearchService<string> filteredVectorSearchService, FilterConfig filterConfig): ITextSearchService;
+
 builder
     .AddAzureOpenAITextEmbeddingGeneration(textEmbeddingDeploymentName, azureAIEndpoint, apiKey)
+    // Variant 1
     // Add keyed azure ai text search implementation, providing the endpoint information and the field that needs to be searched.
     // Will register a factory for FilteredVectorTextSearchService that takes a AzureAISearchFilteredSearchService instance and creates a FilterConfig that targets the given vectorSearchField.
-    .AddAzureAITextSearchKeyedTransient(key: "BookingSiteFAQSearch", azureAISearchEndpoint, apiKey, vectorSearchField);
+    .AddAzureAITextSearchKeyedTransient(key: "BookingSiteFAQSearch", azureAISearchEndpoint, apiKey, vectorSearchFieldName: "faqTextVector")
+    
+    // Variant 2
+    // Same as variant 1, but with converter added.
+    .AddAzureAITextSearchKeyedTransient(key: "BookingSiteFAQSearch", azureAISearchEndpoint, apiKey, vectorSearchFieldName: "faqTextVector", bookingFaqToStringConverter);
 
 builder.Services.AddTransient<IPromptRenderFilter>(sp => {
     return new RAGPromptFilter(sp.GetKeyedService<ITextSearchService>("BookingSiteFAQSearch"));
 ```
 
+### Native Client Injection via DI Framework using .net 8 Keyed Services
+
 ```cs
-var builder = Kernel.CreateBuilder();
-var kernel = builder
-    .AddAzureAISearchRecordService<ChatMessage>(azureAISearchEndpoint, apiKey, storeName: "ChatHistory")
-    .AddAzureAISearchRecordService<FAQ>(azureAISearchEndpoint, apiKey, "FAQ", new { DefaultCollectionName = "BookingSiteFAQ" })
-    .AddAzureAISearchRecordService<Hotel>(azureAISearchEndpoint, apiKey, "Hotel", new { DefaultCollectionName = "HotelsInfo" })
-    .AddAzureAISearchRecordService<Hotel>(azureAISearchEndpoint, apiKey, "Hotel", new { DefaultCollectionName = "HotelsInfo" })
-    .Build();
+builder
+    .AddKeyedTransient<SearchIndexClient>("cacheSearchIndexClient", sp => { return new SearchIndexClient(new Uri(azureAISearchEndpoint), new AzureKeyCredential(apiKey); })
+
+    // Collection and record registration with config or custom create implementation.
+    .AddAzureAISearchStorageKeyedTransient<CacheEntryModel>("Cache", searchIndexClientKey: "cacheSearchIndexClient", createConfiguration)
+    .AddAzureAISearchStorageKeyedTransient<CacheEntryModel>("Cache", searchIndexClientKey: "cacheSearchIndexClient", sp => new CacheCreate(...));
 ```
 
 ## Roadmap
