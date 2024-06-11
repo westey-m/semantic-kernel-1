@@ -247,7 +247,7 @@ classDiagram
     ISemanticTextMemory <.. ChatHistoryPlugin
 ```
 
-### Vector Store Cross Store support
+### Vector Store Cross Store support - General Features
 
 A comparison of the different ways in which stores implement storage capabilities to help drive decisions:
 
@@ -264,10 +264,18 @@ A comparison of the different ways in which stores implement storage capabilitie
 |Is Key separate from data|N|Y|Y|Y||Y||N|Y|N|
 |Can Generate Ids|N|Y|N|N||Y||Y|N|Y|
 |Can Generate Embedding|Not Available Via API yet|Y|N|Client Side Abstraction|||||N||
-|Index allows text search|Y|Y|Y|Y (On Metadata by default)||||Y (with TSVECTOR field)|Y|Y|
-|Allows filtering|Y|Y|Y (on TAG)|Y (On Metadata by default)||[Y](https://docs.pinecone.io/guides/indexes/configure-pod-based-indexes#selective-metadata-indexing)||Y|Y|Y|
-|Allows scalar index field setup|Y|Y|Y|N||Y|||Y|Y|
-|Requires scalar index field setup to filter|Y|Y|Y|N||N (on by default for all)|||N|N (can filter without index)|
+
+Footnotes:
+- P = Partial Support
+- <sup>1</sup> Only if you have the schema, to select the appropriate fields.
+- <sup>2</sup> Supports broad categories of fields only.
+- <sup>3</sup> Id is required in request, so can be returned if needed.
+- <sup>4</sup> No strong typed support when specifying field list.
+
+### Vector Store Cross Store support - Fields, types and indexing
+
+|Feature|Azure AI Search|Weaviate|Redis|Chroma|FAISS|Pinecone|LLamaIndex|PostgreSql|Qdrant|Milvus|
+|-|-|-|-|-|-|-|-|-|-|-|
 |Field Differentiation|Fields|Key, Props, Vectors|Key, Fields|Key, Documents, Metadata, Vectors||Key, Metadata, SparseValues, Vectors||Fields|Key, Props(Payload), Vectors|Fields|
 |Index to Collection|1 to 1|1 to 1|1 to many|1 to 1|-|1 to 1|-|1 to 1|1 to 1|1 to 1|
 |Id Type|String|UUID|string with collection name prefix|string||string|UUID|64Bit Int / UUID / ULID|64Bit Unsigned Int / UUID|Int64 / varchar|
@@ -276,16 +284,25 @@ A comparison of the different ways in which stores implement storage capabilitie
 |Supported index types|[Exhaustive KNN / HNSW](https://learn.microsoft.com/en-us/azure/search/vector-search-ranking#algorithms-used-in-vector-search)|[HNSW / Flat / Dynamic](https://weaviate.io/developers/weaviate/config-refs/schema/vector-index)|[HNSW / FLAT](https://redis.io/docs/latest/develop/interact/search-and-query/advanced-concepts/vectors/#create-a-vector-field)|[HNSW not configurable](https://cookbook.chromadb.dev/core/concepts/#vector-index-hnsw-index)||[PGA](https://www.pinecone.io/blog/hnsw-not-enough/)||[HNSW / IVFFlat](https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing)|[HNSW for dense](https://qdrant.tech/documentation/concepts/indexing/#vector-index)|<p>[In Memory: FLAT / IVF_FLAT / IVF_SQ8 / IVF_PQ / HNSW / SCANN](https://milvus.io/docs/index.md)</p><p>[On Disk: DiskANN](https://milvus.io/docs/disk_index.md)</p><p>[GPU: GPU_CAGRA / GPU_IVF_FLAT / GPU_IVF_PQ / GPU_BRUTE_FORCE](https://milvus.io/docs/gpu_index.md)</p>|
 
 Footnotes:
-- P = Partial Support
-- <sup>1</sup> Only if you have the schema, to select the appropriate fields.
-- <sup>2</sup> Supports broad categories of fields only.
-- <sup>3</sup> Id is required in request, so can be returned if needed.
-- <sup>4</sup> No strong typed support when specifying field list.
 - HNSW = Hierarchical Navigable Small World (HNSW performs an [approximate nearest neighbor (ANN)](https://learn.microsoft.com/en-us/azure/search/vector-search-overview#approximate-nearest-neighbors) search)
 - KNN = k-nearest neighbors (performs a brute-force search that scans the entire vector space)
 - IVFFlat = Inverted File with Flat Compression (This index type uses approximate nearest neighbor search (ANNS) to provide fast searches)
 - Weaviate Dynamic = Starts as flat and switches to HNSW if the number of objects exceed a limit
 - PGA = [Pinecone Graph Algorithm](https://www.pinecone.io/blog/hnsw-not-enough/)
+
+### Vector Store Cross Store support - Search and filtering
+
+|Feature|Azure AI Search|Weaviate|Redis|Chroma|FAISS|Pinecone|LLamaIndex|PostgreSql|Qdrant|Milvus|
+|-|-|-|-|-|-|-|-|-|-|-|
+|Index allows text search|Y|Y|Y|Y (On Metadata by default)||||Y (with TSVECTOR field)|Y|Y|
+|Text search query format|[Simple or Full Lucene](https://learn.microsoft.com/en-us/azure/search/search-query-create?tabs=portal-text-query#choose-a-query-type-simple--full)|Text Only|wildcard & fuzzy||||||[Text only](https://qdrant.tech/documentation/concepts/filtering/#full-text-match)|[wildcard](https://milvus.io/docs/single-vector-search.md#Filtered-search)|
+|Multi Field Vector Search Support|Y|[N](https://weaviate.io/developers/weaviate/search/similarity)|||||||[N](https://qdrant.tech/documentation/concepts/search/)|[Y](https://milvus.io/api-reference/restful/v2.4.x/v2/Vector%20(v2)/Hybrid%20Search.md)|
+|Targeted Multi Field Text Search Support|Y|[Y](https://weaviate.io/developers/weaviate/search/hybrid#set-weights-on-property-values)|[Y](https://redis.io/docs/latest/develop/interact/search-and-query/advanced-concepts/query_syntax/#field-modifiers)||||||Y|Y|
+|Vector per Vector Field for Search|Y|N/A|||||||N/A|[Y](https://milvus.io/docs/multi-vector-search.md#Step-1-Create-Multiple-AnnSearchRequest-Instances)|
+|Separate text search query from vectors|Y|[Y](https://weaviate.io/developers/weaviate/search/hybrid#specify-a-search-vector)|Y||||||Y|[Y](https://milvus.io/api-reference/restful/v2.4.x/v2/Vector%20(v2)/Hybrid%20Search.md)|
+|Allows filtering|Y|Y|Y (on TAG)|Y (On Metadata by default)||[Y](https://docs.pinecone.io/guides/indexes/configure-pod-based-indexes#selective-metadata-indexing)||Y|Y|Y|
+|Allows scalar index field setup|Y|Y|Y|N||Y|||Y|Y|
+|Requires scalar index field setup to filter|Y|Y|Y|N||N (on by default for all)|||N|N (can filter without index)|
 
 ### Support for different mappers
 
@@ -354,6 +371,30 @@ sealed class MemoryRecordVectorProperty(string propertyName): Field(propertyName
 sealed class MemoryRecordDefinition
 {
     IReadOnlyList<MemoryRecordProperty> Properties;
+}
+```
+
+### Vector / Hybrid / Filtered Search
+
+We need to support vector search with filtering and combined with full text search.
+This should use a layered approach where additional complexity is layered on top of each other, since not all databases or data sources
+support all types of filtering.
+
+Layers:
+1. TextSearchService: Supports searching a source using text only, and can be used across any source including search engines.
+2. FilteredTextSearchService: Supports simple configurable filtering in additional to a search using a piece of text.
+3. FileredHybridSearchService: Supports filtering, vector based text search and full text search.
+
+```json
+{
+    "textSearchFields": [
+        {
+            "Field": "Description",
+            "FullTextQuery": "blue",
+            "Vector": [1, 2, 3, 4]
+        }
+    ],
+    "filter": "category eq 'foo'"
 }
 ```
 
