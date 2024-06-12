@@ -382,18 +382,55 @@ We need to support vector search with filtering and combined with full text sear
 This should use a layered approach where additional complexity is layered on top of each other, since not all databases or data sources
 support all types of filtering.
 
+Assumptions:
+1. While it is possible to search multiple vectors in one go on some databases, we do not necessarily need to support it, since it is possible to do separate searches too.
+2. While it is possible to do a text search on multiple fields and a vector search on another unrelated at the same time, our main use case is hybrid search where we do both on
+the two related data and vector fields, so that's the main use case being targeted here.
+3. Considering the high degree of variability in text search capabilities, we'll have to be opinionated in what we support for keyword search for hybrid search, e.g. supporting just a list of keywords.
+
 Layers:
 1. TextSearchService: Supports searching a source using text only, and can be used across any source including search engines.
 2. FilteredTextSearchService: Supports simple configurable filtering in additional to a search using a piece of text.
 3. FileredHybridSearchService: Supports filtering, vector based text search and full text search.
 
+```cs
+class TextSearchResult {
+    public string Text {get; init; };
+    public string Source {get; init; };
+}
+interface ITextSearch {
+    IEnumerable<SearchResult> Search(string text, string? collectionName);
+}
+interface IFilteredTextSearch {
+    IEnumerable<SearchResult> Search(string text, string filter, string? collectionName);
+}
+interface IHybridFilteredTextSearch {
+    IEnumerable<SearchResult> Search(string text, IEnumerable<string> keywords, string filter, string? collectionName);
+}
+
+interface IFilteredSearch {
+    IEnumerable<TDataType> Search(string filter);
+}
+
+// Does text searches using bing.
+class BingTextSearch: ITextSearch;
+// Does searches in Azure AI Search, and supports all text interfaces for doing searches.
+class AzureAISearchVectorStoreHybridFilteredTextSearch(
+    SearchIndexClient searchIndexClient,
+    string targetVectorField,
+    string targetTextSearchField,
+    string? defaultCollectionName,
+    string? filter): ITextSearch, IFilteredTextSearch, IHybridFilteredTextSearch;
+
+```
+
 ```json
 {
-    "textSearchFields": [
+    "textSearch": [
         {
-            "Field": "Description",
-            "FullTextQuery": "blue",
-            "Vector": [1, 2, 3, 4]
+            "field": "Description",
+            "fullTextQuery": "blue",
+            "vector": [1, 2, 3, 4]
         }
     ],
     "filter": "category eq 'foo'"
