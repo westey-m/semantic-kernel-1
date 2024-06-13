@@ -398,29 +398,53 @@ class TextSearchResult {
     public string Text {get; init; };
     public string Source {get; init; };
 }
+// Text only input.
 interface ITextSearch {
-    IEnumerable<SearchResult> Search(string text, string? collectionName);
+    IAsyncEnumerable<SearchResult> Search(string text, string? collectionName);
 }
+// Text and filter input.
 interface IFilteredTextSearch {
-    IEnumerable<SearchResult> Search(string text, string filter, string? collectionName);
+    IAsyncEnumerable<SearchResult> Search(string text, string filter, string? collectionName);  // Filter using odata string.
+    IAsyncEnumerable<SearchResult> Search(string text, IEnumerable<KeyValuePair<string, string>> filter, string? collectionName);  // Filter using key value pairs.
 }
+// Text, filter and FTS keyword input.
 interface IHybridFilteredTextSearch {
-    IEnumerable<SearchResult> Search(string text, IEnumerable<string> keywords, string filter, string? collectionName);
+    IAsyncEnumerable<SearchResult> Search(string text, IEnumerable<string> keywords, string filter, string? collectionName);  // Filter using odata string.
+    IAsyncEnumerable<SearchResult> Search(string text, IEnumerable<string> keywords, IEnumerable<KeyValuePair<string, string>> filter, string? collectionName);  // Filter using key value pairs.
 }
-
+// Filter only input.
 interface IFilteredSearch {
-    IEnumerable<TDataType> Search(string filter);
+    IAsyncEnumerable<SearchResult> Search(string filter, string? collectionName); // Filter using odata string.
+    IAsyncEnumerable<SearchResult> Search(IEnumerable<KeyValuePair<string, string>> filter, string? collectionName);  // Filter using key value pairs.
 }
 
-// Does text searches using bing.
+// For each of the above, we should also support a generic version that returns the data model matching storage, e.g.
+interface ITextSearch<TDataType> {
+    IAsyncEnumerable<TDataType> Search(string text, string? collectionName);
+}
+
+// Text searches using bing.
 class BingTextSearch: ITextSearch;
-// Does searches in Azure AI Search, and supports all text interfaces for doing searches.
-class AzureAISearchVectorStoreHybridFilteredTextSearch(
+// Searches in Azure AI Search, and supports all text interfaces for doing searches.
+class AzureAISearchHybridFilteredTextSearch(
     SearchIndexClient searchIndexClient,
     string targetVectorField,
     string targetTextSearchField,
     string? defaultCollectionName,
-    string? filter): ITextSearch, IFilteredTextSearch, IHybridFilteredTextSearch;
+    string? baseFilter): ITextSearch, IFilteredSearch, IFilteredTextSearch, IHybridFilteredTextSearch;
+// How / what do we serialize here? Do we allow a specific field to be picked, just convert to json, or allow a custom mapping method (what is the input to that?).
+    serializationType = Json | TextField | Mapper
+    string resultTextField // Pick a text field to return.
+    Func<string, JsonObject> // Custom mapper from json to string.
+    Func<string, TDataModel> // Custom mapper from data model to string.
+    
+
+class AzureAISearchHybridFilteredTextSearch<TDataModel>(
+    SearchIndexClient searchIndexClient,
+    string targetVectorField,
+    string targetTextSearchField,
+    string? defaultCollectionName,
+    string? baseFilter): ITextSearch<TDataModel>, IFilteredSearch<TDataModel>, IFilteredTextSearch<TDataModel>, IHybridFilteredTextSearch<TDataModel>;
 
 ```
 
@@ -1087,6 +1111,65 @@ builder
     // Collection and record registration with config or custom create implementation.
     .AddAzureAISearchStorageKeyedTransient<CacheEntryModel>("Cache", searchIndexClientKey: "cacheSearchIndexClient", createConfiguration)
     .AddAzureAISearchStorageKeyedTransient<CacheEntryModel>("Cache", searchIndexClientKey: "cacheSearchIndexClient", sp => new CacheCreate(...));
+```
+
+### RAG Plugin
+
+Shows an example where we create a plugin to allow the LLM to retrieve additional data.
+
+```cs
+
+const string TextSearchFunctionConfig = """
+    name: SearchFAQ
+    description: Retrieves frequently asked questions and answers related to a user query.
+    input_variables:
+        - name: text
+        description: The user query to find related questions and answers for.
+        is_required: true
+    output_variable:
+        description: String containing questions and answers related to the user query.
+    """;
+builder
+    .ImportPluginFromTextSearchDescription(
+        FunctionConfig,
+        (sp) => { return sp.GetKeyedService<ITextSearchService>("Cache"); });
+
+const string FilteredTextSearchFunctionConfig = """
+    name: SearchHotels
+    description: Retrieves hotels that match the provided user descriptions.
+    input_variables:
+        - name: text
+        description: A description of the type of hotel the user wants.
+        is_required: true
+        - name: hotelCategory
+        description: Category of hotel to filter to. Allowed values: 'boutique', 'corporate', 'luxury', 'resort'.
+        is_required: false
+    output_variable:
+        description: String containing a list of hotels matching the given description.
+    """;
+builder
+    .ImportPluginFromSearchDescription(
+        FunctionConfig,
+        (sp) => { return sp.GetKeyedService<IFilteredVectorSearchService>("Hotels"); });
+
+const string FilteredTextSearchFunctionConfig = """
+    name: BingSearch
+    description: Searches bing for the provided text.
+    input_variables:
+        - name: text
+        description: The text to search bing for.
+        is_required: true
+        - name: site
+        description: The base website url to filter results to.
+        is_required: false
+    output_variable:
+        description: String containing the bing search results for the given text.
+    """;
+builder
+    .ImportPluginFromSearchDescription(
+        FunctionConfig,
+        (sp) => { return new BingTextSearchService(); });
+
 ```
 
 ## Roadmap
