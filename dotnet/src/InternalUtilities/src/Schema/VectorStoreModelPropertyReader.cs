@@ -19,7 +19,10 @@ namespace Microsoft.SemanticKernel;
 internal static class MemoryServiceModelPropertyReader
 {
     /// <summary>Cache of property enumerations so that we don't incur reflection costs with each invocation.</summary>
-    private static readonly Dictionary<Type, (PropertyInfo keyProperty, List<PropertyInfo> dataProperties, List<PropertyInfo> vectorProperties)> s_propertiesCache = new();
+    private static readonly Dictionary<Type, (PropertyInfo keyProperty, List<PropertyInfo> dataProperties, List<PropertyInfo> vectorProperties)> s_singleVectorPropertiesCache = new();
+
+    /// <summary>Cache of property enumerations so that we don't incur reflection costs with each invocation.</summary>
+    private static readonly Dictionary<Type, (PropertyInfo keyProperty, List<PropertyInfo> dataProperties, List<PropertyInfo> vectorProperties)> s_multipleVectorsPropertiesCache = new();
 
     /// <summary>
     /// Find the properties with <see cref="MemoryRecordKeyAttribute"/>, <see cref="MemoryRecordDataAttribute"/> and <see cref="MemoryRecordVectorAttribute"/> attributes
@@ -31,8 +34,10 @@ internal static class MemoryServiceModelPropertyReader
     /// <returns>The categorized properties.</returns>
     public static (PropertyInfo keyProperty, List<PropertyInfo> dataProperties, List<PropertyInfo> vectorProperties) FindProperties(Type type, bool supportsMultipleVectors)
     {
+        var cache = supportsMultipleVectors ? s_multipleVectorsPropertiesCache : s_singleVectorPropertiesCache;
+
         // First check the cache.
-        if (s_propertiesCache.TryGetValue(type, out var cachedProperties))
+        if (cache.TryGetValue(type, out var cachedProperties))
         {
             return cachedProperties;
         }
@@ -95,7 +100,7 @@ internal static class MemoryServiceModelPropertyReader
         }
 
         // Update the cache.
-        s_propertiesCache[type] = (keyProperty, dataProperties, vectorProperties);
+        cache[type] = (keyProperty, dataProperties, vectorProperties);
 
         return (keyProperty, dataProperties, vectorProperties);
     }
@@ -123,7 +128,7 @@ internal static class MemoryServiceModelPropertyReader
             {
                 if (keyProperty is not null)
                 {
-                    throw new ArgumentException($"Multiple key properties specified for type {type.FullName}.");
+                    throw new ArgumentException($"Multiple key properties configured for type {type.FullName}.");
                 }
 
                 keyProperty = type.GetProperty(keyPropertyInfo.PropertyName);
@@ -172,6 +177,12 @@ internal static class MemoryServiceModelPropertyReader
             {
                 throw new ArgumentException($"Unknown property type '{property.GetType().FullName}' in memory record definition.");
             }
+        }
+
+        // Check that we have a key property.
+        if (keyProperty is null)
+        {
+            throw new ArgumentException($"No key property configured for type {type.FullName}.");
         }
 
         // Check that we have one vector property if we don't have named vectors.
