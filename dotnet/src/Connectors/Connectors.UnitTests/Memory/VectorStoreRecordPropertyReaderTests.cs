@@ -123,7 +123,7 @@ public class VectorStoreRecordPropertyReaderTests
     [InlineData("Vector", "MissingVector")]
     public void FindPropertiesUsingConfigThrowsForNotFoundProperties(string propertyType, string propertyName)
     {
-        var missingKeyDefinition = new VectorStoreRecordDefinition { Properties = [new VectorStoreRecordKeyProperty(propertyName)]};
+        var missingKeyDefinition = new VectorStoreRecordDefinition { Properties = [new VectorStoreRecordKeyProperty(propertyName)] };
         var missingDataDefinition = new VectorStoreRecordDefinition { Properties = [new VectorStoreRecordDataProperty(propertyName)] };
         var missingVectorDefinition = new VectorStoreRecordDefinition { Properties = [new VectorStoreRecordVectorProperty(propertyName)] };
 
