@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -51,7 +50,7 @@ public sealed class RedisVectorRecordStore<TRecord> : IVectorRecordStore<string,
     /// <summary>The name of the temporary json property that the key property will be serialized / parsed from.</summary>
     private readonly string _keyJsonPropertyName;
 
-    /// <summary>An array of the names of all the data properties that are part of the redis payload, i.e. all properties except the vector properties.</summary>
+    /// <summary>An array of the names of all the data properties that are part of the redis payload, i.e. all properties except the key and vector properties.</summary>
     private readonly string[] _dataPropertyNames;
 
     /// <summary>An array of the names of all the data and vector properties that are part of the redis payload.</summary>
@@ -75,8 +74,18 @@ public sealed class RedisVectorRecordStore<TRecord> : IVectorRecordStore<string,
         this._database = database;
         this._options = options ?? new RedisVectorRecordStoreOptions<TRecord>();
 
-        // Enumerate public properties on model and store for later use.
-        var properties = VectorStoreRecordPropertyReader.FindProperties(typeof(TRecord), supportsMultipleVectors: true);
+        // Enumerate public properties using configuration or attributes.
+        (PropertyInfo keyProperty, List<PropertyInfo> dataProperties, List<PropertyInfo> vectorProperties) properties;
+        if (this._options.VectorStoreRecordDefinition is not null)
+        {
+            properties = VectorStoreRecordPropertyReader.FindProperties(typeof(TRecord), this._options.VectorStoreRecordDefinition, supportsMultipleVectors: true);
+        }
+        else
+        {
+            properties = VectorStoreRecordPropertyReader.FindProperties(typeof(TRecord), supportsMultipleVectors: true);
+        }
+
+        // Validate property types and store for later use.
         VectorStoreRecordPropertyReader.VerifyPropertyTypes([properties.keyProperty], s_supportedKeyTypes, "Key");
         VectorStoreRecordPropertyReader.VerifyPropertyTypes(properties.vectorProperties, s_supportedVectorTypes, "Vector");
 
@@ -118,39 +127,52 @@ public sealed class RedisVectorRecordStore<TRecord> : IVectorRecordStore<string,
         var maybePrefixedKey = this.PrefixKeyIfNeeded(key, collectionName);
 
         // Get the redis value.
-        var redisResult = options?.IncludeVectors is true ?
-            await this._database
-                .JSON()
-                .GetAsync(maybePrefixedKey).ConfigureAwait(false) :
-            await this._database
-                .JSON()
-                .GetAsync(maybePrefixedKey, this._dataPropertyNames).ConfigureAwait(false);
+        var redisResult = await RunOperationAsync(
+            collectionName,
+            "GET",
+            () => options?.IncludeVectors is true ?
+                this._database
+                    .JSON()
+                    .GetAsync(maybePrefixedKey) :
+                this._database
+                    .JSON()
+                    .GetAsync(maybePrefixedKey, this._dataPropertyNames)).ConfigureAwait(false);
 
         // Check if the key was found before trying to serialize the result.
         if (redisResult.IsNull)
         {
-            throw new HttpOperationException($"Could not find document with key '{key}'");
+            throw new VectorStoreOperationException($"Could not find document with key '{key}'");
         }
 
-        var node = JsonSerializer.Deserialize<JsonNode>(redisResult.ToString())!;
-        return this._mapper.MapFromStorageToDataModel((key, node));
+        // Convert to the caller's data model.
+        return RunModelConversion(
+            collectionName,
+            "GET",
+            () =>
+            {
+                var node = JsonSerializer.Deserialize<JsonNode>(redisResult.ToString())!;
+                return this._mapper.MapFromStorageToDataModel((key, node));
+            });
     }
 
     /// <inheritdoc />
     public async IAsyncEnumerable<TRecord> GetBatchAsync(IEnumerable<string> keys, GetRecordOptions? options = default, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         Verify.NotNull(keys);
-
         var keysList = keys.ToList();
 
         // Create Options
         var collectionName = this.ChooseCollectionName(options?.CollectionName);
         var maybePrefixedKeys = keysList.Select(key => this.PrefixKeyIfNeeded(key, collectionName));
+        var redisKeys = maybePrefixedKeys.Select(x => new RedisKey(x)).ToArray();
 
         // Get the list of redis results.
-        var redisResults = await this._database
-            .JSON()
-            .MGetAsync(maybePrefixedKeys.Select(x => new RedisKey(x)).ToArray(), "$").ConfigureAwait(false);
+        var redisResults = await RunOperationAsync(
+            collectionName,
+            "MGET",
+            () => this._database
+                .JSON()
+                .MGetAsync(redisKeys, "$")).ConfigureAwait(false);
 
         // Loop through each key and result and convert to the caller's data model.
         for (int i = 0; i < keysList.Count; i++)
@@ -161,11 +183,18 @@ public sealed class RedisVectorRecordStore<TRecord> : IVectorRecordStore<string,
             // Check if the key was found before trying to serialize the result.
             if (redisResult.IsNull)
             {
-                throw new HttpOperationException(HttpStatusCode.NotFound, null, null, null);
+                throw new VectorStoreOperationException($"Could not find document with key '{key}'");
             }
 
-            var node = JsonSerializer.Deserialize<JsonNode>(redisResult.ToString())!;
-            yield return this._mapper.MapFromStorageToDataModel((key, node));
+            // Convert to the caller's data model.
+            yield return RunModelConversion(
+                collectionName,
+                "MGET",
+                () =>
+                {
+                    var node = JsonSerializer.Deserialize<JsonNode>(redisResult.ToString())!;
+                    return this._mapper.MapFromStorageToDataModel((key, node));
+                });
         }
     }
 
@@ -179,9 +208,12 @@ public sealed class RedisVectorRecordStore<TRecord> : IVectorRecordStore<string,
         var maybePrefixedKey = this.PrefixKeyIfNeeded(key, collectionName);
 
         // Remove.
-        return this._database
-            .JSON()
-            .DelAsync(maybePrefixedKey);
+        return RunOperationAsync(
+            collectionName,
+            "DEL",
+            () => this._database
+                .JSON()
+                .DelAsync(maybePrefixedKey));
     }
 
     /// <inheritdoc />
@@ -203,16 +235,22 @@ public sealed class RedisVectorRecordStore<TRecord> : IVectorRecordStore<string,
         var collectionName = this.ChooseCollectionName(options?.CollectionName);
 
         // Map.
-        var redisJsonRecord = this._mapper.MapFromDataToStorageModel(record);
+        var redisJsonRecord = RunModelConversion(
+            collectionName,
+            "SET",
+            () => this._mapper.MapFromDataToStorageModel(record));
 
         // Upsert.
         var maybePrefixedKey = this.PrefixKeyIfNeeded(redisJsonRecord.Key, collectionName);
-        await this._database
-            .JSON()
-            .SetAsync(
-                maybePrefixedKey,
-                "$",
-                redisJsonRecord.Node).ConfigureAwait(false);
+        await RunOperationAsync(
+            collectionName,
+            "SET",
+            () => this._database
+                .JSON()
+                .SetAsync(
+                    maybePrefixedKey,
+                    "$",
+                    redisJsonRecord.Node)).ConfigureAwait(false);
 
         return redisJsonRecord.Key;
     }
@@ -229,15 +267,23 @@ public sealed class RedisVectorRecordStore<TRecord> : IVectorRecordStore<string,
         var redisRecords = new List<(string maybePrefixedKey, string originalKey, JsonNode jsonNode)>();
         foreach (var record in records)
         {
-            var redisJsonRecord = this._mapper.MapFromDataToStorageModel(record);
+            var redisJsonRecord = RunModelConversion(
+                collectionName,
+                "MSET",
+                () => this._mapper.MapFromDataToStorageModel(record));
+
             var maybePrefixedKey = this.PrefixKeyIfNeeded(redisJsonRecord.Key, collectionName);
             redisRecords.Add((maybePrefixedKey, redisJsonRecord.Key, redisJsonRecord.Node));
         }
 
         // Upsert.
-        await this._database
-            .JSON()
-            .MSetAsync(redisRecords.Select(x => new KeyPathValue(x.maybePrefixedKey, "$", x.jsonNode)).ToArray()).ConfigureAwait(false);
+        var keyPathValues = redisRecords.Select(x => new KeyPathValue(x.maybePrefixedKey, "$", x.jsonNode)).ToArray();
+        await RunOperationAsync(
+            collectionName,
+            "MSET",
+            () => this._database
+                .JSON()
+                .MSetAsync(keyPathValues)).ConfigureAwait(false);
 
         // Return keys of upserted records.
         foreach (var record in redisRecords)
@@ -279,5 +325,61 @@ public sealed class RedisVectorRecordStore<TRecord> : IVectorRecordStore<string,
         }
 
         return collectionName;
+    }
+
+    /// <summary>
+    /// Run the given operation and wrap any redis exceptions with <see cref="VectorStoreOperationException"/>."/>
+    /// </summary>
+    /// <typeparam name="T">The response type of the operation.</typeparam>
+    /// <param name="collectionName">The name of the collection the operation is being run on.</param>
+    /// <param name="operationName">The type of database operation being run.</param>
+    /// <param name="operation">The operation to run.</param>
+    /// <returns>The result of the operation.</returns>
+    private static async Task<T> RunOperationAsync<T>(string collectionName, string operationName, Func<Task<T>> operation)
+    {
+        try
+        {
+            return await operation.Invoke().ConfigureAwait(false);
+        }
+        catch (RedisConnectionException ex)
+        {
+            var wrapperException = new VectorStoreOperationException("Call to vector store failed.", ex);
+
+            // Using Open Telemetry standard for naming of these entries.
+            // https://opentelemetry.io/docs/specs/semconv/attributes-registry/db/
+            wrapperException.Data.Add("db.system", "Redis");
+            wrapperException.Data.Add("db.collection.name", collectionName);
+            wrapperException.Data.Add("db.operation.name", operationName);
+
+            throw wrapperException;
+        }
+    }
+
+    /// <summary>
+    /// Run the given model conversion and wrap any exceptions with <see cref="VectorStoreRecordMappingException"/>.
+    /// </summary>
+    /// <typeparam name="T">The response type of the operation.</typeparam>
+    /// <param name="collectionName">The name of the collection the operation is being run on.</param>
+    /// <param name="operationName">The type of database operation being run.</param>
+    /// <param name="operation">The operation to run.</param>
+    /// <returns>The result of the operation.</returns>
+    private static T RunModelConversion<T>(string collectionName, string operationName, Func<T> operation)
+    {
+        try
+        {
+            return operation.Invoke();
+        }
+        catch (Exception ex)
+        {
+            var wrapperException = new VectorStoreRecordMappingException("Failed to convert vector store record.", ex);
+
+            // Using Open Telemetry standard for naming of these entries.
+            // https://opentelemetry.io/docs/specs/semconv/attributes-registry/db/
+            wrapperException.Data.Add("db.system", "AzureAISearch");
+            wrapperException.Data.Add("db.collection.name", collectionName);
+            wrapperException.Data.Add("db.operation.name", operationName);
+
+            throw wrapperException;
+        }
     }
 }

@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using System;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.SemanticKernel.Memory;
@@ -43,7 +42,7 @@ internal sealed class RedisVectorStoreRecordMapper<TConsumerDataModel> : IVector
             return (keyValue, jsonNode);
         }
 
-        throw new InvalidOperationException($"Missing key field {this._keyFieldJsonPropertyName} on provided record of type {typeof(TConsumerDataModel).FullName}.");
+        throw new VectorStoreRecordMappingException($"Missing key field {this._keyFieldJsonPropertyName} on provided record of type {typeof(TConsumerDataModel).FullName}.");
     }
 
     /// <inheritdoc />
@@ -62,13 +61,13 @@ internal sealed class RedisVectorStoreRecordMapper<TConsumerDataModel> : IVector
         }
         else
         {
-            throw new HttpOperationException($"Invalid data format for document with key '{storageModel.Key}'");
+            throw new VectorStoreRecordMappingException($"Invalid data format for document with key '{storageModel.Key}'");
         }
 
         // Check that the key field is not already present in the redis value.
         if (jsonObject.ContainsKey(this._keyFieldJsonPropertyName))
         {
-            throw new HttpOperationException($"Invalid data format for document with key '{storageModel.Key}'. Key property '{this._keyFieldJsonPropertyName}' is already present on retrieved object.");
+            throw new VectorStoreRecordMappingException($"Invalid data format for document with key '{storageModel.Key}'. Key property '{this._keyFieldJsonPropertyName}' is already present on retrieved object.");
         }
 
         // Since the key is not stored in the redis value, add it back in before deserializing into the data model.
