@@ -61,8 +61,8 @@ public class VectorStoreRecordPropertyReaderTests
 
         // Assert.
         var expectedMessage = useConfig ?
-            "Multiple vector properties configured for type SemanticKernel.Connectors.UnitTests.Memory.VectorStoreModelPropertyReaderTests+MultiPropsModel while only one is supported." :
-            "Multiple vector properties found on type SemanticKernel.Connectors.UnitTests.Memory.VectorStoreModelPropertyReaderTests+MultiPropsModel while only one is supported.";
+            "Multiple vector properties configured for type SemanticKernel.Connectors.UnitTests.Memory.VectorStoreRecordPropertyReaderTests+MultiPropsModel while only one is supported." :
+            "Multiple vector properties found on type SemanticKernel.Connectors.UnitTests.Memory.VectorStoreRecordPropertyReaderTests+MultiPropsModel while only one is supported.";
         Assert.Equal(expectedMessage, ex.Message);
     }
 
@@ -78,8 +78,8 @@ public class VectorStoreRecordPropertyReaderTests
 
         // Assert.
         var expectedMessage = useConfig ?
-            "Multiple key properties configured for type SemanticKernel.Connectors.UnitTests.Memory.VectorStoreModelPropertyReaderTests+MultiKeysModel." :
-            "Multiple key properties found on type SemanticKernel.Connectors.UnitTests.Memory.VectorStoreModelPropertyReaderTests+MultiKeysModel.";
+            "Multiple key properties configured for type SemanticKernel.Connectors.UnitTests.Memory.VectorStoreRecordPropertyReaderTests+MultiKeysModel." :
+            "Multiple key properties found on type SemanticKernel.Connectors.UnitTests.Memory.VectorStoreRecordPropertyReaderTests+MultiKeysModel.";
         Assert.Equal(expectedMessage, ex.Message);
     }
 
@@ -95,8 +95,8 @@ public class VectorStoreRecordPropertyReaderTests
 
         // Assert.
         var expectedMessage = useConfig ?
-            "No key property configured for type SemanticKernel.Connectors.UnitTests.Memory.VectorStoreModelPropertyReaderTests+NoKeyModel." :
-            "No key property found on type SemanticKernel.Connectors.UnitTests.Memory.VectorStoreModelPropertyReaderTests+NoKeyModel.";
+            "No key property configured for type SemanticKernel.Connectors.UnitTests.Memory.VectorStoreRecordPropertyReaderTests+NoKeyModel." :
+            "No key property found on type SemanticKernel.Connectors.UnitTests.Memory.VectorStoreRecordPropertyReaderTests+NoKeyModel.";
         Assert.Equal(expectedMessage, ex.Message);
     }
 
@@ -112,8 +112,8 @@ public class VectorStoreRecordPropertyReaderTests
 
         // Assert.
         var expectedMessage = useConfig ?
-            "No vector property configured for type SemanticKernel.Connectors.UnitTests.Memory.VectorStoreModelPropertyReaderTests+NoVectorModel." :
-            "No vector property found on type SemanticKernel.Connectors.UnitTests.Memory.VectorStoreModelPropertyReaderTests+NoVectorModel.";
+            "No vector property configured for type SemanticKernel.Connectors.UnitTests.Memory.VectorStoreRecordPropertyReaderTests+NoVectorModel." :
+            "No vector property found on type SemanticKernel.Connectors.UnitTests.Memory.VectorStoreRecordPropertyReaderTests+NoVectorModel.";
         Assert.Equal(expectedMessage, ex.Message);
     }
 
