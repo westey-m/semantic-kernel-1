@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace Microsoft.SemanticKernel.Memory;
 
 /// <summary>
-/// Interface used to create new colletions in a vector store.
+/// Interface used to create new collections in a vector store.
 /// </summary>
 [Experimental("SKEXP0001")]
 public interface IVectorCollectionCreate

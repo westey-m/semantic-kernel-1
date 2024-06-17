@@ -10,7 +10,7 @@ using Xunit.Abstractions;
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.AzureAISearch;
 
 [Collection("AzureAISearchVectorStoreCollection")]
-public class AzureAISearchVectorCollectionNonSchemaTests(ITestOutputHelper output, AzureAISearchVectorStoreFixture fixture) : IClassFixture<AzureAISearchVectorStoreFixture>
+public class AzureAISearchVectorCollectionTests(ITestOutputHelper output, AzureAISearchVectorStoreFixture fixture) : IClassFixture<AzureAISearchVectorStoreFixture>
 {
     // If null, all tests will be enabled
     private const string SkipReason = null; //"Requires Azure AI Search Service instance up and running";
@@ -19,7 +19,7 @@ public class AzureAISearchVectorCollectionNonSchemaTests(ITestOutputHelper outpu
     public async Task ItCanCheckIfCollectionExistsForExistingCollectionAsync()
     {
         // Arrange
-        var sut = new AzureAISearchVectorCollectionNonSchema(fixture.SearchIndexClient);
+        var sut = new AzureAISearchVectorCollectionStore(fixture.SearchIndexClient, new AzureAISearchVectorCollectionConfiguredCreate());
 
         // Act
         var existResult = await sut.CollectionExistsAsync(fixture.TestIndexName);
@@ -35,7 +35,7 @@ public class AzureAISearchVectorCollectionNonSchemaTests(ITestOutputHelper outpu
     public async Task ItCanCheckIfCollectionExistsForNonExistingCollectionAsync()
     {
         // Arrange
-        var sut = new AzureAISearchVectorCollectionNonSchema(fixture.SearchIndexClient);
+        var sut = new AzureAISearchVectorCollectionStore(fixture.SearchIndexClient, new AzureAISearchVectorCollectionConfiguredCreate());
 
         // Act
         var existResult = await sut.CollectionExistsAsync("non-existing-collection");
@@ -54,7 +54,7 @@ public class AzureAISearchVectorCollectionNonSchemaTests(ITestOutputHelper outpu
         var additionalCollectionName = fixture.TestIndexName + "-listnames";
         await AzureAISearchVectorStoreFixture.DeleteIndexIfExistsAsync(additionalCollectionName, fixture.SearchIndexClient);
         await AzureAISearchVectorStoreFixture.CreateIndexAsync(additionalCollectionName, fixture.SearchIndexClient);
-        var sut = new AzureAISearchVectorCollectionNonSchema(fixture.SearchIndexClient);
+        var sut = new AzureAISearchVectorCollectionStore(fixture.SearchIndexClient, new AzureAISearchVectorCollectionConfiguredCreate());
 
         // Act
         var collectionNames = await sut.ListCollectionNamesAsync().ToListAsync();
@@ -77,7 +77,7 @@ public class AzureAISearchVectorCollectionNonSchemaTests(ITestOutputHelper outpu
         // Arrange
         var tempCollectionName = fixture.TestIndexName + "-delete";
         await AzureAISearchVectorStoreFixture.CreateIndexAsync(tempCollectionName, fixture.SearchIndexClient);
-        var sut = new AzureAISearchVectorCollectionNonSchema(fixture.SearchIndexClient);
+        var sut = new AzureAISearchVectorCollectionStore(fixture.SearchIndexClient, new AzureAISearchVectorCollectionConfiguredCreate());
 
         // Act
         await sut.DeleteCollectionAsync(tempCollectionName);

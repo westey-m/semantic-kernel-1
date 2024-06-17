@@ -13,20 +13,32 @@ namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 /// <summary>
 /// Provides collection retrieval and deletion for Azure AI Search.
 /// </summary>
-public sealed class AzureAISearchVectorCollectionNonSchema : IVectorCollectionNonSchema
+public sealed class AzureAISearchVectorCollectionStore : IVectorCollectionStore
 {
     /// <summary>Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</summary>
     private readonly SearchIndexClient _searchIndexClient;
 
+    /// <summary>Used to create new collections in the vector store.</summary>
+    private readonly IVectorCollectionCreate _vectorCollectionCreate;
+
     /// <summary>
-    /// Initializes a new instance of the <see cref="AzureAISearchVectorCollectionNonSchema"/> class.
+    /// Initializes a new instance of the <see cref="AzureAISearchVectorCollectionStore"/> class.
     /// </summary>
     /// <param name="searchIndexClient">Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</param>
-    public AzureAISearchVectorCollectionNonSchema(SearchIndexClient searchIndexClient)
+    /// <param name="vectorCollectionCreate">Used to create new collections in the vector store.</param>
+    public AzureAISearchVectorCollectionStore(SearchIndexClient searchIndexClient, IVectorCollectionCreate vectorCollectionCreate)
     {
         Verify.NotNull(searchIndexClient);
+        Verify.NotNull(vectorCollectionCreate);
 
         this._searchIndexClient = searchIndexClient;
+        this._vectorCollectionCreate = vectorCollectionCreate;
+    }
+
+    /// <inheritdoc />
+    public Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default)
+    {
+        return this._vectorCollectionCreate.CreateCollectionAsync(name, cancellationToken);
     }
 
     /// <inheritdoc />

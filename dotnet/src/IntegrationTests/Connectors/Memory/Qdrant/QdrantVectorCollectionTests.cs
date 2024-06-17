@@ -2,25 +2,24 @@
 
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.SemanticKernel.Connectors.Redis;
-using NRedisStack.RedisStackCommands;
-using NRedisStack.Search;
+using Microsoft.SemanticKernel.Connectors.Qdrant;
+using Qdrant.Client.Grpc;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace SemanticKernel.IntegrationTests.Connectors.Memory.Redis;
+namespace SemanticKernel.IntegrationTests.Connectors.Memory.Qdrant;
 
-[Collection("RedisVectorStoreCollection")]
-public class RedisVectorCollectionNonSchemaTests(ITestOutputHelper output, RedisVectorStoreFixture fixture)
+[Collection("QdrantVectorStoreCollection")]
+public class QdrantVectorCollectionTests(ITestOutputHelper output, QdrantVectorStoreFixture fixture)
 {
     [Fact]
     public async Task ItCanCheckIfCollectionExistsForExistingCollectionAsync()
     {
         // Arrange.
-        var sut = new RedisVectorCollectionNonSchema(fixture.Database);
+        var sut = new QdrantVectorCollectionStore(fixture.QdrantClient, new QdrantVectorCollectionConfiguredCreate());
 
         // Act.
-        var doesExistResult = await sut.CollectionExistsAsync("hotels");
+        var doesExistResult = await sut.CollectionExistsAsync("namedVectorsHotels");
 
         // Assert.
         Assert.True(doesExistResult);
@@ -33,7 +32,7 @@ public class RedisVectorCollectionNonSchemaTests(ITestOutputHelper output, Redis
     public async Task ItCanCheckIfCollectionExistsForNonExistingCollectionAsync()
     {
         // Arrange.
-        var sut = new RedisVectorCollectionNonSchema(fixture.Database);
+        var sut = new QdrantVectorCollectionStore(fixture.QdrantClient, new QdrantVectorCollectionConfiguredCreate());
 
         // Act.
         var doesExistResult = await sut.CollectionExistsAsync("non-existing-collection");
@@ -49,14 +48,16 @@ public class RedisVectorCollectionNonSchemaTests(ITestOutputHelper output, Redis
     public async Task ItCanGetAListOfExistingCollectionNamesAsync()
     {
         // Arrange
-        var sut = new RedisVectorCollectionNonSchema(fixture.Database);
+        var sut = new QdrantVectorCollectionStore(fixture.QdrantClient, new QdrantVectorCollectionConfiguredCreate());
 
         // Act
         var collectionNames = await sut.ListCollectionNamesAsync().ToListAsync();
 
         // Assert
-        Assert.Single(collectionNames);
-        Assert.Contains("hotels", collectionNames);
+        Assert.Equal(3, collectionNames.Count);
+        Assert.Contains("namedVectorsHotels", collectionNames);
+        Assert.Contains("singleVectorHotels", collectionNames);
+        Assert.Contains("singleVectorGuidIdHotels", collectionNames);
 
         // Output
         output.WriteLine(string.Join(",", collectionNames));
@@ -67,13 +68,11 @@ public class RedisVectorCollectionNonSchemaTests(ITestOutputHelper output, Redis
     {
         // Arrange
         var tempCollectionName = "temp-test";
-        var schema = new Schema();
-        schema.AddTextField("HotelName");
-        var createParams = new FTCreateParams();
-        createParams.AddPrefix(tempCollectionName);
-        await fixture.Database.FT().CreateAsync(tempCollectionName, createParams, schema);
+        await fixture.QdrantClient.CreateCollectionAsync(
+            tempCollectionName,
+            new VectorParams { Size = 4, Distance = Distance.Cosine });
 
-        var sut = new RedisVectorCollectionNonSchema(fixture.Database);
+        var sut = new QdrantVectorCollectionStore(fixture.QdrantClient, new QdrantVectorCollectionConfiguredCreate());
 
         // Act
         await sut.DeleteCollectionAsync(tempCollectionName);

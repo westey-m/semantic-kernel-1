@@ -8,10 +8,10 @@ using System.Threading.Tasks;
 namespace Microsoft.SemanticKernel.Memory;
 
 /// <summary>
-/// Interface used to do non-schema operations on collections in a vector store.
+/// Interface used to do operations on collections in a vector store.
 /// </summary>
 [Experimental("SKEXP0001")]
-public interface IVectorCollectionNonSchema
+public interface IVectorCollectionStore : IVectorCollectionCreate
 {
     /// <summary>
     /// Retrieve the names of all the collections in the vector store.

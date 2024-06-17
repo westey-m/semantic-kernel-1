@@ -13,19 +13,32 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 /// <summary>
 /// Provides collection retrieval and deletion for Qdrant.
 /// </summary>
-public sealed class QdrantVectorCollectionNonSchema : IVectorCollectionNonSchema
+public sealed class QdrantVectorCollectionStore : IVectorCollectionStore
 {
     /// <summary>Qdrant client that can be used to manage the collections and points in a Qdrant store.</summary>
     private readonly QdrantClient _qdrantClient;
 
+    /// <summary>Used to create new collections in the vector store.</summary>
+    private readonly IVectorCollectionCreate _vectorCollectionCreate;
+
     /// <summary>
-    /// Initializes a new instance of the <see cref="QdrantVectorCollectionNonSchema"/> class.
+    /// Initializes a new instance of the <see cref="QdrantVectorCollectionStore"/> class.
     /// </summary>
     /// <param name="qdrantClient">Qdrant client that can be used to manage the collections and points in a Qdrant store.</param>
-    public QdrantVectorCollectionNonSchema(QdrantClient qdrantClient)
+    /// <param name="vectorCollectionCreate">Used to create new collections in the vector store.</param>
+    public QdrantVectorCollectionStore(QdrantClient qdrantClient, IVectorCollectionCreate vectorCollectionCreate)
     {
         Verify.NotNull(qdrantClient);
+        Verify.NotNull(vectorCollectionCreate);
+
         this._qdrantClient = qdrantClient;
+        this._vectorCollectionCreate = vectorCollectionCreate;
+    }
+
+    /// <inheritdoc />
+    public Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default)
+    {
+        return this._vectorCollectionCreate.CreateCollectionAsync(name, cancellationToken);
     }
 
     /// <inheritdoc />

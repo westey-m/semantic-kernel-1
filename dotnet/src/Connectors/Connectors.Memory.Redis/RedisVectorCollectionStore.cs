@@ -13,19 +13,32 @@ namespace Microsoft.SemanticKernel.Connectors.Redis;
 /// <summary>
 /// Provides collection retrieval and deletion for Redis.
 /// </summary>
-public sealed class RedisVectorCollectionNonSchema : IVectorCollectionNonSchema
+public sealed class RedisVectorCollectionStore : IVectorCollectionStore
 {
     /// <summary>The redis database to read/write indices from.</summary>
     private readonly IDatabase _database;
 
+    /// <summary>Used to create new collections in the vector store.</summary>
+    private readonly IVectorCollectionCreate _vectorCollectionCreate;
+
     /// <summary>
-    /// Initializes a new instance of the <see cref="RedisVectorCollectionNonSchema"/> class.
+    /// Initializes a new instance of the <see cref="RedisVectorCollectionStore"/> class.
     /// </summary>
     /// <param name="database">The redis database to read/write indices from.</param>
-    public RedisVectorCollectionNonSchema(IDatabase database)
+    /// <param name="vectorCollectionCreate">Used to create new collections in the vector store.</param>
+    public RedisVectorCollectionStore(IDatabase database, IVectorCollectionCreate vectorCollectionCreate)
     {
         Verify.NotNull(database);
+        Verify.NotNull(vectorCollectionCreate);
+
         this._database = database;
+        this._vectorCollectionCreate = vectorCollectionCreate;
+    }
+
+    /// <inheritdoc />
+    public Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default)
+    {
+        return this._vectorCollectionCreate.CreateCollectionAsync(name, cancellationToken);
     }
 
     /// <inheritdoc />
