@@ -197,6 +197,40 @@ internal static class VectorStoreRecordPropertyReader
     }
 
     /// <summary>
+    /// Create a <see cref="VectorStoreRecordDefinition"/> by reading the attributes on the properties of the given type.
+    /// </summary>
+    /// <param name="type">The type to create the definition for.</param>
+    /// <param name="supportsMultipleVectors"><see langword="true"/> if the store supports multiple vectors, <see langword="false"/> otherwise.</param>
+    /// <returns>The <see cref="VectorStoreRecordDefinition"/> based on the given type.</returns>
+    public static VectorStoreRecordDefinition CreateVectorStoreRecordDefinitionFromType(Type type, bool supportsMultipleVectors)
+    {
+        var properties = FindProperties(type, supportsMultipleVectors);
+        var definitionProperties = new List<VectorStoreRecordProperty>();
+
+        definitionProperties.Add(new VectorStoreRecordKeyProperty(properties.keyProperty.Name));
+
+        foreach (var dataProperty in properties.dataProperties)
+        {
+            var dataAttribute = dataProperty.GetCustomAttribute<VectorStoreRecordDataAttribute>();
+            if (dataAttribute is not null)
+            {
+                definitionProperties.Add(new VectorStoreRecordDataProperty(dataProperty.Name) { HasEmbedding = dataAttribute.HasEmbedding, EmbeddingPropertyName = dataAttribute.EmbeddingPropertyName, IsFilterable = dataAttribute.IsFilterable });
+            }
+        }
+
+        foreach (var vectorProperty in properties.vectorProperties)
+        {
+            var vectorAttribute = vectorProperty.GetCustomAttribute<VectorStoreRecordVectorAttribute>();
+            if (vectorAttribute is not null)
+            {
+                definitionProperties.Add(new VectorStoreRecordVectorProperty(vectorProperty.Name) { Dimensions = vectorAttribute.Dimensions, IndexKind = vectorAttribute.IndexKind, DistanceFunction = vectorAttribute.DistanceFunction });
+            }
+        }
+
+        return new VectorStoreRecordDefinition { Properties = definitionProperties };
+    }
+
+    /// <summary>
     /// Verify that the given properties are of the supported types.
     /// </summary>
     /// <param name="properties">The properties to check.</param>

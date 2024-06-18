@@ -55,7 +55,7 @@ public class AzureAISearchVectorStoreFixture : IAsyncLifetime
                 new VectorStoreRecordKeyProperty("HotelId"),
                 new VectorStoreRecordDataProperty("HotelName"),
                 new VectorStoreRecordDataProperty("Description"),
-                new VectorStoreRecordVectorProperty("DescriptionEmbedding"),
+                new VectorStoreRecordVectorProperty("DescriptionEmbedding") { Dimensions = 4 },
                 new VectorStoreRecordDataProperty("Tags"),
                 new VectorStoreRecordDataProperty("ParkingIncluded"),
                 new VectorStoreRecordDataProperty("LastRenovationDate"),
@@ -239,7 +239,7 @@ public class AzureAISearchVectorStoreFixture : IAsyncLifetime
         [VectorStoreRecordData(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbedding")]
         public string Description { get; set; }
 
-        [VectorStoreRecordVector]
+        [VectorStoreRecordVector(4)]
         public ReadOnlyMemory<float>? DescriptionEmbedding { get; set; }
 
         [SearchableField(IsFilterable = true, IsFacetable = true)]

@@ -139,6 +139,42 @@ public class VectorStoreRecordPropertyReaderTests
     }
 
     [Fact]
+    public void CreateVectorStoreRecordDefinitionFromTypeConvertsAllProps()
+    {
+        // Act.
+        var definition = VectorStoreRecordPropertyReader.CreateVectorStoreRecordDefinitionFromType(typeof(MultiPropsModel), true);
+
+        // Assert.
+        Assert.Equal(5, definition.Properties.Count);
+        Assert.Equal("Key", definition.Properties[0].PropertyName);
+        Assert.Equal("Data1", definition.Properties[1].PropertyName);
+        Assert.Equal("Data2", definition.Properties[2].PropertyName);
+        Assert.Equal("Vector1", definition.Properties[3].PropertyName);
+        Assert.Equal("Vector2", definition.Properties[4].PropertyName);
+
+        Assert.IsType<VectorStoreRecordKeyProperty>(definition.Properties[0]);
+        Assert.IsType<VectorStoreRecordDataProperty>(definition.Properties[1]);
+        Assert.IsType<VectorStoreRecordDataProperty>(definition.Properties[2]);
+        Assert.IsType<VectorStoreRecordVectorProperty>(definition.Properties[3]);
+        Assert.IsType<VectorStoreRecordVectorProperty>(definition.Properties[4]);
+
+        var data1 = (VectorStoreRecordDataProperty)definition.Properties[1];
+        var data2 = (VectorStoreRecordDataProperty)definition.Properties[2];
+
+        Assert.True(data1.IsFilterable);
+        Assert.False(data2.IsFilterable);
+
+        Assert.True(data1.HasEmbedding);
+        Assert.False(data2.HasEmbedding);
+
+        Assert.Equal("Vector1", data1.EmbeddingPropertyName);
+
+        var vector1 = (VectorStoreRecordVectorProperty)definition.Properties[3];
+
+        Assert.Equal(4, vector1.Dimensions);
+    }
+
+    [Fact]
     public void VerifyPropertyTypesPassForAllowedTypes()
     {
         // Arrange.
@@ -229,13 +265,13 @@ public class VectorStoreRecordPropertyReaderTests
         [VectorStoreRecordKey]
         public string Key { get; set; } = string.Empty;
 
-        [VectorStoreRecordData]
+        [VectorStoreRecordData(HasEmbedding = true, EmbeddingPropertyName = "Vector1", IsFilterable = true)]
         public string Data1 { get; set; } = string.Empty;
 
         [VectorStoreRecordData]
         public string Data2 { get; set; } = string.Empty;
 
-        [VectorStoreRecordVector]
+        [VectorStoreRecordVector(4, IndexKind.ExhaustiveKNN, DistanceFunction.DotProduct)]
         public ReadOnlyMemory<float> Vector1 { get; set; }
 
         [VectorStoreRecordVector]
@@ -249,9 +285,9 @@ public class VectorStoreRecordPropertyReaderTests
         Properties =
         [
             new VectorStoreRecordKeyProperty("Key"),
-            new VectorStoreRecordDataProperty("Data1"),
+            new VectorStoreRecordDataProperty("Data1") { HasEmbedding = true, EmbeddingPropertyName = "Vector1", IsFilterable = true },
             new VectorStoreRecordDataProperty("Data2"),
-            new VectorStoreRecordVectorProperty("Vector1"),
+            new VectorStoreRecordVectorProperty("Vector1") { Dimensions = 4, IndexKind = IndexKind.ExhaustiveKNN, DistanceFunction = DistanceFunction.DotProduct },
             new VectorStoreRecordVectorProperty("Vector2")
         ]
     };
