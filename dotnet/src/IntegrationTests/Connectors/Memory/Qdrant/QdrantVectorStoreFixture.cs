@@ -2,8 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Docker.DotNet;
 using Docker.DotNet.Models;
@@ -32,6 +30,30 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
     {
         using var dockerClientConfiguration = new DockerClientConfiguration();
         this._client = dockerClientConfiguration.CreateClient();
+        this.HotelVectorStoreRecordDefinition = new VectorStoreRecordDefinition
+        {
+            Properties = new List<VectorStoreRecordProperty>
+            {
+                new VectorStoreRecordKeyProperty("HotelId"),
+                new VectorStoreRecordDataProperty("HotelName"),
+                new VectorStoreRecordDataProperty("HotelCode"),
+                new VectorStoreRecordDataProperty("ParkingIncluded"),
+                new VectorStoreRecordDataProperty("HotelRating"),
+                new VectorStoreRecordDataProperty("Tags"),
+                new VectorStoreRecordDataProperty("Description"),
+                new VectorStoreRecordVectorProperty("DescriptionEmbedding")
+            }
+        };
+        this.HotelWithGuidIdVectorStoreRecordDefinition = new VectorStoreRecordDefinition
+        {
+            Properties = new List<VectorStoreRecordProperty>
+            {
+                new VectorStoreRecordKeyProperty("HotelId"),
+                new VectorStoreRecordDataProperty("HotelName"),
+                new VectorStoreRecordDataProperty("Description"),
+                new VectorStoreRecordVectorProperty("DescriptionEmbedding")
+            }
+        };
     }
 
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
@@ -39,7 +61,11 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
     /// <summary>Gets the qdrant client connection to use for tests.</summary>
     public QdrantClient QdrantClient { get; private set; }
 
-#pragma warning disable CA5394 // Do not use insecure randomness
+    /// <summary>Gets the manually created vector store record definition for our test model.</summary>
+    public VectorStoreRecordDefinition HotelVectorStoreRecordDefinition { get; private set; }
+
+    /// <summary>Gets the manually created vector store record definition for our test model.</summary>
+    public VectorStoreRecordDefinition HotelWithGuidIdVectorStoreRecordDefinition { get; private set; }
 
     /// <summary>
     /// Create / Recreate qdrant docker container and run it.
@@ -54,7 +80,7 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
 
         // Create schemas for the vector store.
         var vectorParamsMap = new VectorParamsMap();
-        vectorParamsMap.Map.Add("DescriptionEmbeddings", new VectorParams { Size = 4, Distance = Distance.Cosine });
+        vectorParamsMap.Map.Add("DescriptionEmbedding", new VectorParams { Size = 4, Distance = Distance.Cosine });
 
         // Wait for the qdrant container to be ready.
         var retryCount = 0;
@@ -95,35 +121,35 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
         tagsValue.ListValue = tags;
 
         // Create some test data using named vectors.
-        var random = new Random();
+        var embedding = new[] { 30f, 31f, 32f, 33f };
 
         var namedVectors1 = new NamedVectors();
         var namedVectors2 = new NamedVectors();
         var namedVectors3 = new NamedVectors();
 
-        namedVectors1.Vectors.Add("DescriptionEmbeddings", Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray());
-        namedVectors2.Vectors.Add("DescriptionEmbeddings", Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray());
-        namedVectors3.Vectors.Add("DescriptionEmbeddings", Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray());
+        namedVectors1.Vectors.Add("DescriptionEmbedding", embedding);
+        namedVectors2.Vectors.Add("DescriptionEmbedding", embedding);
+        namedVectors3.Vectors.Add("DescriptionEmbedding", embedding);
 
         List<PointStruct> namedVectorPoints =
         [
             new PointStruct
             {
-                Id = 1,
+                Id = 11,
                 Vectors = new Vectors { Vectors_ = namedVectors1 },
-                Payload = { ["HotelName"] = "My Hotel 1", ["hotelCode"] = 1, ["Seafront"] = true, ["Tags"] = tagsValue, ["HotelRating"] = 4.5f, ["Description"] = "This is a great hotel." }
+                Payload = { ["HotelName"] = "My Hotel 11", ["HotelCode"] = 11, ["ParkingIncluded"] = true, ["Tags"] = tagsValue, ["HotelRating"] = 4.5f, ["Description"] = "This is a great hotel." }
             },
             new PointStruct
             {
-                Id = 2,
+                Id = 12,
                 Vectors = new Vectors { Vectors_ = namedVectors2 },
-                Payload = { ["HotelName"] = "My Hotel 2", ["hotelCode"] = 2, ["Seafront"] = false, ["Description"] = "This is a great hotel." }
+                Payload = { ["HotelName"] = "My Hotel 12", ["HotelCode"] = 12, ["ParkingIncluded"] = false, ["Description"] = "This is a great hotel." }
             },
             new PointStruct
             {
-                Id = 3,
+                Id = 13,
                 Vectors = new Vectors { Vectors_ = namedVectors3 },
-                Payload = { ["HotelName"] = "My Hotel 3", ["HotelCode"] = 3, ["Seafront"] = false, ["Description"] = "This is a great hotel." }
+                Payload = { ["HotelName"] = "My Hotel 13", ["HotelCode"] = 13, ["ParkingIncluded"] = false, ["Description"] = "This is a great hotel." }
             },
         ];
 
@@ -135,20 +161,20 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
             new PointStruct
             {
                 Id = 11,
-                Vectors = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray(),
-                Payload = { ["HotelName"] = "My Hotel 11", ["hotelCode"] = 11, ["Seafront"] = true, ["Tags"] = tagsValue, ["HotelRating"] = 4.5f, ["Description"] = "This is a great hotel." }
+                Vectors = embedding,
+                Payload = { ["HotelName"] = "My Hotel 11", ["HotelCode"] = 11, ["ParkingIncluded"] = true, ["Tags"] = tagsValue, ["HotelRating"] = 4.5f, ["Description"] = "This is a great hotel." }
             },
             new PointStruct
             {
                 Id = 12,
-                Vectors = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray(),
-                Payload = { ["HotelName"] = "My Hotel 12", ["hotelCode"] = 12, ["Seafront"] = false, ["Description"] = "This is a great hotel." }
+                Vectors = embedding,
+                Payload = { ["HotelName"] = "My Hotel 12", ["HotelCode"] = 12, ["ParkingIncluded"] = false, ["Description"] = "This is a great hotel." }
             },
             new PointStruct
             {
                 Id = 13,
-                Vectors = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray(),
-                Payload = { ["HotelName"] = "My Hotel 13", ["hotelCode"] = 13, ["Seafront"] = false, ["Description"] = "This is a great hotel." }
+                Vectors = embedding,
+                Payload = { ["HotelName"] = "My Hotel 13", ["HotelCode"] = 13, ["ParkingIncluded"] = false, ["Description"] = "This is a great hotel." }
             },
         ];
 
@@ -160,27 +186,25 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
             new PointStruct
             {
                 Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-                Vectors = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray(),
+                Vectors = embedding,
                 Payload = { ["HotelName"] = "My Hotel 11", ["Description"] = "This is a great hotel." }
             },
             new PointStruct
             {
                 Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
-                Vectors = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray(),
+                Vectors = embedding,
                 Payload = { ["HotelName"] = "My Hotel 12", ["Description"] = "This is a great hotel." }
             },
             new PointStruct
             {
                 Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
-                Vectors = Enumerable.Range(1, 4).Select(_ => (float)random.NextSingle()).ToArray(),
+                Vectors = embedding,
                 Payload = { ["HotelName"] = "My Hotel 13", ["Description"] = "This is a great hotel." }
             },
         ];
 
         await this.QdrantClient.UpsertAsync("singleVectorGuidIdHotels", unnamedVectorGuidIdPoints);
     }
-
-#pragma warning restore CA5394 // Do not use insecure randomness
 
     /// <summary>
     /// Delete the docker container after the test run.
@@ -252,7 +276,7 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
         public string? HotelName { get; set; }
 
         /// <summary>An int metadata field.</summary>
-        [VectorStoreRecordData, JsonPropertyName("hotelCode")]
+        [VectorStoreRecordData]
         public int HotelCode { get; set; }
 
         /// <summary>A  float metadata field.</summary>
@@ -261,18 +285,18 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
 
         /// <summary>A bool metadata field.</summary>
         [VectorStoreRecordData]
-        public bool Seafront { get; set; }
+        public bool ParkingIncluded { get; set; }
 
         [VectorStoreRecordData]
         public List<string> Tags { get; set; } = new List<string>();
 
         /// <summary>A data field.</summary>
-        [VectorStoreRecordData(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbeddings")]
+        [VectorStoreRecordData(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbedding")]
         public string Description { get; set; }
 
         /// <summary>A vector field.</summary>
         [VectorStoreRecordVector]
-        public ReadOnlyMemory<float>? DescriptionEmbeddings { get; set; }
+        public ReadOnlyMemory<float>? DescriptionEmbedding { get; set; }
     }
 
     /// <summary>
@@ -290,12 +314,12 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
         public string? HotelName { get; set; }
 
         /// <summary>A data field.</summary>
-        [VectorStoreRecordData(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbeddings")]
+        [VectorStoreRecordData(HasEmbedding = true, EmbeddingPropertyName = "DescriptionEmbedding")]
         public string Description { get; set; }
 
         /// <summary>A vector field.</summary>
         [VectorStoreRecordVector]
-        public ReadOnlyMemory<float>? DescriptionEmbeddings { get; set; }
+        public ReadOnlyMemory<float>? DescriptionEmbedding { get; set; }
     }
 }
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.

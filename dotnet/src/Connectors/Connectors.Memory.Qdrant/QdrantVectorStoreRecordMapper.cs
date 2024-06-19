@@ -80,13 +80,22 @@ internal sealed class QdrantVectorStoreRecordMapper<TRecord> : IVectorStoreRecor
     {
         this._options = options ?? new QdrantVectorStoreRecordMapperOptions();
 
-        // Enumerate/verify public properties on model.
-        var properties = VectorStoreRecordPropertyReader.FindProperties(typeof(TRecord), supportsMultipleVectors: this._options.HasNamedVectors);
+        // Enumerate public properties using configuration or attributes.
+        (PropertyInfo keyProperty, List<PropertyInfo> dataProperties, List<PropertyInfo> vectorProperties) properties;
+        if (this._options.VectorStoreRecordDefinition is not null)
+        {
+            properties = VectorStoreRecordPropertyReader.FindProperties(typeof(TRecord), this._options.VectorStoreRecordDefinition, supportsMultipleVectors: this._options.HasNamedVectors);
+        }
+        else
+        {
+            properties = VectorStoreRecordPropertyReader.FindProperties(typeof(TRecord), supportsMultipleVectors: this._options.HasNamedVectors);
+        }
+
+        // Validate property types and store for later use.
         VectorStoreRecordPropertyReader.VerifyPropertyTypes([properties.keyProperty], s_supportedKeyTypes, "Key");
         VectorStoreRecordPropertyReader.VerifyPropertyTypes(properties.dataProperties, s_supportedDataTypes, "Data");
         VectorStoreRecordPropertyReader.VerifyPropertyTypes(properties.vectorProperties, s_supportedVectorTypes, "Vector");
 
-        // Store properties for later use.
         this._keyPropertyInfo = properties.keyProperty;
         this._payloadPropertiesInfo = properties.dataProperties;
         this._vectorPropertiesInfo = properties.vectorProperties;
@@ -98,17 +107,17 @@ internal sealed class QdrantVectorStoreRecordMapper<TRecord> : IVectorStoreRecor
         PointId pointId;
         if (this._keyPropertyInfo.PropertyType == typeof(ulong))
         {
-            var key = this._keyPropertyInfo.GetValue(dataModel) as ulong? ?? throw new ArgumentException($"Missing key property {this._keyPropertyInfo.Name} on provided record of type {typeof(TRecord).FullName}.", nameof(dataModel));
+            var key = this._keyPropertyInfo.GetValue(dataModel) as ulong? ?? throw new VectorStoreRecordMappingException($"Missing key property {this._keyPropertyInfo.Name} on provided record of type {typeof(TRecord).FullName}.");
             pointId = new PointId { Num = key };
         }
         else if (this._keyPropertyInfo.PropertyType == typeof(Guid))
         {
-            var key = this._keyPropertyInfo.GetValue(dataModel) as Guid? ?? throw new ArgumentException($"Missing key property {this._keyPropertyInfo.Name} on provided record of type {typeof(TRecord).FullName}.", nameof(dataModel));
+            var key = this._keyPropertyInfo.GetValue(dataModel) as Guid? ?? throw new VectorStoreRecordMappingException($"Missing key property {this._keyPropertyInfo.Name} on provided record of type {typeof(TRecord).FullName}.");
             pointId = new PointId { Uuid = key.ToString("D") };
         }
         else
         {
-            throw new InvalidOperationException($"Unsupported key type {this._keyPropertyInfo.PropertyType.FullName}.");
+            throw new VectorStoreRecordMappingException($"Unsupported key type {this._keyPropertyInfo.PropertyType.FullName}.");
         }
 
         // Create point.
@@ -207,7 +216,7 @@ internal sealed class QdrantVectorStoreRecordMapper<TRecord> : IVectorStoreRecor
     /// </summary>
     /// <param name="payloadValue">The value to convert to a native type.</param>
     /// <returns>The converted native value.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when an unsupported type is enountered.</exception>
+    /// <exception cref="VectorStoreRecordMappingException">Thrown when an unsupported type is enountered.</exception>
     private static JsonNode? ConvertFromGrpcFieldValueToJsonNode(Value payloadValue)
     {
         return payloadValue.KindCase switch
@@ -219,7 +228,7 @@ internal sealed class QdrantVectorStoreRecordMapper<TRecord> : IVectorStoreRecor
             Value.KindOneofCase.BoolValue => JsonValue.Create(payloadValue.BoolValue),
             Value.KindOneofCase.ListValue => new JsonArray(payloadValue.ListValue.Values.Select(x => ConvertFromGrpcFieldValueToJsonNode(x)).ToArray()),
             Value.KindOneofCase.StructValue => new JsonObject(payloadValue.StructValue.Fields.ToDictionary(x => x.Key, x => ConvertFromGrpcFieldValueToJsonNode(x.Value))),
-            _ => throw new InvalidOperationException($"Unsupported grpc value kind {payloadValue.KindCase}."),
+            _ => throw new VectorStoreRecordMappingException($"Unsupported grpc value kind {payloadValue.KindCase}."),
         };
     }
 
@@ -228,7 +237,7 @@ internal sealed class QdrantVectorStoreRecordMapper<TRecord> : IVectorStoreRecor
     /// </summary>
     /// <param name="sourceValue">The object to convert.</param>
     /// <returns>The converted Qdrant value.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when an unsupported type is enountered.</exception>
+    /// <exception cref="VectorStoreRecordMappingException">Thrown when an unsupported type is enountered.</exception>
     private static Value ConvertToGrpcFieldValue(object? sourceValue)
     {
         var value = new Value();
@@ -276,7 +285,7 @@ internal sealed class QdrantVectorStoreRecordMapper<TRecord> : IVectorStoreRecor
         }
         else
         {
-            throw new InvalidOperationException($"Unsupported source value type {sourceValue?.GetType().FullName}.");
+            throw new VectorStoreRecordMappingException($"Unsupported source value type {sourceValue?.GetType().FullName}.");
         }
 
         return value;
