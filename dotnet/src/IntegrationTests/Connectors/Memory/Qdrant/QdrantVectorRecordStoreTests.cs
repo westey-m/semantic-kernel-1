@@ -14,12 +14,12 @@ using static SemanticKernel.IntegrationTests.Connectors.Memory.Qdrant.QdrantVect
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.Qdrant;
 
 /// <summary>
-/// Contains tests for the <see cref="QdrantVectorRecordStore{TRecord}"/> class using a custom data model.
+/// Contains tests for the <see cref="QdrantVectorRecordStore{TRecord}"/> class.
 /// </summary>
 /// <param name="output">Used for logging.</param>
 /// <param name="fixture">Redis setup and teardown.</param>
 [Collection("QdrantVectorStoreCollection")]
-public sealed class QdrantVectorRecordStoreCustomModelTests(ITestOutputHelper output, QdrantVectorStoreFixture fixture)
+public sealed class QdrantVectorRecordStoreTests(ITestOutputHelper output, QdrantVectorStoreFixture fixture)
 {
     [Fact]
     public async Task ItCanGetDocumentFromVectorStoreAsync()

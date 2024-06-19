@@ -18,7 +18,7 @@ public sealed class QdrantVectorRecordStoreOptions<TRecord>
     public string? DefaultCollectionName { get; init; } = null;
 
     /// <summary>
-    /// Gets or sets a value indicating whether the vectors in the store are named, or whether there is just a single vector per qdrant point.
+    /// Gets or sets a value indicating whether the vectors in the store are named and multiple vectors are supported, or whether there is just a single unnamed vector per qdrant point.
     /// Defaults to single vector per point.
     /// </summary>
     public bool HasNamedVectors { get; set; } = false;

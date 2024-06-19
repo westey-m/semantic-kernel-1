@@ -57,7 +57,7 @@ public sealed class QdrantVectorRecordStore<TRecord> : IVectorRecordStore<ulong,
         }
         else
         {
-            this._mapper = new QdrantVectorStoreRecordJsonMapper<TRecord>(new QdrantVectorStoreRecordJsonMapperOptions { HasNamedVectors = this._options.HasNamedVectors });
+            this._mapper = new QdrantVectorStoreRecordMapper<TRecord>(new QdrantVectorStoreRecordMapperOptions { HasNamedVectors = this._options.HasNamedVectors });
         }
     }
 
