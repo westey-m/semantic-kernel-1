@@ -13,14 +13,16 @@ public enum IndexKind
     /// <remarks>
     /// Lower accuracy than exhaustive k nearest neighbor, but faster and more efficient.
     /// </remarks>
-    HNSW,
+    Hnsw,
 
     /// <summary>
-    /// Exhaustive k nearest neighbor, which calculates the distances between all pairs of data points and finds the exact k nearest neighbors for a query point.
+    /// Does a brute force search to find the nearest neighbors.
+    /// Calculates the distances between all pairs of data points, so has a linear time complexity, that grows directly proportional to the number of points.
+    /// Also referred to as exhaustive k nearest neighbor in some databases.
     /// </summary>
     /// <remarks>
     /// High recall accuracy, but slower and more expensive than HNSW.
     /// Better with smaller datasets.
     /// </remarks>
-    ExhaustiveKNN
+    Flat,
 }

@@ -214,7 +214,13 @@ internal static class VectorStoreRecordPropertyReader
             var dataAttribute = dataProperty.GetCustomAttribute<VectorStoreRecordDataAttribute>();
             if (dataAttribute is not null)
             {
-                definitionProperties.Add(new VectorStoreRecordDataProperty(dataProperty.Name) { HasEmbedding = dataAttribute.HasEmbedding, EmbeddingPropertyName = dataAttribute.EmbeddingPropertyName, IsFilterable = dataAttribute.IsFilterable });
+                definitionProperties.Add(new VectorStoreRecordDataProperty(dataProperty.Name)
+                {
+                    HasEmbedding = dataAttribute.HasEmbedding,
+                    EmbeddingPropertyName = dataAttribute.EmbeddingPropertyName,
+                    IsFilterable = dataAttribute.IsFilterable,
+                    PropertyType = dataProperty.PropertyType
+                });
             }
         }
 
@@ -223,7 +229,12 @@ internal static class VectorStoreRecordPropertyReader
             var vectorAttribute = vectorProperty.GetCustomAttribute<VectorStoreRecordVectorAttribute>();
             if (vectorAttribute is not null)
             {
-                definitionProperties.Add(new VectorStoreRecordVectorProperty(vectorProperty.Name) { Dimensions = vectorAttribute.Dimensions, IndexKind = vectorAttribute.IndexKind, DistanceFunction = vectorAttribute.DistanceFunction });
+                definitionProperties.Add(new VectorStoreRecordVectorProperty(vectorProperty.Name)
+                {
+                    Dimensions = vectorAttribute.Dimensions,
+                    IndexKind = vectorAttribute.IndexKind,
+                    DistanceFunction = vectorAttribute.DistanceFunction
+                });
             }
         }
 

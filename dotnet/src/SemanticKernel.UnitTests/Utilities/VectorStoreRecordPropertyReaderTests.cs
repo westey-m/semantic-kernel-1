@@ -169,6 +169,9 @@ public class VectorStoreRecordPropertyReaderTests
 
         Assert.Equal("Vector1", data1.EmbeddingPropertyName);
 
+        Assert.Equal(typeof(string), data1.PropertyType);
+        Assert.Equal(typeof(string), data2.PropertyType);
+
         var vector1 = (VectorStoreRecordVectorProperty)definition.Properties[3];
 
         Assert.Equal(4, vector1.Dimensions);
@@ -271,7 +274,7 @@ public class VectorStoreRecordPropertyReaderTests
         [VectorStoreRecordData]
         public string Data2 { get; set; } = string.Empty;
 
-        [VectorStoreRecordVector(4, IndexKind.ExhaustiveKNN, DistanceFunction.DotProduct)]
+        [VectorStoreRecordVector(4, IndexKind.Flat, DistanceFunction.DotProductSimilarity)]
         public ReadOnlyMemory<float> Vector1 { get; set; }
 
         [VectorStoreRecordVector]
@@ -287,7 +290,7 @@ public class VectorStoreRecordPropertyReaderTests
             new VectorStoreRecordKeyProperty("Key"),
             new VectorStoreRecordDataProperty("Data1") { HasEmbedding = true, EmbeddingPropertyName = "Vector1", IsFilterable = true },
             new VectorStoreRecordDataProperty("Data2"),
-            new VectorStoreRecordVectorProperty("Vector1") { Dimensions = 4, IndexKind = IndexKind.ExhaustiveKNN, DistanceFunction = DistanceFunction.DotProduct },
+            new VectorStoreRecordVectorProperty("Vector1") { Dimensions = 4, IndexKind = IndexKind.Flat, DistanceFunction = DistanceFunction.DotProductSimilarity },
             new VectorStoreRecordVectorProperty("Vector2")
         ]
     };

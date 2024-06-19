@@ -36,7 +36,7 @@ public enum DistanceFunction
     /// <remarks>
     /// Same as cosine similarity if the vectors are the same length, but more performant.
     /// </remarks>
-    DotProduct,
+    DotProductSimilarity,
 
     /// <summary>
     /// Measures the Euclidean distance between two vectors.

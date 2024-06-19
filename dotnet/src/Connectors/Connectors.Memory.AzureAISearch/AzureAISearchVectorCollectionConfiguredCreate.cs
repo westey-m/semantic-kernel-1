@@ -94,12 +94,12 @@ public sealed class AzureAISearchVectorCollectionConfiguredCreate : IVectorColle
 
                 // Read the vector index settings from the property definition and create the right index configuration.
                 var indexKind = GetSKIndexKind(vectorProperty);
-                var algorithmMetric = GetSDKAlgorithmMetric(vectorProperty);
+                var algorithmMetric = GetSDKDistanceAlgorithm(vectorProperty);
 
                 VectorSearchAlgorithmConfiguration algorithmConfiguration = indexKind switch
                 {
-                    IndexKind.HNSW => new HnswAlgorithmConfiguration(algorithmConfigName) { Parameters = new HnswParameters { Metric = algorithmMetric } },
-                    IndexKind.ExhaustiveKNN => new ExhaustiveKnnAlgorithmConfiguration(algorithmConfigName) { Parameters = new ExhaustiveKnnParameters { Metric = algorithmMetric } },
+                    IndexKind.Hnsw => new HnswAlgorithmConfiguration(algorithmConfigName) { Parameters = new HnswParameters { Metric = algorithmMetric } },
+                    IndexKind.Flat => new ExhaustiveKnnAlgorithmConfiguration(algorithmConfigName) { Parameters = new ExhaustiveKnnParameters { Metric = algorithmMetric } },
                     _ => throw new InvalidOperationException($"Unsupported index kind '{indexKind}' on {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}'.")
                 };
                 var vectorSeachProfile = new VectorSearchProfile(vectorSearchProfileName, algorithmConfigName);
@@ -119,7 +119,7 @@ public sealed class AzureAISearchVectorCollectionConfiguredCreate : IVectorColle
 
     /// <summary>
     /// Get the configured <see cref="IndexKind"/> from the given <paramref name="vectorProperty"/>.
-    /// If none is configured the default is <see cref="IndexKind.HNSW"/>.
+    /// If none is configured the default is <see cref="IndexKind.Hnsw"/>.
     /// </summary>
     /// <param name="vectorProperty">The vector property definition.</param>
     /// <returns>The chosen <see cref="IndexKind"/>.</returns>
@@ -128,13 +128,13 @@ public sealed class AzureAISearchVectorCollectionConfiguredCreate : IVectorColle
     {
         if (vectorProperty.IndexKind is null)
         {
-            return IndexKind.HNSW;
+            return IndexKind.Hnsw;
         }
 
         return vectorProperty.IndexKind switch
         {
-            IndexKind.HNSW => IndexKind.HNSW,
-            IndexKind.ExhaustiveKNN => IndexKind.ExhaustiveKNN,
+            IndexKind.Hnsw => IndexKind.Hnsw,
+            IndexKind.Flat => IndexKind.Flat,
             _ => throw new InvalidOperationException($"Unsupported index kind '{vectorProperty.IndexKind}' for {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}'.")
         };
     }
@@ -146,7 +146,7 @@ public sealed class AzureAISearchVectorCollectionConfiguredCreate : IVectorColle
     /// <param name="vectorProperty">The vector property definition.</param>
     /// <returns>The chosen <see cref="VectorSearchAlgorithmMetric"/>.</returns>
     /// <exception cref="InvalidOperationException">Thrown if a distance function is chosen that isn't suported by Azure AI Search.</exception>
-    private static VectorSearchAlgorithmMetric GetSDKAlgorithmMetric(VectorStoreRecordVectorProperty vectorProperty)
+    private static VectorSearchAlgorithmMetric GetSDKDistanceAlgorithm(VectorStoreRecordVectorProperty vectorProperty)
     {
         if (vectorProperty.DistanceFunction is null)
         {
@@ -156,7 +156,7 @@ public sealed class AzureAISearchVectorCollectionConfiguredCreate : IVectorColle
         return vectorProperty.DistanceFunction switch
         {
             DistanceFunction.CosineSimilarity => VectorSearchAlgorithmMetric.Cosine,
-            DistanceFunction.DotProduct => VectorSearchAlgorithmMetric.DotProduct,
+            DistanceFunction.DotProductSimilarity => VectorSearchAlgorithmMetric.DotProduct,
             DistanceFunction.EuclideanDistance => VectorSearchAlgorithmMetric.Euclidean,
             _ => throw new InvalidOperationException($"Unsupported distance function '{vectorProperty.DistanceFunction}' for {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}'.")
         };
