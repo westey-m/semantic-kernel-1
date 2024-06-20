@@ -246,7 +246,7 @@ public sealed class QdrantVectorStoreStandardModelMapper : IVectorStoreRecordMap
     /// </summary>
     /// <param name="payloadValue">The value to convert to a native type.</param>
     /// <returns>The converted native value.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when an unsupported type is enountered.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when an unsupported type is encountered.</exception>
     private static object? ConvertFromGrpcFieldValue(Value payloadValue)
     {
         return payloadValue.KindCase switch
@@ -266,7 +266,7 @@ public sealed class QdrantVectorStoreStandardModelMapper : IVectorStoreRecordMap
     /// </summary>
     /// <param name="sourceValue">The object to convert.</param>
     /// <returns>The converted Qdrant value.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when an unsupported type is enountered.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when an unsupported type is encountered.</exception>
     private static Value ConvertToGrpcFieldValue(object? sourceValue)
     {
         var value = new Value();
