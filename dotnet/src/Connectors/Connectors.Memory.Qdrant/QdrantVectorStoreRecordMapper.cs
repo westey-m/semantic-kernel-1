@@ -117,7 +117,7 @@ internal sealed class QdrantVectorStoreRecordMapper<TRecord> : IVectorStoreRecor
         }
         else
         {
-            throw new VectorStoreRecordMappingException($"Unsupported key type {this._keyPropertyInfo.PropertyType.FullName}.");
+            throw new VectorStoreRecordMappingException($"Unsupported key type {this._keyPropertyInfo.PropertyType.FullName} for key property {this._keyPropertyInfo.Name} on provided record of type {typeof(TRecord).FullName}.");
         }
 
         // Create point.
@@ -156,8 +156,14 @@ internal sealed class QdrantVectorStoreRecordMapper<TRecord> : IVectorStoreRecor
         else
         {
             var vectorPropertyInfo = this._vectorPropertiesInfo.First();
-            var propertyValue = (ReadOnlyMemory<float>)vectorPropertyInfo.GetValue(dataModel);
-            pointStruct.Vectors.Vector = propertyValue.ToArray();
+            if (vectorPropertyInfo.GetValue(dataModel) is ReadOnlyMemory<float> floatROM)
+            {
+                pointStruct.Vectors.Vector = floatROM.ToArray();
+            }
+            else
+            {
+                throw new VectorStoreRecordMappingException($"Vector property {vectorPropertyInfo.Name} on provided record of type {typeof(TRecord).FullName} may not be null when not using named vectors.");
+            }
         }
 
         return pointStruct;

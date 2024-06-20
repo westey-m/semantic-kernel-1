@@ -4,9 +4,9 @@ using System;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Qdrant;
 using Microsoft.SemanticKernel.Memory;
+using Qdrant.Client.Grpc;
 using Xunit;
 using Xunit.Abstractions;
 using static SemanticKernel.IntegrationTests.Connectors.Memory.Qdrant.QdrantVectorStoreFixture;
@@ -254,5 +254,29 @@ public sealed class QdrantVectorRecordStoreTests(ITestOutputHelper output, Qdran
 
         // Assert.
         await Assert.ThrowsAsync<VectorStoreOperationException>(async () => await sut.GetAsync(20));
+    }
+
+    [Fact]
+    public async Task ItThrowsMappingExceptionForFailedMapperAsync()
+    {
+        // Arrange
+        var options = new QdrantVectorRecordStoreOptions<HotelInfo> { DefaultCollectionName = "singleVectorHotels", MapperType = QdrantRecordMapperType.QdrantPointStructCustomMapper, PointStructCustomMapper = new FailingMapper() };
+        var sut = new QdrantVectorRecordStore<HotelInfo>(fixture.QdrantClient, options);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<VectorStoreRecordMappingException>(async () => await sut.GetAsync(11, new GetRecordOptions { IncludeVectors = true }));
+    }
+
+    private sealed class FailingMapper : IVectorStoreRecordMapper<HotelInfo, PointStruct>
+    {
+        public PointStruct MapFromDataToStorageModel(HotelInfo dataModel)
+        {
+            throw new NotImplementedException();
+        }
+
+        public HotelInfo MapFromStorageToDataModel(PointStruct storageModel, GetRecordOptions? options = null)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

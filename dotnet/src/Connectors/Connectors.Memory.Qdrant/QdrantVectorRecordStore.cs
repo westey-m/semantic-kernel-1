@@ -14,7 +14,7 @@ using Qdrant.Client.Grpc;
 namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 
 /// <summary>
-/// Service for storing and retrieving records, that uses Qdrant as the underlying storage.
+/// Service for storing and retrieving vector records, that uses Qdrant as the underlying storage.
 /// </summary>
 /// <typeparam name="TRecord">The data model to use for adding, updating and retrieving data from storage.</typeparam>
 public sealed class QdrantVectorRecordStore<TRecord> : IVectorRecordStore<ulong, TRecord>, IVectorRecordStore<Guid, TRecord>
