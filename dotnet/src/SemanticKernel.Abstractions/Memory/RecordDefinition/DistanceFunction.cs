@@ -44,5 +44,10 @@ public enum DistanceFunction
     /// <remarks>
     /// Also known as l2-norm.
     /// </remarks>
-    EuclideanDistance
+    EuclideanDistance,
+
+    /// <summary>
+    /// Measures the Manhattan distance between two vectors.
+    /// </summary>
+    ManhattanDistance,
 }
