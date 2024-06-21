@@ -90,7 +90,7 @@ public sealed class KeyNormalizingAzureAISearchVectorRecordStore<TRecord> : IVec
     }
 
     /// <inheritdoc />
-    public async Task<TRecord> GetAsync(string key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<TRecord?> GetAsync(string key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         var innerOptions = this.EncodeCollectionName(options);
 
