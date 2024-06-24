@@ -282,7 +282,7 @@ Footnotes:
 |Id Type|String|UUID|string with collection name prefix|string||string|UUID|64Bit Int / UUID / ULID|64Bit Unsigned Int / UUID|Int64 / varchar|
 |Supported Vector Types|[Collection(Edm.Byte) / Collection(Edm.Single) / Collection(Edm.Half) / Collection(Edm.Int16) / Collection(Edm.SByte)](https://learn.microsoft.com/en-us/rest/api/searchservice/supported-data-types)|float32|FLOAT32 and FLOAT64|||[Rust f32](https://docs.pinecone.io/troubleshooting/embedding-values-changed-when-upserted)||[single-precision (4 byte float) / half-precision (2 byte float) / binary (1bit) / sparse vectors (4 bytes)](https://github.com/pgvector/pgvector?tab=readme-ov-file#pgvector)|UInt8 / Float32|Binary / Float32 / Float16 / BFloat16 / SparseFloat|
 |Supported Distance Functions|[Cosine / dot prod / euclidean dist (l2 norm)](https://learn.microsoft.com/en-us/azure/search/vector-search-ranking#similarity-metrics-used-to-measure-nearness)|[Cosine dist / dot prod / Squared L2 dist / hamming (num of diffs) / manhattan dist](https://weaviate.io/developers/weaviate/config-refs/distances#available-distance-metrics)|[Euclidean dist (L2) / Inner prod (IP) / Cosine dist](https://redis.io/docs/latest/develop/interact/search-and-query/advanced-concepts/vectors/)|[Squared L2 / Inner prod / Cosine similarity](https://docs.trychroma.com/guides#changing-the-distance-function)||[cosine sim / euclidean dist / dot prod](https://docs.pinecone.io/reference/api/control-plane/create_index)||[L2 dist / inner prod / cosine dist / L1 dist / Hamming dist / Jaccard dist (NB: Specified at query time, not index creation time)](https://github.com/pgvector/pgvector?tab=readme-ov-file#pgvector)|[Dot prod / Cosine sim / Euclidean dist (L2) / Manhattan dist](https://qdrant.tech/documentation/concepts/search/)|[Cosine sim / Euclidean dist / Inner Prod](https://milvus.io/docs/index-vector-fields.md)|
-|Supported index types|[Exhaustive KNN / HNSW](https://learn.microsoft.com/en-us/azure/search/vector-search-ranking#algorithms-used-in-vector-search)|[HNSW / Flat / Dynamic](https://weaviate.io/developers/weaviate/config-refs/schema/vector-index)|[HNSW / FLAT](https://redis.io/docs/latest/develop/interact/search-and-query/advanced-concepts/vectors/#create-a-vector-field)|[HNSW not configurable](https://cookbook.chromadb.dev/core/concepts/#vector-index-hnsw-index)||[PGA](https://www.pinecone.io/blog/hnsw-not-enough/)||[HNSW / IVFFlat](https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing)|[HNSW for dense](https://qdrant.tech/documentation/concepts/indexing/#vector-index)|<p>[In Memory: FLAT / IVF_FLAT / IVF_SQ8 / IVF_PQ / HNSW / SCANN](https://milvus.io/docs/index.md)</p><p>[On Disk: DiskANN](https://milvus.io/docs/disk_index.md)</p><p>[GPU: GPU_CAGRA / GPU_IVF_FLAT / GPU_IVF_PQ / GPU_BRUTE_FORCE](https://milvus.io/docs/gpu_index.md)</p>|
+|Supported index types|[Exhaustive KNN (FLAT) / HNSW](https://learn.microsoft.com/en-us/azure/search/vector-search-ranking#algorithms-used-in-vector-search)|[HNSW / Flat / Dynamic](https://weaviate.io/developers/weaviate/config-refs/schema/vector-index)|[HNSW / FLAT](https://redis.io/docs/latest/develop/interact/search-and-query/advanced-concepts/vectors/#create-a-vector-field)|[HNSW not configurable](https://cookbook.chromadb.dev/core/concepts/#vector-index-hnsw-index)||[PGA](https://www.pinecone.io/blog/hnsw-not-enough/)||[HNSW / IVFFlat](https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing)|[HNSW for dense](https://qdrant.tech/documentation/concepts/indexing/#vector-index)|<p>[In Memory: FLAT / IVF_FLAT / IVF_SQ8 / IVF_PQ / HNSW / SCANN](https://milvus.io/docs/index.md)</p><p>[On Disk: DiskANN](https://milvus.io/docs/disk_index.md)</p><p>[GPU: GPU_CAGRA / GPU_IVF_FLAT / GPU_IVF_PQ / GPU_BRUTE_FORCE](https://milvus.io/docs/gpu_index.md)</p>|
 
 Footnotes:
 - HNSW = Hierarchical Navigable Small World (HNSW performs an [approximate nearest neighbor (ANN)](https://learn.microsoft.com/en-us/azure/search/vector-search-overview#approximate-nearest-neighbors) search)
@@ -846,11 +846,11 @@ interface IMemoryCollectionCreateService {}
 ### Option 3 - VectorStore
 
 ```cs
-interface IVectorRecordStore {}
+interface IVectorRecordStore<TRecord> {}
 interface IVectorCollectionNonSchema {}
 interface IVectorCollectionCreate {}
 interface IVectorCollectionStore {}: IVectorCollectionCreate, IVectorCollectionNonSchema
-interface IVectorStore {}: IVectorCollectionStore, IVectorRecordStore
+interface IVectorStore<TRecord> {}: IVectorCollectionStore, IVectorRecordStore<TRecord>
 ```
 
 #### Decision Outcome
@@ -859,81 +859,56 @@ Chosen option 3. The word memory is broad enough to encompass any data, so using
 
 ## Usage Examples
 
-Common Code across all examples
+### DI Framework: .net 8 Keyed Services
 
 ```cs
 class CacheEntryModel(string prompt, string result, ReadOnlyMemory<float> promptEmbedding);
 
-class SemanticTextMemory<TDataType>(IVectorRecordStore<TDataType> recordStore, IVectorCollectionStore collectionStore, ITextEmbeddingGenerationService embeddingGenerator): ISemanticTextMemory;
+// Sample SemanticTextMemory using collection create that takes the definition that create uses as a parameter.
+// This isn't great, since you will need to provide the definition when you register the IVectorStore anyway, since it's required by the record management portion.
+class SemanticTextMemory<TDataType>(IConfiguredVectorStore<TDataType> configuredVectorStore, ITextEmbeddingGenerationService embeddingGenerator, VectorStoreRecordDefinition vectorStoreRecordDefinition): ISemanticTextMemory
+{
+    public async Task SaveInformation(string collectionName, TDataType record)
+    {
+        if (!await vectorStore.CollectionExists(collectionName)) await vectorStore.CreateCollection(collectionName, vectorStoreRecordDefinition);
+        await vectorStore.UpsertAsync(record);
+    }
+}
+
+// Sample SemanticTextMemory using collection create where the definition that create uses was already passed to the vectorStore constructor.
+class SemanticTextMemory<TDataType>(IVectorStore<TDataType> vectorStore, ITextEmbeddingGenerationService embeddingGenerator): ISemanticTextMemory
+{
+    public async Task SaveInformation(string collectionName, TDataType record)
+    {
+        if (!await vectorStore.CollectionExists(collectionName)) await vectorStore.CreateCollection(collectionName);
+        await vectorStore.UpsertAsync(record);
+    }
+}
 
 class CacheSetFunctionFilter(ISemanticTextMemory<CacheEntryModel> memory); // Saves results to cache.
 class CacheGetPromptFilter(ISemanticTextMemory<CacheEntryModel> memory);   // Check cache for entries.
 
 var builder = Kernel.CreateBuilder();
-```
 
-### DI Framework: Named Instances
-
-Similar to HttpClient, register implementations using names, that can only be constructed again
-using a specific factory implementation.
-
-```cs
 builder
-    .AddAzureOpenAITextEmbeddingGeneration(textEmbeddingDeploymentName, azureAIEndpoint, apiKey)
+    // Existing registration:
+    .AddAzureOpenAITextEmbeddingGeneration(textEmbeddingDeploymentName, azureAIEndpoint, apiKey, serviceId: "AzureOpenAI:text-embedding-ada-002")
 
-    // Collection Registration:
-    // Variant 1: Register just create.
-    .AddNamedAzureAISearchCollectionCreate(name: "CacheCreate", azureAISearchEndpoint, apiKey, createConfiguration)         // Config
-    .AddNamedAzureAISearchCollectionCreate(name: "CacheCreate", sp => new CacheCreate(...));                                // Custom implementation
-    // Create combined collection management that references the previously registered create instance.
-    .AddNamedAzureAISearchCollectionStore(name: "Cache", azureAISearchEndpoint, apiKey, createName: "CacheCreate")
+    // Register just an IVectorRecordStore implementation under the given key.
+    .AddSingleCollectionAzureAISearch<CacheEntryModel>("Cache", azureAISearchEndpoint, apiKey, recordStoreOptions, vectorStoreRecordDefinition);
 
-    // Variant 2: Register collection store in one line with config or custom create implementation.
-    .AddNamedAzureAISearchCollectionStore(name: "Cache", azureAISearchEndpoint, apiKey, createConfiguration)              // Config
-    .AddNamedAzureAISearchCollectionStore(name: "Cache", azureAISearchEndpoint, apiKey, sp => new CacheCreate(...))       // Custom implementation
-
-    // Record Registration with variants 1 and 2:
-    // Add record stores.
-    .AddAzureAISearchRecordStore<CacheEntryModel>(name: "Cache", azureAISearchEndpoint, apiKey)
-
-    // Variant 3: Register collection and record store in one line with config or custom create implementation.
-    // Does all of the preious variants in one line.
-    .AddAzureAISearchVectorStore<CacheEntryModel>(name: "Cache", azureAISearchEndpoint, apiKey, createConfiguration)         // Config
-    .AddAzureAISearchVectorStore<CacheEntryModel>(name: "Cache", azureAISearchEndpoint, apiKey, sp => new CacheCreate(...))  // Custom implementation
-
-    // Add semantic text memory referencing collection and record stores.
-    // This would register ISemanticTextMemory<CacheEntryModel> in the services container.
-    .AddSemanticTextMemory<CacheEntryModel>(collectionStoreName: "Cache", recordServiceName: "Cache");
-
-// Add filter to retrieve items from cache and one to add items to cache.
-// Since these filters depend on ISemanticTextMemory<CacheEntryModel> and that is already registered, it should get matched automatically.
-builder.Services.AddTransient<IPromptRenderFilter, CacheGetPromptFilter>();
-builder.Services.AddTransient<IFunctionInvocationFilter, CacheSetFunctionFilter>();
-
-var kernel =
-    .Build();
-
-var vectorStoreFactory = kernel.Services.GetRequiredService<IVectorStoreFactory>();
-var cacheCollectionStore = vectorStoreFactory.CreateCollectionStore(name: "Cache");
-var cacheRecordStore = vectorStoreFactory.CreateRecordStore<CacheEntryModel>(name: "Cache");
-```
-
-### DI Framework: Registration based on consumer type.
-
-Similar to `AddHttpClient<TTargetService>`, this approach will register a specific implementation of
-the storage implementations, for a provided consumer type.
-
-```cs
-builder
-    .AddAzureOpenAITextEmbeddingGeneration(textEmbeddingDeploymentName, azureAIEndpoint, apiKey)
-    
-    // Collection and record registration with config or custom create implementation.
-    // This will register both IVectorCollectionStore and IVectorRecordStore<CacheEntryModel> and tie it to usage with SemanticTextMemory<CacheEntryModel>.
-    .AddAzureAISearchStorage<SemanticTextMemory<CacheEntryModel>>(azureAISearchEndpoint, apiKey, createConfiguration)           // Config
-    .AddAzureAISearchStorage<SemanticTextMemory<CacheEntryModel>>(azureAISearchEndpoint, apiKey, sp => new CacheCreate(...));   // Custom implementation
+    // Register an IVectorStore implementation that combines collection management and record management.
+    .AddMultiCollectionAzureAISearch<CacheEntryModel>("Cache", azureAISearchEndpoint, apiKey, recordStoreOptions, vectorStoreRecordDefinition)
+    .AddMultiCollectionAzureAISearch<CacheEntryModel>("Cache", azureAISearchEndpoint, apiKey, recordStoreOptions, sp => new CacheCreate(...))
+    .AddMultiCollectionAzureAISearch<CacheEntryModel>("Cache", azureAISearchEndpoint, apiKey, recordStoreOptions, (SearchIndexClient searchIndexClient) => searchIndexClient.CreateIndexAsync...);
 
 // Add Semantic Cache Memory for the cache entry model.
-builder.Services.AddTransient<ISemanticTextMemory<CacheEntryModel>, SemanticTextMemory<CacheEntryModel>>();
+// This is optional if you only have one registration for the required services.
+builder.Services.AddTransient<ISemanticTextMemory<CacheEntryModel>>(sp => {
+    return new SemanticTextMemory<CacheEntryModel>(
+        sp.GetKeyedService<IVectorStore<CacheEntryModel>>("Cache"),
+        sp.GetKeyedService<ITextEmbeddingGenerationService>("AzureOpenAI:text-embedding-ada-002"));
+});
 
 // Add filter to retrieve items from cache and one to add items to cache.
 // Since these filters depend on ISemanticTextMemory<CacheEntryModel> and that is already registered, it should get matched automatically.
@@ -944,20 +919,25 @@ builder.Services.AddTransient<IFunctionInvocationFilter, CacheSetFunctionFilter>
 ### DI Framework: .net 8 Keyed Services
 
 ```cs
+class CacheEntryModel(string prompt, string result, ReadOnlyMemory<float> promptEmbedding);
+
+class EmbeddingVectorRecordStore<TDataType>(IVectorRecordStore<TDataType> recordStore, ITextEmbeddingGenerationService embeddingGenerator): IVectorRecordStore<TDataType>;
+// If you didn't specify a model, maybe we can just use the default
+// for field x use Service Y + Model Z
+
+class CacheSetFunctionFilter(IVectorCollectionStore collectionStore, IVectorRecordStore<CacheEntryModel> recordStore); // Saves results to cache.
+class CacheGetPromptFilter(IVectorCollectionStore collectionStore, IVectorRecordStore<CacheEntryModel> recordStore);   // Check cache for entries.
+
+var builder = Kernel.CreateBuilder();
+
 builder
-    .AddAzureOpenAITextEmbeddingGeneration(textEmbeddingDeploymentName, azureAIEndpoint, apiKey)
+    .AddAzureOpenAITextEmbeddingGeneration(textEmbeddingDeploymentName, azureAIEndpoint, apiKey, serviceId: "AzureOpenAI:text-embedding-ada-002")
 
     // Collection and record registration with config or custom create implementation.
-    .AddAzureAISearchVectorStoreKeyedTransient<CacheEntryModel>("Cache", azureAISearchEndpoint, apiKey, createConfiguration)
-    .AddAzureAISearchVectorStoreKeyedTransient<CacheEntryModel>("Cache", azureAISearchEndpoint, apiKey, sp => new CacheCreate(...));
-
-// Add Semantic Cache Memory for the cache entry model.
-builder.Services.AddTransient<ISemanticTextMemory<CacheEntryModel>>(sp => {
-    return new SemanticTextMemory<CacheEntryModel>(
-        sp.GetKeyedService<IVectorRecordStore<CacheEntryModel>>("Cache"),
-        sp.GetKeyedService<IVectorCollectionStore>("Cache"),
-        sp.GetRequiredService<ITextEmbeddingGenerationService>());
-});
+    // Also wraps the azure vector record store in EmbeddingVectorRecordStore to automatically generate embeddings on the model.
+    // Embedding model is determined by looking at available embedding generation services and finding one that provides the required model.
+    .AddAzureAISearchVectorStore<CacheEntryModel>("Cache", azureAISearchEndpoint, apiKey, generateEmbeddings: true, recordStoreOptions, createConfiguration)
+    .AddAzureAISearchVectorStore<CacheEntryModel>("Cache", azureAISearchEndpoint, apiKey, generateEmbeddings: true, recordStoreOptions, sp => new CacheCreate(...));
 
 // Add filter to retrieve items from cache and one to add items to cache.
 // Since these filters depend on ISemanticTextMemory<CacheEntryModel> and that is already registered, it should get matched automatically.

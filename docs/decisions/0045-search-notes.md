@@ -171,7 +171,7 @@ const string TextSearchFunctionConfig = """
     """;
 builder
     .ImportPluginFromTextSearchDescription(
-        FunctionConfig,
+        TextSearchFunctionConfig,
         (sp) => { return sp.GetKeyedService<ITextSearchService>("Cache"); });
 
 const string FilteredTextSearchFunctionConfig = """
@@ -188,8 +188,8 @@ const string FilteredTextSearchFunctionConfig = """
         description: String containing a list of hotels matching the given description.
     """;
 builder
-    .ImportPluginFromSearchDescription(
-        FunctionConfig,
+    .ImportPluginFromFilteredTextSearchDescription(
+        FilteredTextSearchFunctionConfig,
         (sp) => { return sp.GetKeyedService<IFilteredTextSearchService>("Hotels"); });
 
 const string FilteredTextSearchFunctionConfig = """
@@ -206,7 +206,7 @@ const string FilteredTextSearchFunctionConfig = """
         description: String containing the bing search results for the given text.
     """;
 builder
-    .ImportPluginFromSearchDescription(
+    .ImportPluginFromFilteredTextSearchDescription(
         FunctionConfig,
         (sp) => { return new BingTextSearchService(); });
 
