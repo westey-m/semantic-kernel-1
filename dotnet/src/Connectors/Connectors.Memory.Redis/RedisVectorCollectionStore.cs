@@ -84,7 +84,11 @@ public sealed class RedisVectorCollectionStore : IVectorCollectionStore
 
         foreach (var item in listResult)
         {
-            yield return item.ToString();
+            var name = item.ToString();
+            if (name != null)
+            {
+                yield return name;
+            }
         }
     }
 }
