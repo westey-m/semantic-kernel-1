@@ -124,7 +124,7 @@ public sealed class QdrantVectorStoreStandardModelMapper : IVectorStoreRecordMap
     }
 
     /// <inheritdoc />
-    public VectorDBRecord MapFromStorageToDataModel(PointStruct storageModel, GetRecordOptions? options = null)
+    public VectorDBRecord MapFromStorageToDataModel(PointStruct storageModel, StorageToDataModelMapperOptions options)
     {
         // Create record key based type of point id.
         object key;
