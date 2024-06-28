@@ -23,12 +23,12 @@ public class QdrantVectorCollectionTests(ITestOutputHelper output, QdrantVectorS
         var collectionNamePostfix1 = useDefinition ? "WithDefinition" : "WithType";
         var collectionNamePostfix2 = hasNamedVectors ? "HasNamedVectors" : "SingleUnnamedVector";
         var testCollectionName = $"createtest{collectionNamePostfix1}{collectionNamePostfix2}";
-        var options = new QdrantVectorCollectionConfiguredCreateOptions { HasNamedVectors = hasNamedVectors };
+        var options = new QdrantVectorCollectionCreateOptions { HasNamedVectors = hasNamedVectors };
         var sut = new QdrantVectorCollectionStore(
             fixture.QdrantClient,
             useDefinition ?
-                QdrantVectorCollectionConfiguredCreate.Create(fixture.QdrantClient, fixture.HotelVectorStoreRecordDefinition, options) :
-                QdrantVectorCollectionConfiguredCreate.Create<QdrantVectorStoreFixture.HotelInfo>(fixture.QdrantClient, options));
+                QdrantVectorCollectionCreate.Create(fixture.QdrantClient, fixture.HotelVectorStoreRecordDefinition, options) :
+                QdrantVectorCollectionCreate.Create<QdrantVectorStoreFixture.HotelInfo>(fixture.QdrantClient, options));
 
         // Act
         await sut.CreateCollectionAsync(testCollectionName);
@@ -46,7 +46,7 @@ public class QdrantVectorCollectionTests(ITestOutputHelper output, QdrantVectorS
     public async Task ItCanCheckIfCollectionExistsForExistingCollectionAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorCollectionStore(fixture.QdrantClient, QdrantVectorCollectionConfiguredCreate.Create(fixture.QdrantClient, fixture.HotelVectorStoreRecordDefinition));
+        var sut = new QdrantVectorCollectionStore(fixture.QdrantClient, QdrantVectorCollectionCreate.Create(fixture.QdrantClient, fixture.HotelVectorStoreRecordDefinition));
 
         // Act.
         var doesExistResult = await sut.CollectionExistsAsync("namedVectorsHotels");
@@ -62,7 +62,7 @@ public class QdrantVectorCollectionTests(ITestOutputHelper output, QdrantVectorS
     public async Task ItCanCheckIfCollectionExistsForNonExistingCollectionAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorCollectionStore(fixture.QdrantClient, QdrantVectorCollectionConfiguredCreate.Create(fixture.QdrantClient, fixture.HotelVectorStoreRecordDefinition));
+        var sut = new QdrantVectorCollectionStore(fixture.QdrantClient, QdrantVectorCollectionCreate.Create(fixture.QdrantClient, fixture.HotelVectorStoreRecordDefinition));
 
         // Act.
         var doesExistResult = await sut.CollectionExistsAsync("non-existing-collection");
@@ -78,7 +78,7 @@ public class QdrantVectorCollectionTests(ITestOutputHelper output, QdrantVectorS
     public async Task ItCanGetAListOfExistingCollectionNamesAsync()
     {
         // Arrange
-        var sut = new QdrantVectorCollectionStore(fixture.QdrantClient, QdrantVectorCollectionConfiguredCreate.Create(fixture.QdrantClient, fixture.HotelVectorStoreRecordDefinition));
+        var sut = new QdrantVectorCollectionStore(fixture.QdrantClient, QdrantVectorCollectionCreate.Create(fixture.QdrantClient, fixture.HotelVectorStoreRecordDefinition));
 
         // Act
         var collectionNames = await sut.ListCollectionNamesAsync().ToListAsync();
@@ -102,7 +102,7 @@ public class QdrantVectorCollectionTests(ITestOutputHelper output, QdrantVectorS
             tempCollectionName,
             new VectorParams { Size = 4, Distance = Distance.Cosine });
 
-        var sut = new QdrantVectorCollectionStore(fixture.QdrantClient, QdrantVectorCollectionConfiguredCreate.Create(fixture.QdrantClient, fixture.HotelVectorStoreRecordDefinition));
+        var sut = new QdrantVectorCollectionStore(fixture.QdrantClient, QdrantVectorCollectionCreate.Create(fixture.QdrantClient, fixture.HotelVectorStoreRecordDefinition));
 
         // Act
         await sut.DeleteCollectionAsync(tempCollectionName);

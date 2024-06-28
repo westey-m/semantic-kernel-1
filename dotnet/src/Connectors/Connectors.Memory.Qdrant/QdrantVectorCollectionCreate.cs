@@ -14,16 +14,16 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 /// <summary>
 /// Class that can create a new collection in qdrant using a provided configuration.
 /// </summary>
-public sealed class QdrantVectorCollectionConfiguredCreate : IVectorCollectionCreate
+public sealed class QdrantVectorCollectionCreate : IVectorCollectionCreate, IConfiguredVectorCollectionCreate
 {
     /// <summary>Qdrant client that can be used to manage the collections and points in a Qdrant store.</summary>
     private readonly QdrantClient _qdrantClient;
 
     /// <summary>Defines the schema of the record type and is used to create the collection with.</summary>
-    private readonly VectorStoreRecordDefinition _vectorStoreRecordDefinition;
+    private readonly VectorStoreRecordDefinition? _vectorStoreRecordDefinition;
 
     /// <summary>Options that modify the behavior of create.</summary>
-    private readonly QdrantVectorCollectionConfiguredCreateOptions _options;
+    private readonly QdrantVectorCollectionCreateOptions _options;
 
     /// <summary>A dictionary of types and their matching qdrant index schema type.</summary>
     private static readonly Dictionary<Type, PayloadSchemaType> s_schemaTypeMap = new()
@@ -61,12 +61,12 @@ public sealed class QdrantVectorCollectionConfiguredCreate : IVectorCollectionCr
     };
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="QdrantVectorCollectionConfiguredCreate"/> class.
+    /// Initializes a new instance of the <see cref="QdrantVectorCollectionCreate"/> class.
     /// </summary>
     /// <param name="qdrantClient">Qdrant client that can be used to manage the collections and points in a Qdrant store.</param>
     /// <param name="vectorStoreRecordDefinition">Defines the schema of the record type and is used to create the collection with.</param>
     /// <param name="options">Options that modify the behavior of create.</param>
-    private QdrantVectorCollectionConfiguredCreate(QdrantClient qdrantClient, VectorStoreRecordDefinition vectorStoreRecordDefinition, QdrantVectorCollectionConfiguredCreateOptions options)
+    private QdrantVectorCollectionCreate(QdrantClient qdrantClient, VectorStoreRecordDefinition vectorStoreRecordDefinition, QdrantVectorCollectionCreateOptions options)
     {
         Verify.NotNull(qdrantClient);
         Verify.NotNull(vectorStoreRecordDefinition);
@@ -78,49 +78,87 @@ public sealed class QdrantVectorCollectionConfiguredCreate : IVectorCollectionCr
     }
 
     /// <summary>
-    /// Create a new instance of <see cref="QdrantVectorCollectionConfiguredCreate"/> using the provided <see cref="VectorStoreRecordDefinition"/>.
+    /// Initializes a new instance of the <see cref="QdrantVectorCollectionCreate"/> class.
+    /// </summary>
+    /// <param name="qdrantClient">Qdrant client that can be used to manage the collections and points in a Qdrant store.</param>
+    /// <param name="options">Options that modify the behavior of create.</param>
+    private QdrantVectorCollectionCreate(QdrantClient qdrantClient, QdrantVectorCollectionCreateOptions options)
+    {
+        Verify.NotNull(qdrantClient);
+        Verify.NotNull(options);
+
+        this._qdrantClient = qdrantClient;
+        this._options = options;
+    }
+
+    /// <summary>
+    /// Create a new instance of <see cref="IVectorCollectionCreate"/> using the provided <see cref="VectorStoreRecordDefinition"/>.
     /// </summary>
     /// <param name="qdrantClient">Qdrant client that can be used to manage the collections and points in a Qdrant store.</param>
     /// <param name="vectorStoreRecordDefinition">Defines the schema of the record type and is used to create the collection with.</param>
     /// <param name="options">Optional options that modify the behavior of create.</param>
-    /// <returns>The new <see cref="QdrantVectorCollectionConfiguredCreate"/>.</returns>
-    public static QdrantVectorCollectionConfiguredCreate Create(QdrantClient qdrantClient, VectorStoreRecordDefinition vectorStoreRecordDefinition, QdrantVectorCollectionConfiguredCreateOptions? options = null)
+    /// <returns>The new <see cref="IVectorCollectionCreate"/>.</returns>
+    public static IVectorCollectionCreate Create(QdrantClient qdrantClient, VectorStoreRecordDefinition vectorStoreRecordDefinition, QdrantVectorCollectionCreateOptions? options = null)
     {
         Verify.NotNull(qdrantClient);
         Verify.NotNull(vectorStoreRecordDefinition);
 
-        var localOptions = options is null ? new QdrantVectorCollectionConfiguredCreateOptions() : options;
+        var localOptions = options is null ? new QdrantVectorCollectionCreateOptions() : options;
         if (!localOptions.HasNamedVectors && vectorStoreRecordDefinition.Properties.Where(x => x is VectorStoreRecordVectorProperty).Count() > 1)
         {
-            throw new ArgumentException($"Multiple vectors per point are not supported when the {nameof(QdrantVectorCollectionConfiguredCreateOptions.HasNamedVectors)} option is false.", nameof(options));
+            throw new ArgumentException($"Multiple vectors per point are not supported when the {nameof(QdrantVectorCollectionCreateOptions.HasNamedVectors)} option is false.", nameof(options));
         }
 
-        return new QdrantVectorCollectionConfiguredCreate(qdrantClient, vectorStoreRecordDefinition, localOptions);
+        return new QdrantVectorCollectionCreate(qdrantClient, vectorStoreRecordDefinition, localOptions);
     }
 
     /// <summary>
-    /// Create a new instance of <see cref="QdrantVectorCollectionConfiguredCreate"/> by inferring the schema from the provided type and its attributes.
+    /// Create a new instance of <see cref="IVectorCollectionCreate"/> by inferring the schema from the provided type and its attributes.
     /// </summary>
     /// <typeparam name="T">The data type to create a collection for.</typeparam>
     /// <param name="qdrantClient">Qdrant client that can be used to manage the collections and points in a Qdrant store.</param>
     /// <param name="options">Optional options that modify the behavior of create.</param>
-    /// <returns>The new <see cref="QdrantVectorCollectionConfiguredCreate"/>.</returns>
-    public static QdrantVectorCollectionConfiguredCreate Create<T>(QdrantClient qdrantClient, QdrantVectorCollectionConfiguredCreateOptions? options = null)
+    /// <returns>The new <see cref="IVectorCollectionCreate"/>.</returns>
+    public static IVectorCollectionCreate Create<T>(QdrantClient qdrantClient, QdrantVectorCollectionCreateOptions? options = null)
     {
         Verify.NotNull(qdrantClient);
 
-        var localOptions = options is null ? new QdrantVectorCollectionConfiguredCreateOptions() : options;
+        var localOptions = options is null ? new QdrantVectorCollectionCreateOptions() : options;
         var vectorStoreRecordDefinition = VectorStoreRecordPropertyReader.CreateVectorStoreRecordDefinitionFromType(typeof(T), localOptions.HasNamedVectors);
-        return new QdrantVectorCollectionConfiguredCreate(qdrantClient, vectorStoreRecordDefinition, localOptions);
+        return new QdrantVectorCollectionCreate(qdrantClient, vectorStoreRecordDefinition, localOptions);
+    }
+
+    /// <summary>
+    /// Create a new instance of <see cref="IConfiguredVectorCollectionCreate"/>.
+    /// </summary>
+    /// <param name="qdrantClient">Qdrant client that can be used to manage the collections and points in a Qdrant store.</param>
+    /// <param name="options">Optional options that modify the behavior of create.</param>
+    /// <returns>The new <see cref="IConfiguredVectorCollectionCreate"/>.</returns>
+    public static IConfiguredVectorCollectionCreate Create(QdrantClient qdrantClient, QdrantVectorCollectionCreateOptions? options = null)
+    {
+        Verify.NotNull(qdrantClient);
+
+        return new QdrantVectorCollectionCreate(qdrantClient, options is null ? new QdrantVectorCollectionCreateOptions() : options);
     }
 
     /// <inheritdoc />
-    public async Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default)
+    public Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default)
+    {
+        if (this._vectorStoreRecordDefinition is null)
+        {
+            throw new InvalidOperationException($"Cannot create a collection without a {nameof(VectorStoreRecordDefinition)}.");
+        }
+
+        return this.CreateCollectionAsync(name, this._vectorStoreRecordDefinition, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task CreateCollectionAsync(string name, VectorStoreRecordDefinition vectorStoreRecordDefinition, CancellationToken cancellationToken = default)
     {
         if (!this._options.HasNamedVectors)
         {
             // If we are not using named vectors, we can only have one vector property.
-            var singleVectorProperty = this._vectorStoreRecordDefinition.Properties.First(x => x is VectorStoreRecordVectorProperty vectorProperty) as VectorStoreRecordVectorProperty;
+            var singleVectorProperty = vectorStoreRecordDefinition.Properties.First(x => x is VectorStoreRecordVectorProperty vectorProperty) as VectorStoreRecordVectorProperty;
 
             if (singleVectorProperty!.Dimensions is not > 0)
             {
@@ -143,7 +181,7 @@ public sealed class QdrantVectorCollectionConfiguredCreate : IVectorCollectionCr
             var vectorParamsMap = new VectorParamsMap();
 
             // Since we are using named vectors, iterate over all vector properties.
-            var vectorProperties = this._vectorStoreRecordDefinition.Properties.Where(x => x is VectorStoreRecordVectorProperty).Select(x => (VectorStoreRecordVectorProperty)x);
+            var vectorProperties = vectorStoreRecordDefinition.Properties.Where(x => x is VectorStoreRecordVectorProperty).Select(x => (VectorStoreRecordVectorProperty)x);
             foreach (var vectorProperty in vectorProperties)
             {
                 if (vectorProperty.Dimensions is not > 0)
@@ -174,7 +212,7 @@ public sealed class QdrantVectorCollectionConfiguredCreate : IVectorCollectionCr
         }
 
         // Add indexes for each of the data properties that require filtering.
-        var dataProperties = this._vectorStoreRecordDefinition.Properties.Where(x => x is VectorStoreRecordDataProperty).Select(x => (VectorStoreRecordDataProperty)x).Where(x => x.IsFilterable);
+        var dataProperties = vectorStoreRecordDefinition.Properties.Where(x => x is VectorStoreRecordDataProperty).Select(x => (VectorStoreRecordDataProperty)x).Where(x => x.IsFilterable);
         foreach (var dataProperty in dataProperties)
         {
             if (dataProperty.PropertyType is null)
@@ -188,6 +226,13 @@ public sealed class QdrantVectorCollectionConfiguredCreate : IVectorCollectionCr
                 s_schemaTypeMap[dataProperty.PropertyType!],
                 cancellationToken: cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    /// <inheritdoc />
+    public Task CreateCollectionAsync<TRecord>(string name, CancellationToken cancellationToken = default)
+    {
+        var vectorStoreRecordDefinition = VectorStoreRecordPropertyReader.CreateVectorStoreRecordDefinitionFromType(typeof(TRecord), true);
+        return this.CreateCollectionAsync(name, vectorStoreRecordDefinition, cancellationToken);
     }
 
     /// <summary>

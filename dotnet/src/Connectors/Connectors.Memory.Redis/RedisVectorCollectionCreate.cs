@@ -15,13 +15,13 @@ namespace Microsoft.SemanticKernel.Connectors.Redis;
 /// <summary>
 /// Class that can create a new collection in redis using a provided configuration.
 /// </summary>
-public sealed class RedisVectorCollectionConfiguredCreate : IVectorCollectionCreate
+public sealed class RedisVectorCollectionCreate : IVectorCollectionCreate, IConfiguredVectorCollectionCreate
 {
     /// <summary>The redis database to read/write indices from.</summary>
     private readonly IDatabase _database;
 
     /// <summary>Defines the schema of the record type and is used to create the collection with.</summary>
-    private readonly VectorStoreRecordDefinition _vectorStoreRecordDefinition;
+    private readonly VectorStoreRecordDefinition? _vectorStoreRecordDefinition;
 
     /// <summary>A set of number types that are supported for filtering.</summary>
     private static readonly HashSet<Type> s_supportedFilterableNumericDataTypes =
@@ -52,11 +52,11 @@ public sealed class RedisVectorCollectionConfiguredCreate : IVectorCollectionCre
     ];
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="RedisVectorCollectionConfiguredCreate"/> class.
+    /// Initializes a new instance of the <see cref="RedisVectorCollectionCreate"/> class.
     /// </summary>
     /// <param name="database">The redis database to read/write indices from.</param>
     /// <param name="vectorStoreRecordDefinition">Defines the schema of the record type and is used to create the collection with.</param>
-    private RedisVectorCollectionConfiguredCreate(IDatabase database, VectorStoreRecordDefinition vectorStoreRecordDefinition)
+    private RedisVectorCollectionCreate(IDatabase database, VectorStoreRecordDefinition vectorStoreRecordDefinition)
     {
         Verify.NotNull(database);
         Verify.NotNull(vectorStoreRecordDefinition);
@@ -66,35 +66,66 @@ public sealed class RedisVectorCollectionConfiguredCreate : IVectorCollectionCre
     }
 
     /// <summary>
-    /// Create a new instance of <see cref="RedisVectorCollectionConfiguredCreate"/> using the provided <see cref="VectorStoreRecordDefinition"/>.
+    /// Initializes a new instance of the <see cref="RedisVectorCollectionCreate"/> class.
     /// </summary>
     /// <param name="database">The redis database to read/write indices from.</param>
-    /// <param name="vectorStoreRecordDefinition">Defines the schema of the record type and is used to create the collection with.</param>
-    /// <returns>The new <see cref="RedisVectorCollectionConfiguredCreate"/>.</returns>
-    public static RedisVectorCollectionConfiguredCreate Create(IDatabase database, VectorStoreRecordDefinition vectorStoreRecordDefinition)
+    private RedisVectorCollectionCreate(IDatabase database)
     {
-        return new RedisVectorCollectionConfiguredCreate(database, vectorStoreRecordDefinition);
+        Verify.NotNull(database);
+        this._database = database;
     }
 
     /// <summary>
-    /// Create a new instance of <see cref="RedisVectorCollectionConfiguredCreate"/> by inferring the schema from the provided type and its attributes.
+    /// Create a new instance of <see cref="IVectorCollectionCreate"/> using the provided <see cref="VectorStoreRecordDefinition"/>.
+    /// </summary>
+    /// <param name="database">The redis database to read/write indices from.</param>
+    /// <param name="vectorStoreRecordDefinition">Defines the schema of the record type and is used to create the collection with.</param>
+    /// <returns>The new <see cref="IVectorCollectionCreate"/>.</returns>
+    public static IVectorCollectionCreate Create(IDatabase database, VectorStoreRecordDefinition vectorStoreRecordDefinition)
+    {
+        return new RedisVectorCollectionCreate(database, vectorStoreRecordDefinition);
+    }
+
+    /// <summary>
+    /// Create a new instance of <see cref="IVectorCollectionCreate"/> by inferring the schema from the provided type and its attributes.
     /// </summary>
     /// <typeparam name="T">The data type to create a collection for.</typeparam>
     /// <param name="database">The redis database to read/write indices from.</param>
-    /// <returns>The new <see cref="RedisVectorCollectionConfiguredCreate"/>.</returns>
-    public static RedisVectorCollectionConfiguredCreate Create<T>(IDatabase database)
+    /// <returns>The new <see cref="IVectorCollectionCreate"/>.</returns>
+    public static IVectorCollectionCreate Create<T>(IDatabase database)
     {
         var vectorStoreRecordDefinition = VectorStoreRecordPropertyReader.CreateVectorStoreRecordDefinitionFromType(typeof(T), true);
-        return new RedisVectorCollectionConfiguredCreate(database, vectorStoreRecordDefinition);
+        return new RedisVectorCollectionCreate(database, vectorStoreRecordDefinition);
+    }
+
+    /// <summary>
+    /// Create a new instance of <see cref="IConfiguredVectorCollectionCreate"/>.
+    /// </summary>
+    /// <param name="database">The redis database to read/write indices from.</param>
+    /// <returns>The new <see cref="IConfiguredVectorCollectionCreate"/>.</returns>
+    public static IConfiguredVectorCollectionCreate Create(IDatabase database)
+    {
+        return new RedisVectorCollectionCreate(database);
     }
 
     /// <inheritdoc />
-    public async Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default)
+    public Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default)
+    {
+        if (this._vectorStoreRecordDefinition is null)
+        {
+            throw new InvalidOperationException($"Cannot create a collection without a {nameof(VectorStoreRecordDefinition)}.");
+        }
+
+        return this.CreateCollectionAsync(name, this._vectorStoreRecordDefinition, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task CreateCollectionAsync(string name, VectorStoreRecordDefinition vectorStoreRecordDefinition, CancellationToken cancellationToken = default)
     {
         var schema = new Schema();
 
         // Loop through all properties and create the index fields.
-        foreach (var property in this._vectorStoreRecordDefinition.Properties)
+        foreach (var property in vectorStoreRecordDefinition.Properties)
         {
             // Key property.
             if (property is VectorStoreRecordKeyProperty keyProperty)
@@ -144,7 +175,14 @@ public sealed class RedisVectorCollectionConfiguredCreate : IVectorCollectionCre
         // Create the index.
         var createParams = new FTCreateParams();
         createParams.AddPrefix(name);
-        await this._database.FT().CreateAsync(name, createParams, schema).ConfigureAwait(false);
+        return this._database.FT().CreateAsync(name, createParams, schema);
+    }
+
+    /// <inheritdoc />
+    public Task CreateCollectionAsync<TRecord>(string name, CancellationToken cancellationToken = default)
+    {
+        var vectorStoreRecordDefinition = VectorStoreRecordPropertyReader.CreateVectorStoreRecordDefinitionFromType(typeof(TRecord), true);
+        return this.CreateCollectionAsync(name, vectorStoreRecordDefinition, cancellationToken);
     }
 
     /// <summary>

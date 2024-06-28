@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -13,13 +14,16 @@ namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 /// <summary>
 /// Provides collection retrieval and deletion for Azure AI Search.
 /// </summary>
-public sealed class AzureAISearchVectorCollectionStore : IVectorCollectionStore
+public sealed class AzureAISearchVectorCollectionStore : IVectorCollectionStore, IConfiguredVectorCollectionStore
 {
     /// <summary>Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</summary>
     private readonly SearchIndexClient _searchIndexClient;
 
-    /// <summary>Used to create new collections in the vector store.</summary>
-    private readonly IVectorCollectionCreate _vectorCollectionCreate;
+    /// <summary>Used to create new collections in the vector store using configuration on the constructor.</summary>
+    private readonly IVectorCollectionCreate? _vectorCollectionCreate;
+
+    /// <summary>Used to create new collections in the vector store using configuration on the method.</summary>
+    private readonly IConfiguredVectorCollectionCreate? _configuredVectorCollectionCreate;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AzureAISearchVectorCollectionStore"/> class.
@@ -35,10 +39,51 @@ public sealed class AzureAISearchVectorCollectionStore : IVectorCollectionStore
         this._vectorCollectionCreate = vectorCollectionCreate;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AzureAISearchVectorCollectionStore"/> class.
+    /// </summary>
+    /// <param name="searchIndexClient">Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</param>
+    /// <param name="configuredVectorCollectionCreate">Used to create new collections in the vector store.</param>
+    public AzureAISearchVectorCollectionStore(SearchIndexClient searchIndexClient, IConfiguredVectorCollectionCreate configuredVectorCollectionCreate)
+    {
+        Verify.NotNull(searchIndexClient);
+        Verify.NotNull(configuredVectorCollectionCreate);
+
+        this._searchIndexClient = searchIndexClient;
+        this._configuredVectorCollectionCreate = configuredVectorCollectionCreate;
+    }
+
     /// <inheritdoc />
     public Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default)
     {
+        if (this._vectorCollectionCreate is null)
+        {
+            throw new InvalidOperationException($"Cannot create a collection without a {nameof(IVectorCollectionCreate)}.");
+        }
+
         return this._vectorCollectionCreate.CreateCollectionAsync(name, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task CreateCollectionAsync(string name, VectorStoreRecordDefinition vectorStoreRecordDefinition, CancellationToken cancellationToken = default)
+    {
+        if (this._configuredVectorCollectionCreate is null)
+        {
+            throw new InvalidOperationException($"Cannot create a collection without a {nameof(IConfiguredVectorCollectionCreate)}.");
+        }
+
+        return this._configuredVectorCollectionCreate.CreateCollectionAsync(name, vectorStoreRecordDefinition, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task CreateCollectionAsync<TRecord>(string name, CancellationToken cancellationToken = default)
+    {
+        if (this._configuredVectorCollectionCreate is null)
+        {
+            throw new InvalidOperationException($"Cannot create a collection without a {nameof(IConfiguredVectorCollectionCreate)}.");
+        }
+
+        return this._configuredVectorCollectionCreate.CreateCollectionAsync<TRecord>(name, cancellationToken);
     }
 
     /// <inheritdoc />

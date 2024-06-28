@@ -25,8 +25,8 @@ public class AzureAISearchVectorCollectionTests(ITestOutputHelper output, AzureA
         var sut = new AzureAISearchVectorCollectionStore(
             fixture.SearchIndexClient,
             useDefinition ?
-                AzureAISearchVectorCollectionConfiguredCreate.Create(fixture.SearchIndexClient, fixture.VectorStoreRecordDefinition) :
-                AzureAISearchVectorCollectionConfiguredCreate.Create<AzureAISearchVectorStoreFixture.Hotel>(fixture.SearchIndexClient));
+                AzureAISearchVectorCollectionCreate.Create(fixture.SearchIndexClient, fixture.VectorStoreRecordDefinition) :
+                AzureAISearchVectorCollectionCreate.Create<AzureAISearchVectorStoreFixture.Hotel>(fixture.SearchIndexClient));
         await sut.DeleteCollectionAsync(testCollectionName);
 
         // Act
@@ -45,7 +45,7 @@ public class AzureAISearchVectorCollectionTests(ITestOutputHelper output, AzureA
     public async Task ItCanCheckIfCollectionExistsForExistingCollectionAsync()
     {
         // Arrange
-        var sut = new AzureAISearchVectorCollectionStore(fixture.SearchIndexClient, AzureAISearchVectorCollectionConfiguredCreate.Create(fixture.SearchIndexClient, fixture.VectorStoreRecordDefinition));
+        var sut = new AzureAISearchVectorCollectionStore(fixture.SearchIndexClient, AzureAISearchVectorCollectionCreate.Create(fixture.SearchIndexClient, fixture.VectorStoreRecordDefinition));
 
         // Act
         var existResult = await sut.CollectionExistsAsync(fixture.TestIndexName);
@@ -61,7 +61,7 @@ public class AzureAISearchVectorCollectionTests(ITestOutputHelper output, AzureA
     public async Task ItCanCheckIfCollectionExistsForNonExistingCollectionAsync()
     {
         // Arrange
-        var sut = new AzureAISearchVectorCollectionStore(fixture.SearchIndexClient, AzureAISearchVectorCollectionConfiguredCreate.Create(fixture.SearchIndexClient, fixture.VectorStoreRecordDefinition));
+        var sut = new AzureAISearchVectorCollectionStore(fixture.SearchIndexClient, AzureAISearchVectorCollectionCreate.Create(fixture.SearchIndexClient, fixture.VectorStoreRecordDefinition));
 
         // Act
         var existResult = await sut.CollectionExistsAsync("non-existing-collection");
@@ -80,7 +80,7 @@ public class AzureAISearchVectorCollectionTests(ITestOutputHelper output, AzureA
         var additionalCollectionName = fixture.TestIndexName + "-listnames";
         await AzureAISearchVectorStoreFixture.DeleteIndexIfExistsAsync(additionalCollectionName, fixture.SearchIndexClient);
         await AzureAISearchVectorStoreFixture.CreateIndexAsync(additionalCollectionName, fixture.SearchIndexClient);
-        var sut = new AzureAISearchVectorCollectionStore(fixture.SearchIndexClient, AzureAISearchVectorCollectionConfiguredCreate.Create(fixture.SearchIndexClient, fixture.VectorStoreRecordDefinition));
+        var sut = new AzureAISearchVectorCollectionStore(fixture.SearchIndexClient, AzureAISearchVectorCollectionCreate.Create(fixture.SearchIndexClient, fixture.VectorStoreRecordDefinition));
 
         // Act
         var collectionNames = await sut.ListCollectionNamesAsync().ToListAsync();
@@ -103,7 +103,7 @@ public class AzureAISearchVectorCollectionTests(ITestOutputHelper output, AzureA
         // Arrange
         var tempCollectionName = fixture.TestIndexName + "-delete";
         await AzureAISearchVectorStoreFixture.CreateIndexAsync(tempCollectionName, fixture.SearchIndexClient);
-        var sut = new AzureAISearchVectorCollectionStore(fixture.SearchIndexClient, AzureAISearchVectorCollectionConfiguredCreate.Create(fixture.SearchIndexClient, fixture.VectorStoreRecordDefinition));
+        var sut = new AzureAISearchVectorCollectionStore(fixture.SearchIndexClient, AzureAISearchVectorCollectionCreate.Create(fixture.SearchIndexClient, fixture.VectorStoreRecordDefinition));
 
         // Act
         await sut.DeleteCollectionAsync(tempCollectionName);

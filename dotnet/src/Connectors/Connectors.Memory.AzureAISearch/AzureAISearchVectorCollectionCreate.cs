@@ -13,20 +13,20 @@ namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 /// <summary>
 /// Class that can create a new collection in an Azure AI Search service using a provided configuration.
 /// </summary>
-public sealed class AzureAISearchVectorCollectionConfiguredCreate : IVectorCollectionCreate
+public sealed class AzureAISearchVectorCollectionCreate : IVectorCollectionCreate, IConfiguredVectorCollectionCreate
 {
     /// <summary>Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</summary>
     private readonly SearchIndexClient _searchIndexClient;
 
     /// <summary>Defines the schema of the record type and is used to create the collection with.</summary>
-    private readonly VectorStoreRecordDefinition _vectorStoreRecordDefinition;
+    private readonly VectorStoreRecordDefinition? _vectorStoreRecordDefinition;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="AzureAISearchVectorCollectionConfiguredCreate"/> class.
+    /// Initializes a new instance of the <see cref="AzureAISearchVectorCollectionCreate"/> class.
     /// </summary>
     /// <param name="searchIndexClient">Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</param>
     /// <param name="vectorStoreRecordDefinition">Defines the schema of the record type and is used to create the collection with.</param>
-    private AzureAISearchVectorCollectionConfiguredCreate(SearchIndexClient searchIndexClient, VectorStoreRecordDefinition vectorStoreRecordDefinition)
+    private AzureAISearchVectorCollectionCreate(SearchIndexClient searchIndexClient, VectorStoreRecordDefinition vectorStoreRecordDefinition)
     {
         Verify.NotNull(searchIndexClient);
         Verify.NotNull(vectorStoreRecordDefinition);
@@ -36,36 +36,67 @@ public sealed class AzureAISearchVectorCollectionConfiguredCreate : IVectorColle
     }
 
     /// <summary>
-    /// Create a new instance of <see cref="AzureAISearchVectorCollectionConfiguredCreate"/> using the provided <see cref="VectorStoreRecordDefinition"/>.
+    /// Initializes a new instance of the <see cref="AzureAISearchVectorCollectionCreate"/> class.
     /// </summary>
-    /// <param name="searchIndexClient">Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.></param>
-    /// <param name="vectorStoreRecordDefinition">Defines the schema of the record type and is used to create the collection with.</param>
-    /// <returns>The new <see cref="AzureAISearchVectorCollectionConfiguredCreate"/>.</returns>
-    public static AzureAISearchVectorCollectionConfiguredCreate Create(SearchIndexClient searchIndexClient, VectorStoreRecordDefinition vectorStoreRecordDefinition)
+    /// <param name="searchIndexClient">Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</param>
+    private AzureAISearchVectorCollectionCreate(SearchIndexClient searchIndexClient)
     {
-        return new AzureAISearchVectorCollectionConfiguredCreate(searchIndexClient, vectorStoreRecordDefinition);
+        Verify.NotNull(searchIndexClient);
+        this._searchIndexClient = searchIndexClient;
     }
 
     /// <summary>
-    /// Create a new instance of <see cref="AzureAISearchVectorCollectionConfiguredCreate"/> by inferring the schema from the provided type and its attributes.
+    /// Create a new instance of <see cref="IVectorCollectionCreate"/> using the provided <see cref="VectorStoreRecordDefinition"/>.
     /// </summary>
-    /// <typeparam name="T">The data type to create a collection for.</typeparam>
     /// <param name="searchIndexClient">Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.></param>
-    /// <returns>The new <see cref="AzureAISearchVectorCollectionConfiguredCreate"/>.</returns>
-    public static AzureAISearchVectorCollectionConfiguredCreate Create<T>(SearchIndexClient searchIndexClient)
+    /// <param name="vectorStoreRecordDefinition">Defines the schema of the record type and is used to create the collection with.</param>
+    /// <returns>The new <see cref="IVectorCollectionCreate"/>.</returns>
+    public static IVectorCollectionCreate Create(SearchIndexClient searchIndexClient, VectorStoreRecordDefinition vectorStoreRecordDefinition)
     {
-        var vectorStoreRecordDefinition = VectorStoreRecordPropertyReader.CreateVectorStoreRecordDefinitionFromType(typeof(T), true);
-        return new AzureAISearchVectorCollectionConfiguredCreate(searchIndexClient, vectorStoreRecordDefinition);
+        return new AzureAISearchVectorCollectionCreate(searchIndexClient, vectorStoreRecordDefinition);
+    }
+
+    /// <summary>
+    /// Create a new instance of <see cref="IVectorCollectionCreate"/> by inferring the schema from the provided type and its attributes.
+    /// </summary>
+    /// <typeparam name="TRecord">The data type to create a collection for.</typeparam>
+    /// <param name="searchIndexClient">Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.></param>
+    /// <returns>The new <see cref="IVectorCollectionCreate"/>.</returns>
+    public static IVectorCollectionCreate Create<TRecord>(SearchIndexClient searchIndexClient)
+    {
+        var vectorStoreRecordDefinition = VectorStoreRecordPropertyReader.CreateVectorStoreRecordDefinitionFromType(typeof(TRecord), true);
+        return new AzureAISearchVectorCollectionCreate(searchIndexClient, vectorStoreRecordDefinition);
+    }
+
+    /// <summary>
+    /// Create a new instance of <see cref="IConfiguredVectorCollectionCreate"/>.
+    /// </summary>
+    /// <param name="searchIndexClient">Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.></param>
+    /// <returns>The new <see cref="IConfiguredVectorCollectionCreate"/>.</returns>
+    public static IConfiguredVectorCollectionCreate Create(SearchIndexClient searchIndexClient)
+    {
+        return new AzureAISearchVectorCollectionCreate(searchIndexClient);
     }
 
     /// <inheritdoc />
-    public async Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default)
+    public Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default)
+    {
+        if (this._vectorStoreRecordDefinition is null)
+        {
+            throw new InvalidOperationException($"Cannot create a collection without a {nameof(VectorStoreRecordDefinition)}.");
+        }
+
+        return this.CreateCollectionAsync(name, this._vectorStoreRecordDefinition, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task CreateCollectionAsync(string name, VectorStoreRecordDefinition vectorStoreRecordDefinition, CancellationToken cancellationToken = default)
     {
         var vectorSearchConfig = new VectorSearch();
         var searchFields = new List<SearchField>();
 
         // Loop through all properties and create the search fields.
-        foreach (var property in this._vectorStoreRecordDefinition.Properties)
+        foreach (var property in vectorStoreRecordDefinition.Properties)
         {
             // Key property.
             if (property is VectorStoreRecordKeyProperty keyProperty)
@@ -114,7 +145,14 @@ public sealed class AzureAISearchVectorCollectionConfiguredCreate : IVectorColle
         // Create the index.
         var searchIndex = new SearchIndex(name, searchFields);
         searchIndex.VectorSearch = vectorSearchConfig;
-        await this._searchIndexClient.CreateIndexAsync(searchIndex, cancellationToken).ConfigureAwait(false);
+        return this._searchIndexClient.CreateIndexAsync(searchIndex, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task CreateCollectionAsync<TRecord>(string name, CancellationToken cancellationToken = default)
+    {
+        var vectorStoreRecordDefinition = VectorStoreRecordPropertyReader.CreateVectorStoreRecordDefinitionFromType(typeof(TRecord), true);
+        return this.CreateCollectionAsync(name, vectorStoreRecordDefinition, cancellationToken);
     }
 
     /// <summary>
