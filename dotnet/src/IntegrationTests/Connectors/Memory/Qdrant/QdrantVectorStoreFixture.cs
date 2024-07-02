@@ -37,7 +37,7 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
                 new VectorStoreRecordKeyProperty("HotelId"),
                 new VectorStoreRecordDataProperty("HotelName") { IsFilterable = true, PropertyType = typeof(string) },
                 new VectorStoreRecordDataProperty("HotelCode") { IsFilterable = true, PropertyType = typeof(int) },
-                new VectorStoreRecordDataProperty("ParkingIncluded") { IsFilterable = true, PropertyType = typeof(bool) },
+                new VectorStoreRecordDataProperty("ParkingIncluded") { IsFilterable = true, PropertyType = typeof(bool), StoragePropertyName = "parking_is_included" },
                 new VectorStoreRecordDataProperty("HotelRating") { IsFilterable = true, PropertyType = typeof(float) },
                 new VectorStoreRecordDataProperty("Tags"),
                 new VectorStoreRecordDataProperty("Description"),
@@ -137,19 +137,19 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
             {
                 Id = 11,
                 Vectors = new Vectors { Vectors_ = namedVectors1 },
-                Payload = { ["HotelName"] = "My Hotel 11", ["HotelCode"] = 11, ["ParkingIncluded"] = true, ["Tags"] = tagsValue, ["HotelRating"] = 4.5f, ["Description"] = "This is a great hotel." }
+                Payload = { ["HotelName"] = "My Hotel 11", ["HotelCode"] = 11, ["parking_is_included"] = true, ["Tags"] = tagsValue, ["HotelRating"] = 4.5f, ["Description"] = "This is a great hotel." }
             },
             new PointStruct
             {
                 Id = 12,
                 Vectors = new Vectors { Vectors_ = namedVectors2 },
-                Payload = { ["HotelName"] = "My Hotel 12", ["HotelCode"] = 12, ["ParkingIncluded"] = false, ["Description"] = "This is a great hotel." }
+                Payload = { ["HotelName"] = "My Hotel 12", ["HotelCode"] = 12, ["parking_is_included"] = false, ["Description"] = "This is a great hotel." }
             },
             new PointStruct
             {
                 Id = 13,
                 Vectors = new Vectors { Vectors_ = namedVectors3 },
-                Payload = { ["HotelName"] = "My Hotel 13", ["HotelCode"] = 13, ["ParkingIncluded"] = false, ["Description"] = "This is a great hotel." }
+                Payload = { ["HotelName"] = "My Hotel 13", ["HotelCode"] = 13, ["parking_is_included"] = false, ["Description"] = "This is a great hotel." }
             },
         ];
 
@@ -162,19 +162,19 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
             {
                 Id = 11,
                 Vectors = embedding,
-                Payload = { ["HotelName"] = "My Hotel 11", ["HotelCode"] = 11, ["ParkingIncluded"] = true, ["Tags"] = tagsValue, ["HotelRating"] = 4.5f, ["Description"] = "This is a great hotel." }
+                Payload = { ["HotelName"] = "My Hotel 11", ["HotelCode"] = 11, ["parking_is_included"] = true, ["Tags"] = tagsValue, ["HotelRating"] = 4.5f, ["Description"] = "This is a great hotel." }
             },
             new PointStruct
             {
                 Id = 12,
                 Vectors = embedding,
-                Payload = { ["HotelName"] = "My Hotel 12", ["HotelCode"] = 12, ["ParkingIncluded"] = false, ["Description"] = "This is a great hotel." }
+                Payload = { ["HotelName"] = "My Hotel 12", ["HotelCode"] = 12, ["parking_is_included"] = false, ["Description"] = "This is a great hotel." }
             },
             new PointStruct
             {
                 Id = 13,
                 Vectors = embedding,
-                Payload = { ["HotelName"] = "My Hotel 13", ["HotelCode"] = 13, ["ParkingIncluded"] = false, ["Description"] = "This is a great hotel." }
+                Payload = { ["HotelName"] = "My Hotel 13", ["HotelCode"] = 13, ["parking_is_included"] = false, ["Description"] = "This is a great hotel." }
             },
         ];
 
@@ -284,7 +284,7 @@ public class QdrantVectorStoreFixture : IAsyncLifetime
         public float? HotelRating { get; set; }
 
         /// <summary>A bool metadata field.</summary>
-        [VectorStoreRecordData(IsFilterable = true)]
+        [VectorStoreRecordData(IsFilterable = true, StoragePropertyName = "parking_is_included")]
         public bool ParkingIncluded { get; set; }
 
         [VectorStoreRecordData]
