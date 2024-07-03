@@ -202,7 +202,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         var qdrantRecordStore = new QdrantVectorRecordStore<DataReference>(qdrantClient, new() { DefaultCollectionName = "refs", VectorStoreRecordDefinition = refsCollectionDefinition, HasNamedVectors = true });
 
         // Create collection and add data.
-        await ConfiguredCreateExampleAsync(configuredQdrantCollectionStore, qdrantRecordStore, embeddingService, "refs", refsCollectionDefinition);
+        await ConfiguredCreateExampleAsync(configuredQdrantCollectionStore, qdrantCollectionStore, qdrantRecordStore, embeddingService, "refs", refsCollectionDefinition);
 
         // Search Vector DB.
         var question = "What is Azure AI Search?";
@@ -214,28 +214,47 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
     }
 
     private async Task ConfiguredCreateExampleAsync(
-        IConfiguredVectorCollectionStore collectionStore,
+        IConfiguredVectorCollectionStore configuredCollectionStore,
+        IVectorCollectionStore collectionStore,
         IVectorRecordStore<ulong, DataReference> vectorRecordStore,
         ITextEmbeddingGenerationService embeddingGenerationService,
         string collectionName,
         VectorStoreRecordDefinition refsCollectionDefinition)
     {
-        await collectionStore.CreateCollectionAsync(collectionName, refsCollectionDefinition);
+        // With configuration as method parameter, so collection store is mostly schema agnostic.
+        if (!await configuredCollectionStore.CollectionExistsAsync(collectionName))
+        {
+            await configuredCollectionStore.CreateCollectionAsync(collectionName, refsCollectionDefinition);
+        }
+
+        // With configuration from type on method, so collection store is mostly schema agnostic.
+        if (!await configuredCollectionStore.CollectionExistsAsync(collectionName))
+        {
+            await configuredCollectionStore.CreateCollectionAsync<DataReference>(collectionName);
+        }
+
+        // With configuration as constructor parameter, so collection store is schema specific.
+        if (!await collectionStore.CollectionExistsAsync(collectionName))
+        {
+            await collectionStore.CreateCollectionAsync(collectionName);
+        }
 
         // Generate Embeddings.
         var description = """
-What is Azure AI Search?
-Azure AI Search provides a dedicated search engine and persistent storage of your searchable content for full text and vector search scenarios.It also includes optional, integrated AI to extract more text and structure from raw content, and to chunk and vectorize content for vector search.
+            What is Azure AI Search?
+            Azure AI Search provides a dedicated search engine and persistent storage of your searchable content for full text and vector search scenarios.It also includes optional, integrated AI to extract more text and structure from raw content, and to chunk and vectorize content for vector search.
 """;
         var embeddings = await embeddingGenerationService.GenerateEmbeddingsAsync(new List<string> { description });
 
         // Upsert.
-        await vectorRecordStore.UpsertAsync(new DataReference
-        {
-            Key = 0,
-            Reference = "https://learn.microsoft.com/en-us/azure/search/search-faq-frequently-asked-questions#what-is-azure-ai-search-",
-            Embedding = embeddings.First()
-        });
+        await vectorRecordStore.UpsertAsync(
+            new DataReference
+            {
+                Key = 0,
+                Reference = "https://learn.microsoft.com/en-us/azure/search/search-faq-frequently-asked-questions#what-is-azure-ai-search-",
+                Embedding = embeddings.First()
+            },
+            new() { CollectionName = collectionName });
     }
 
     /// <summary>
