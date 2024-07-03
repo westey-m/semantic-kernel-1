@@ -1,7 +1,9 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Search.Documents.Indexes;
@@ -107,7 +109,19 @@ public sealed class AzureAISearchVectorCollectionCreate : IVectorCollectionCreat
             // Data property.
             if (property is VectorStoreRecordDataProperty dataProperty)
             {
-                searchFields.Add(new SearchableField(dataProperty.PropertyName) { IsFilterable = dataProperty.IsFilterable });
+                if (dataProperty.PropertyType == typeof(string))
+                {
+                    searchFields.Add(new SearchableField(dataProperty.PropertyName) { IsFilterable = dataProperty.IsFilterable });
+                }
+                else
+                {
+                    if (dataProperty.PropertyType is null)
+                    {
+                        throw new InvalidOperationException($"Property {nameof(dataProperty.PropertyType)} on {nameof(VectorStoreRecordDataProperty)} '{dataProperty.PropertyName}' must be set to create a collection.");
+                    }
+
+                    searchFields.Add(new SimpleField(dataProperty.PropertyName, GetSDKFieldDataType(dataProperty.PropertyType)) { IsFilterable = dataProperty.IsFilterable });
+                }
             }
 
             // Vector property.
@@ -198,5 +212,55 @@ public sealed class AzureAISearchVectorCollectionCreate : IVectorCollectionCreat
             DistanceFunction.EuclideanDistance => VectorSearchAlgorithmMetric.Euclidean,
             _ => throw new InvalidOperationException($"Unsupported distance function '{vectorProperty.DistanceFunction}' for {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}'.")
         };
+    }
+
+    /// <summary>
+    /// Maps the given property type to the corresponding <see cref="SearchFieldDataType"/>.
+    /// </summary>
+    /// <param name="propertyType">The property type to map.</param>
+    /// <returns>The <see cref="SearchFieldDataType"/> that corresponds to the given property type.</returns>"
+    /// <exception cref="InvalidOperationException">Thrown if the given type is not supported.</exception>
+    private static SearchFieldDataType GetSDKFieldDataType(Type propertyType)
+    {
+        return propertyType switch
+        {
+            Type stringType when stringType == typeof(string) => SearchFieldDataType.String,
+            Type boolType when boolType == typeof(bool) || boolType == typeof(bool?) => SearchFieldDataType.Boolean,
+            Type intType when intType == typeof(int) || intType == typeof(int?) => SearchFieldDataType.Int32,
+            Type longType when longType == typeof(long) || longType == typeof(long?) => SearchFieldDataType.Int64,
+            Type floatType when floatType == typeof(float) || floatType == typeof(float?) => SearchFieldDataType.Double,
+            Type doubleType when doubleType == typeof(double) || doubleType == typeof(double?) => SearchFieldDataType.Double,
+            Type dateTimeType when dateTimeType == typeof(DateTime) || dateTimeType == typeof(DateTime?) => SearchFieldDataType.DateTimeOffset,
+            Type dateTimeOffsetType when dateTimeOffsetType == typeof(DateTimeOffset) || dateTimeOffsetType == typeof(DateTimeOffset?) => SearchFieldDataType.DateTimeOffset,
+            Type collectionType when typeof(IEnumerable).IsAssignableFrom(collectionType) => SearchFieldDataType.Collection(GetSDKFieldDataType(GetEnumerableType(propertyType))),
+            _ => throw new InvalidOperationException($"Unsupported data type '{propertyType}' for {nameof(VectorStoreRecordDataProperty)}.")
+        };
+    }
+
+    /// <summary>
+    /// Gets the type of object stored in the given enumerable type.
+    /// </summary>
+    /// <param name="type">The enumerable to get the stored type for.</param>
+    /// <returns>The type of object stored in the given enumerable type.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the given type is not enumerable.</exception>
+    private static Type GetEnumerableType(Type type)
+    {
+        if (type is IEnumerable)
+        {
+            return typeof(object);
+        }
+
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+        {
+            return type.GetGenericArguments()[0];
+        }
+
+        var enumerableInterface = type.GetInterfaces().FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+        if (enumerableInterface is not null)
+        {
+            return enumerableInterface.GetGenericArguments()[0];
+        }
+
+        throw new InvalidOperationException($"Unsupported data type '{type}' for {nameof(VectorStoreRecordDataProperty)}.");
     }
 }
