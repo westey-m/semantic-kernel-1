@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure;
 using Azure.Search.Documents.Indexes;
-using Microsoft.SemanticKernel.Memory;
+using Microsoft.SemanticKernel.Data;
 
 namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 

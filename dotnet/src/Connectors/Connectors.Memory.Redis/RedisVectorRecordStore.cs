@@ -9,7 +9,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.SemanticKernel.Memory;
+using Microsoft.SemanticKernel.Data;
 using NRedisStack.Json.DataTypes;
 using NRedisStack.RedisStackCommands;
 using StackExchange.Redis;

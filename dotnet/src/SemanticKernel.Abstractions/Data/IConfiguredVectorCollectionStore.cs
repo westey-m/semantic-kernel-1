@@ -5,13 +5,13 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.SemanticKernel.Memory;
+namespace Microsoft.SemanticKernel.Data;
 
 /// <summary>
 /// Interface used to do operations on collections in a vector store.
 /// </summary>
 [Experimental("SKEXP0001")]
-public interface IVectorCollectionStore : IVectorCollectionCreate
+public interface IConfiguredVectorCollectionStore : IConfiguredVectorCollectionCreate
 {
     /// <summary>
     /// Retrieve the names of all the collections in the vector store.
