@@ -1,13 +1,71 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Threading;
+
 namespace Microsoft.SemanticKernel.Data;
 
 /// <summary>
 /// Interface for managing the collections and records in a vector store.
 /// </summary>
-/// <typeparam name="TKey">The data type of the record key.</typeparam>
-/// <typeparam name="TRecord">The record data model to use for adding, updating and retrieving data from the store.</typeparam>
-public interface IVectorStore<TKey, TRecord> : IVectorRecordStore<TKey, TRecord>, IVectorCollectionStore
-    where TRecord : class
+public interface IVectorStore
 {
+    /// <summary>
+    /// Get a collection from the vector store.
+    /// </summary>
+    /// <typeparam name="TKey">The data type of the record key.</typeparam>
+    /// <typeparam name="TRecord">The record data model to use for adding, updating and retrieving data from the collection.</typeparam>
+    /// <param name="name">The name of the collection.</param>
+    /// <param name="vectorStoreRecordDefinition">Defines the schema of the record type.</param>
+    /// <returns>A new <see cref="IVectorRecordStore{TKey, TRecord}"/> instance for managing the records in the collection.</returns>
+    IVectorRecordStore<TKey, TRecord> GetCollection<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null)
+        where TRecord : class;
+
+    /// <summary>
+    /// Create a new collection in the vector store.
+    /// </summary>
+    /// <typeparam name="TKey">The data type of the record key.</typeparam>
+    /// <typeparam name="TRecord">The record data model to use for adding, updating and retrieving data from the collection.</typeparam>
+    /// <param name="name">The name of the collection.</param>
+    /// <param name="vectorStoreRecordDefinition">Defines the schema of the record type.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    /// <returns>A new <see cref="IVectorRecordStore{TKey, TRecord}"/> instance for managing the records in the collection.</returns>
+    Task<IVectorRecordStore<TKey, TRecord>> CreateCollectionAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default)
+        where TRecord : class;
+
+    /// <summary>
+    /// Create a new collection in the vector store if it does not already exist.
+    /// </summary>
+    /// <typeparam name="TKey">The data type of the record key.</typeparam>
+    /// <typeparam name="TRecord">The record data model to use for adding, updating and retrieving data from the collection.</typeparam>
+    /// <param name="name">The name of the collection.</param>
+    /// <param name="vectorStoreRecordDefinition">Defines the schema of the record type.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    /// <returns>A new <see cref="IVectorRecordStore{TKey, TRecord}"/> instance for managing the records in the collection.</returns>
+    Task<IVectorRecordStore<TKey, TRecord>> CreateCollectionIfNotExistsAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default)
+        where TRecord : class;
+
+    /// <summary>
+    /// Retrieve the names of all the collections in the vector store.
+    /// </summary>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    /// <returns>The list of names of all the collections in the vector store.</returns>
+    IAsyncEnumerable<string> ListCollectionNamesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Check if a collection exists in the vector store.
+    /// </summary>
+    /// <param name="name">The name of the collection to check for.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    /// <returns><see langword="true"/> if the collection exists, <see langword="false"/> otherwise.</returns>
+    Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Delete a collection from the vector store.
+    /// </summary>
+    /// <param name="name">The name of the collection delete.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    /// <returns>A task that completes when the collection has been deleted.</returns>
+    Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default);
 }

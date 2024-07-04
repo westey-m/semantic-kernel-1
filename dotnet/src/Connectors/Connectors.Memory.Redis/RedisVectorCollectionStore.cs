@@ -14,7 +14,7 @@ namespace Microsoft.SemanticKernel.Connectors.Redis;
 /// <summary>
 /// Provides collection retrieval and deletion for Redis.
 /// </summary>
-public sealed class RedisVectorCollectionStore : IVectorCollectionStore, IConfiguredVectorCollectionStore
+public sealed class RedisVectorCollectionStore : IVectorCollectionStore, IConfiguredVectorCollectionStore, IVectorStore
 {
     /// <summary>The redis database to read/write indices from.</summary>
     private readonly IDatabase _database;
@@ -24,6 +24,9 @@ public sealed class RedisVectorCollectionStore : IVectorCollectionStore, IConfig
 
     /// <summary>Used to create new collections in the vector store using configuration on the method.</summary>
     private readonly IConfiguredVectorCollectionCreate? _configuredVectorCollectionCreate;
+
+    /// <summary>Optional factory used to construct vector store instances, for cases where options need to be customized.</summary>
+    private readonly IRedisVectorRecordStoreFactory? _recordStoreFactory;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RedisVectorCollectionStore"/> class.
@@ -44,13 +47,15 @@ public sealed class RedisVectorCollectionStore : IVectorCollectionStore, IConfig
     /// </summary>
     /// <param name="database">The redis database to read/write indices from.</param>
     /// <param name="configuredVectorCollectionCreate">Used to create new collections in the vector store.</param>
-    public RedisVectorCollectionStore(IDatabase database, IConfiguredVectorCollectionCreate configuredVectorCollectionCreate)
+    /// <param name="recordStoreFactory">An optional factory to use for constructing <see cref="RedisVectorRecordStore{TRecord}"/> instances, if custom options are required.</param>
+    public RedisVectorCollectionStore(IDatabase database, IConfiguredVectorCollectionCreate configuredVectorCollectionCreate, IRedisVectorRecordStoreFactory? recordStoreFactory = default)
     {
         Verify.NotNull(database);
         Verify.NotNull(configuredVectorCollectionCreate);
 
         this._database = database;
         this._configuredVectorCollectionCreate = configuredVectorCollectionCreate;
+        this._recordStoreFactory = recordStoreFactory;
     }
 
     /// <inheritdoc />
@@ -84,6 +89,57 @@ public sealed class RedisVectorCollectionStore : IVectorCollectionStore, IConfig
         }
 
         return this._configuredVectorCollectionCreate.CreateCollectionAsync<TRecord>(name, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public IVectorRecordStore<TKey, TRecord> GetCollection<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null) where TRecord : class
+    {
+        if (typeof(TKey) != typeof(string))
+        {
+            throw new NotSupportedException("Only string keys are supported.");
+        }
+
+        if (this._recordStoreFactory is not null)
+        {
+            var factoryCreatedStore = this._recordStoreFactory.CreateRecordStore<TRecord>(this._database, name, vectorStoreRecordDefinition) as IVectorRecordStore<TKey, TRecord>;
+            return factoryCreatedStore!;
+        }
+
+        var directlyCreatedStore = new RedisVectorRecordStore<TRecord>(this._database) as IVectorRecordStore<TKey, TRecord>;
+        return directlyCreatedStore!;
+    }
+
+    /// <inheritdoc />
+    public async Task<IVectorRecordStore<TKey, TRecord>> CreateCollectionAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
+    {
+        if (typeof(TKey) != typeof(string))
+        {
+            throw new NotSupportedException("Only string keys are supported.");
+        }
+
+        if (vectorStoreRecordDefinition is null)
+        {
+            vectorStoreRecordDefinition = VectorStoreRecordPropertyReader.CreateVectorStoreRecordDefinitionFromType(typeof(TRecord), true);
+        }
+
+        await this.CreateCollectionAsync(name, vectorStoreRecordDefinition, cancellationToken).ConfigureAwait(false);
+        return this.GetCollection<TKey, TRecord>(name, vectorStoreRecordDefinition);
+    }
+
+    /// <inheritdoc />
+    public async Task<IVectorRecordStore<TKey, TRecord>> CreateCollectionIfNotExistsAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
+    {
+        if (typeof(TKey) != typeof(string))
+        {
+            throw new NotSupportedException("Only string keys are supported.");
+        }
+
+        if (!await this.CollectionExistsAsync(name, cancellationToken).ConfigureAwait(false))
+        {
+            return await this.CreateCollectionAsync<TKey, TRecord>(name, vectorStoreRecordDefinition, cancellationToken).ConfigureAwait(false);
+        }
+
+        return this.GetCollection<TKey, TRecord>(name, vectorStoreRecordDefinition);
     }
 
     /// <inheritdoc />

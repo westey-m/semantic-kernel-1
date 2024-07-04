@@ -14,7 +14,7 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 /// <summary>
 /// Provides collection retrieval and deletion for Qdrant.
 /// </summary>
-public sealed class QdrantVectorCollectionStore : IVectorCollectionStore, IConfiguredVectorCollectionStore
+public sealed class QdrantVectorCollectionStore : IVectorCollectionStore, IConfiguredVectorCollectionStore, IVectorStore
 {
     /// <summary>Qdrant client that can be used to manage the collections and points in a Qdrant store.</summary>
     private readonly QdrantClient _qdrantClient;
@@ -24,6 +24,9 @@ public sealed class QdrantVectorCollectionStore : IVectorCollectionStore, IConfi
 
     /// <summary>Used to create new collections in the vector store using configuration on the method.</summary>
     private readonly IConfiguredVectorCollectionCreate? _configuredVectorCollectionCreate;
+
+    /// <summary>Optional factory used to construct vector store instances, for cases where options need to be customized.</summary>
+    private readonly IQdrantVectorRecordStoreFactory? _recordStoreFactory;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="QdrantVectorCollectionStore"/> class.
@@ -44,13 +47,15 @@ public sealed class QdrantVectorCollectionStore : IVectorCollectionStore, IConfi
     /// </summary>
     /// <param name="qdrantClient">Qdrant client that can be used to manage the collections and points in a Qdrant store.</param>
     /// <param name="configuredVectorCollectionCreate">Used to create new collections in the vector store.</param>
-    public QdrantVectorCollectionStore(QdrantClient qdrantClient, IConfiguredVectorCollectionCreate configuredVectorCollectionCreate)
+    /// <param name="recordStoreFactory">An optional factory to use for constructing <see cref="QdrantVectorRecordStore{TRecord}"/> instances, if custom options are required.</param>
+    public QdrantVectorCollectionStore(QdrantClient qdrantClient, IConfiguredVectorCollectionCreate configuredVectorCollectionCreate, IQdrantVectorRecordStoreFactory? recordStoreFactory = default)
     {
         Verify.NotNull(qdrantClient);
         Verify.NotNull(configuredVectorCollectionCreate);
 
         this._qdrantClient = qdrantClient;
         this._configuredVectorCollectionCreate = configuredVectorCollectionCreate;
+        this._recordStoreFactory = recordStoreFactory;
     }
 
     /// <inheritdoc />
@@ -84,6 +89,57 @@ public sealed class QdrantVectorCollectionStore : IVectorCollectionStore, IConfi
         }
 
         return this._configuredVectorCollectionCreate.CreateCollectionAsync<TRecord>(name, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public IVectorRecordStore<TKey, TRecord> GetCollection<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null) where TRecord : class
+    {
+        if (typeof(TKey) != typeof(ulong) && typeof(TKey) != typeof(Guid))
+        {
+            throw new NotSupportedException("Only ulong and Guid keys are supported.");
+        }
+
+        if (this._recordStoreFactory is not null)
+        {
+            var factoryCreatedStore = this._recordStoreFactory.CreateRecordStore<TRecord>(this._qdrantClient, name, vectorStoreRecordDefinition) as IVectorRecordStore<TKey, TRecord>;
+            return factoryCreatedStore!;
+        }
+
+        var directlyCreatedStore = new QdrantVectorRecordStore<TRecord>(this._qdrantClient) as IVectorRecordStore<TKey, TRecord>;
+        return directlyCreatedStore!;
+    }
+
+    /// <inheritdoc />
+    public async Task<IVectorRecordStore<TKey, TRecord>> CreateCollectionAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
+    {
+        if (typeof(TKey) != typeof(ulong) && typeof(TKey) != typeof(Guid))
+        {
+            throw new NotSupportedException("Only ulong and Guid keys are supported.");
+        }
+
+        if (vectorStoreRecordDefinition is null)
+        {
+            vectorStoreRecordDefinition = VectorStoreRecordPropertyReader.CreateVectorStoreRecordDefinitionFromType(typeof(TRecord), true);
+        }
+
+        await this.CreateCollectionAsync(name, vectorStoreRecordDefinition, cancellationToken).ConfigureAwait(false);
+        return this.GetCollection<TKey, TRecord>(name, vectorStoreRecordDefinition);
+    }
+
+    /// <inheritdoc />
+    public async Task<IVectorRecordStore<TKey, TRecord>> CreateCollectionIfNotExistsAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
+    {
+        if (typeof(TKey) != typeof(ulong) && typeof(TKey) != typeof(Guid))
+        {
+            throw new NotSupportedException("Only ulong and Guid keys are supported.");
+        }
+
+        if (!await this.CollectionExistsAsync(name, cancellationToken).ConfigureAwait(false))
+        {
+            return await this.CreateCollectionAsync<TKey, TRecord>(name, vectorStoreRecordDefinition, cancellationToken).ConfigureAwait(false);
+        }
+
+        return this.GetCollection<TKey, TRecord>(name, vectorStoreRecordDefinition);
     }
 
     /// <inheritdoc />

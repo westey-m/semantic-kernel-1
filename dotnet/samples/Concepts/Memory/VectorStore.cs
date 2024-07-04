@@ -257,6 +257,81 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
             new() { CollectionName = collectionName });
     }
 
+    private sealed class RedisVectorStoreFactory : IRedisVectorRecordStoreFactory
+    {
+        public RedisVectorRecordStore<TRecord> CreateRecordStore<TRecord>(IDatabase database, string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition) where TRecord : class
+        {
+            return new RedisVectorRecordStore<TRecord>(database, new() { DefaultCollectionName = name, VectorStoreRecordDefinition = vectorStoreRecordDefinition, PrefixCollectionNameToKeyNames = true });
+        }
+    }
+
+    private sealed class QdrantVectorStoreFactory : IQdrantVectorRecordStoreFactory
+    {
+        public QdrantVectorRecordStore<TRecord> CreateRecordStore<TRecord>(QdrantClient qdrantClient, string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition) where TRecord : class
+        {
+            return new QdrantVectorRecordStore<TRecord>(qdrantClient, new() { DefaultCollectionName = name, VectorStoreRecordDefinition = vectorStoreRecordDefinition, HasNamedVectors = true });
+        }
+    }
+
+    [Fact]
+    public async Task RunFactoryOptionAsync()
+    {
+        // Create docker containers.
+        using var dockerClientConfiguration = new DockerClientConfiguration();
+        var client = dockerClientConfiguration.CreateClient();
+        var qdrantContainerId = await SetupQdrantContainerAsync(client);
+        var redisContainerId = await SetupRedisContainerAsync(client);
+
+        // Create the redis vector store clients.
+        ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost:6379");
+        var redisDatabase = redis.GetDatabase();
+        var redisVectorStore = new RedisVectorCollectionStore(redisDatabase, RedisVectorCollectionCreate.Create(redisDatabase), new RedisVectorStoreFactory());
+
+        // Create the qdrant vector store clients.
+        var qdrantClient = new QdrantClient("localhost");
+        var qdrantVectorStore = new QdrantVectorCollectionStore(qdrantClient, QdrantVectorCollectionCreate.Create(qdrantClient, new() { HasNamedVectors = true }), new QdrantVectorStoreFactory());
+
+        // Create Embedding Service
+        var embeddingService = new AzureOpenAITextEmbeddingGenerationService(
+                TestConfiguration.AzureOpenAIEmbeddings.DeploymentName,
+                TestConfiguration.AzureOpenAIEmbeddings.Endpoint,
+                TestConfiguration.AzureOpenAIEmbeddings.ApiKey);
+
+        await RunFactorySampleAsync(redisVectorStore, embeddingService, "parpat");
+        await RunFactorySampleAsync(qdrantVectorStore, embeddingService, 5ul);
+
+        // Delete docker containers.
+        await DeleteContainerAsync(client, qdrantContainerId);
+        await DeleteContainerAsync(client, redisContainerId);
+    }
+
+    private static async Task RunFactorySampleAsync<TKey>(IVectorStore vectorStore, ITextEmbeddingGenerationService embeddingService, TKey recordKey)
+    {
+        // Generate Embeddings.
+        var description = "A magical fusion of hotel and beach.";
+        var embeddings = await embeddingService.GenerateEmbeddingsAsync(new List<string> { description });
+
+        // Example 1: Create collection and upsert.
+        var recordCollection = await vectorStore.CreateCollectionAsync<TKey, Hotel<TKey>>("hotels");
+        await recordCollection.UpsertAsync(
+            new Hotel<TKey>
+            {
+                HotelId = recordKey,
+                HotelName = "Paradise Patch",
+                HotelRating = 4.5f,
+                ParkingIncluded = true,
+                Description = "Great Hotel",
+                DescriptionEmbedding = embeddings.First()
+            });
+
+        // Example 2: Get collection and delete record.
+        var existingCollection = vectorStore.GetCollection<TKey, Hotel<TKey>>("hotels");
+        await existingCollection.DeleteAsync(recordKey);
+
+        // Example 3: Delete collection.
+        await vectorStore.DeleteCollectionAsync("hotels");
+    }
+
     /// <summary>
     /// Setup the qdrant container by pulling the image and running it.
     /// </summary>
