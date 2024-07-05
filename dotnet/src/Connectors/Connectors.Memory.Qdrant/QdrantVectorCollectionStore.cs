@@ -101,8 +101,7 @@ public sealed class QdrantVectorCollectionStore : IVectorCollectionStore, IConfi
 
         if (this._recordStoreFactory is not null)
         {
-            var factoryCreatedStore = this._recordStoreFactory.CreateRecordStore<TRecord>(this._qdrantClient, name, vectorStoreRecordDefinition) as IVectorRecordStore<TKey, TRecord>;
-            return factoryCreatedStore!;
+            return this._recordStoreFactory.CreateRecordStore<TKey, TRecord>(this._qdrantClient, name, vectorStoreRecordDefinition);
         }
 
         var directlyCreatedStore = new QdrantVectorRecordStore<TRecord>(this._qdrantClient) as IVectorRecordStore<TKey, TRecord>;

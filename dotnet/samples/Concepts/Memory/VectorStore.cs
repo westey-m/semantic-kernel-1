@@ -259,17 +259,19 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
 
     private sealed class RedisVectorStoreFactory : IRedisVectorRecordStoreFactory
     {
-        public RedisVectorRecordStore<TRecord> CreateRecordStore<TRecord>(IDatabase database, string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition) where TRecord : class
+        public IVectorRecordStore<TKey, TRecord> CreateRecordStore<TKey, TRecord>(IDatabase database, string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition) where TRecord : class
         {
-            return new RedisVectorRecordStore<TRecord>(database, new() { DefaultCollectionName = name, VectorStoreRecordDefinition = vectorStoreRecordDefinition, PrefixCollectionNameToKeyNames = true });
+            var store = new RedisVectorRecordStore<TRecord>(database, new() { DefaultCollectionName = name, VectorStoreRecordDefinition = vectorStoreRecordDefinition, PrefixCollectionNameToKeyNames = true }) as IVectorRecordStore<TKey, TRecord>;
+            return store!;
         }
     }
 
     private sealed class QdrantVectorStoreFactory : IQdrantVectorRecordStoreFactory
     {
-        public QdrantVectorRecordStore<TRecord> CreateRecordStore<TRecord>(QdrantClient qdrantClient, string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition) where TRecord : class
+        public IVectorRecordStore<TKey, TRecord> CreateRecordStore<TKey, TRecord>(QdrantClient qdrantClient, string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition) where TRecord : class
         {
-            return new QdrantVectorRecordStore<TRecord>(qdrantClient, new() { DefaultCollectionName = name, VectorStoreRecordDefinition = vectorStoreRecordDefinition, HasNamedVectors = true });
+            var store = new QdrantVectorRecordStore<TRecord>(qdrantClient, new() { DefaultCollectionName = name, VectorStoreRecordDefinition = vectorStoreRecordDefinition, HasNamedVectors = true }) as IVectorRecordStore<TKey, TRecord>;
+            return store!;
         }
     }
 
@@ -282,20 +284,20 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         var qdrantContainerId = await SetupQdrantContainerAsync(client);
         var redisContainerId = await SetupRedisContainerAsync(client);
 
-        // Create the redis vector store clients.
-        ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost:6379");
-        var redisDatabase = redis.GetDatabase();
-        var redisVectorStore = new RedisVectorCollectionStore(redisDatabase, RedisVectorCollectionCreate.Create(redisDatabase), new RedisVectorStoreFactory());
-
-        // Create the qdrant vector store clients.
-        var qdrantClient = new QdrantClient("localhost");
-        var qdrantVectorStore = new QdrantVectorCollectionStore(qdrantClient, QdrantVectorCollectionCreate.Create(qdrantClient, new() { HasNamedVectors = true }), new QdrantVectorStoreFactory());
-
         // Create Embedding Service
         var embeddingService = new AzureOpenAITextEmbeddingGenerationService(
                 TestConfiguration.AzureOpenAIEmbeddings.DeploymentName,
                 TestConfiguration.AzureOpenAIEmbeddings.Endpoint,
                 TestConfiguration.AzureOpenAIEmbeddings.ApiKey);
+
+        // Create the redis vector store clients.
+        ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost:6379");
+        var redisDatabase = redis.GetDatabase();
+        var redisVectorStore = new TextEmbeddingVectorStore(new RedisVectorCollectionStore(redisDatabase, RedisVectorCollectionCreate.Create(redisDatabase), new RedisVectorStoreFactory()), embeddingService);
+
+        // Create the qdrant vector store clients.
+        var qdrantClient = new QdrantClient("localhost");
+        var qdrantVectorStore = new TextEmbeddingVectorStore(new QdrantVectorCollectionStore(qdrantClient, QdrantVectorCollectionCreate.Create(qdrantClient, new() { HasNamedVectors = true }), new QdrantVectorStoreFactory()), embeddingService);
 
         await RunFactorySampleAsync(redisVectorStore, embeddingService, "parpat");
         await RunFactorySampleAsync(qdrantVectorStore, embeddingService, 5ul);
@@ -320,9 +322,10 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
                 HotelName = "Paradise Patch",
                 HotelRating = 4.5f,
                 ParkingIncluded = true,
-                Description = "Great Hotel",
-                DescriptionEmbedding = embeddings.First()
+                Description = "Great Hotel"
             });
+
+        var retrievedHotel = await recordCollection.GetAsync(recordKey, new() { IncludeVectors = true });
 
         // Example 2: Get collection and delete record.
         var existingCollection = vectorStore.GetCollection<TKey, Hotel<TKey>>("hotels");

@@ -101,8 +101,7 @@ public sealed class RedisVectorCollectionStore : IVectorCollectionStore, IConfig
 
         if (this._recordStoreFactory is not null)
         {
-            var factoryCreatedStore = this._recordStoreFactory.CreateRecordStore<TRecord>(this._database, name, vectorStoreRecordDefinition) as IVectorRecordStore<TKey, TRecord>;
-            return factoryCreatedStore!;
+            return this._recordStoreFactory.CreateRecordStore<TKey, TRecord>(this._database, name, vectorStoreRecordDefinition);
         }
 
         var directlyCreatedStore = new RedisVectorRecordStore<TRecord>(this._database) as IVectorRecordStore<TKey, TRecord>;
