@@ -1,15 +1,17 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Runtime.InteropServices;
 using Docker.DotNet;
-using Docker.DotNet.Models;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Microsoft.SemanticKernel.Connectors.Qdrant;
 using Microsoft.SemanticKernel.Connectors.Redis;
 using Microsoft.SemanticKernel.Data;
 using Microsoft.SemanticKernel.Embeddings;
 using MongoDB.Driver;
+using NRedisStack.RedisStackCommands;
 using Qdrant.Client;
 using StackExchange.Redis;
+using NRedisStack.Search;
 
 namespace Memory;
 
@@ -48,8 +50,8 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         // Create docker containers.
         using var dockerClientConfiguration = new DockerClientConfiguration();
         var client = dockerClientConfiguration.CreateClient();
-        var qdrantContainerId = await SetupQdrantContainerAsync(client);
-        var redisContainerId = await SetupRedisContainerAsync(client);
+        var qdrantContainerId = await VectorStore_Infra.SetupQdrantContainerAsync(client);
+        var redisContainerId = await VectorStore_Infra.SetupRedisContainerAsync(client);
 
         // Create the qdrant vector store clients.
         var qdrantClient = new QdrantClient("localhost");
@@ -60,7 +62,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost:6379");
         var redisDatabase = redis.GetDatabase();
         var redisCollectionStore = new RedisVectorCollectionStore(redisDatabase, RedisVectorCollectionCreate.Create<Hotel<string>>(redisDatabase));
-        var redisRecordStore = new RedisVectorRecordStore<Hotel<string>>(redisDatabase);
+        var redisRecordStore = new RedisVectorRecordStore<Hotel<string>>(redisDatabase, new() { PrefixCollectionNameToKeyNames = true });
 
         // Create Embedding Service
         var embeddingService = new AzureOpenAITextEmbeddingGenerationService(
@@ -72,9 +74,34 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         await this.CreateCollectionAndAddDataAsync(redisCollectionStore, redisRecordStore, embeddingService, "testRecord");
         await this.CreateCollectionAndAddDataAsync(qdrantCollectionStore, qdrantRecordStore, embeddingService, 5ul);
 
+        // Search.
+        var queryEmbedding = await embeddingService.GenerateEmbeddingAsync("A magical fusion of hotel and beach.");
+
+        byte[] byteArray = new byte[queryEmbedding.Length * sizeof(float)];
+        Buffer.BlockCopy(queryEmbedding.ToArray(), 0, byteArray, 0, byteArray.Length);
+        string hex = BitConverter.ToString(byteArray).Replace("-", "x");
+
+        var query = new NRedisStack.Search.Query("*=>[KNN 3 @DescriptionEmbedding $vector AS score]")
+            .AddParam("vector", MemoryMarshal.AsBytes(queryEmbedding.Span).ToArray())
+            //.AddParam("vector", byteArray)
+            .ReturnFields("$.HotelName", "score")
+            .Limit(0, 1)
+            .Dialect(2);
+        var searchResult = await redisDatabase.FT().SearchAsync("hotels", query);
+
+        var query2 = new NRedisStack.Search.Query("*")
+            .ReturnFields(new FieldName("$.HotelName", "HotelName"))
+            .Limit(0, 1)
+            .Dialect(2);
+        var searchResult2 = await redisDatabase.FT().SearchAsync("hotels", query2);
+
+        // Delete record and collection.
+        await this.DeleteRecordAndCollectionAsync(redisCollectionStore, redisRecordStore, embeddingService, "testRecord");
+        await this.DeleteRecordAndCollectionAsync(qdrantCollectionStore, qdrantRecordStore, embeddingService, 5ul);
+
         // Delete docker containers.
-        await DeleteContainerAsync(client, qdrantContainerId);
-        await DeleteContainerAsync(client, redisContainerId);
+        await VectorStore_Infra.DeleteContainerAsync(client, qdrantContainerId);
+        await VectorStore_Infra.DeleteContainerAsync(client, redisContainerId);
     }
 
     private async Task CreateCollectionAndAddDataAsync<TKey>(
@@ -88,7 +115,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
 
         // Generate Embeddings.
         var description = "A magical fusion of hotel and beach.";
-        var embeddings = await embeddingGenerationService.GenerateEmbeddingsAsync(new List<string> { description });
+        var embedding = await embeddingGenerationService.GenerateEmbeddingAsync(description);
 
         // Upsert Record.
         await vectorRecordStore.UpsertAsync(
@@ -99,13 +126,19 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
                 HotelRating = 4.5f,
                 ParkingIncluded = true,
                 Description = description,
-                DescriptionEmbedding = embeddings.First()
+                DescriptionEmbedding = embedding
             },
             new() { CollectionName = "hotels" });
 
         // Retrieve Record.
         var record = await vectorRecordStore.GetAsync(recordKey, new() { CollectionName = "hotels", IncludeVectors = true });
-
+    }
+    private async Task DeleteRecordAndCollectionAsync<TKey>(
+        IVectorCollectionStore collectionStore,
+        IVectorRecordStore<TKey, Hotel<TKey>> vectorRecordStore,
+        ITextEmbeddingGenerationService embeddingGenerationService,
+        TKey recordKey)
+    {
         // Delete Record.
         await vectorRecordStore.DeleteAsync(recordKey, new() { CollectionName = "hotels" });
 
@@ -143,7 +176,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         // Create docker containers.
         using var dockerClientConfiguration = new DockerClientConfiguration();
         var client = dockerClientConfiguration.CreateClient();
-        var qdrantContainerId = await SetupQdrantContainerAsync(client);
+        var qdrantContainerId = await VectorStore_Infra.SetupQdrantContainerAsync(client);
 
         // Create the qdrant vector store client.
         var qdrantClient = new QdrantClient("localhost");
@@ -153,7 +186,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         var docSnippet = await qdrantRecordStore.GetAsync(0, new() { IncludeVectors = true });
 
         // Delete docker containers.
-        await DeleteContainerAsync(client, qdrantContainerId);
+        await VectorStore_Infra.DeleteContainerAsync(client, qdrantContainerId);
     }
 
     private sealed class DataReference
@@ -171,7 +204,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         // Create docker containers.
         using var dockerClientConfiguration = new DockerClientConfiguration();
         var client = dockerClientConfiguration.CreateClient();
-        var qdrantContainerId = await SetupQdrantContainerAsync(client);
+        var qdrantContainerId = await VectorStore_Infra.SetupQdrantContainerAsync(client);
 
         // Create Embedding Service
         var embeddingService = new AzureOpenAITextEmbeddingGenerationService(
@@ -210,7 +243,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         var searchResult = await qdrantClient.SearchAsync("refs", questionEmbeddings.First(), vectorName: "Embedding");
 
         // Delete docker containers.
-        await DeleteContainerAsync(client, qdrantContainerId);
+        await VectorStore_Infra.DeleteContainerAsync(client, qdrantContainerId);
     }
 
     private async Task ConfiguredCreateExampleAsync(
@@ -281,8 +314,8 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         // Create docker containers.
         using var dockerClientConfiguration = new DockerClientConfiguration();
         var client = dockerClientConfiguration.CreateClient();
-        var qdrantContainerId = await SetupQdrantContainerAsync(client);
-        var redisContainerId = await SetupRedisContainerAsync(client);
+        var qdrantContainerId = await VectorStore_Infra.SetupQdrantContainerAsync(client);
+        var redisContainerId = await VectorStore_Infra.SetupRedisContainerAsync(client);
 
         // Create Embedding Service
         var embeddingService = new AzureOpenAITextEmbeddingGenerationService(
@@ -303,8 +336,8 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         await RunFactorySampleAsync(qdrantVectorStore, embeddingService, 5ul);
 
         // Delete docker containers.
-        await DeleteContainerAsync(client, qdrantContainerId);
-        await DeleteContainerAsync(client, redisContainerId);
+        await VectorStore_Infra.DeleteContainerAsync(client, qdrantContainerId);
+        await VectorStore_Infra.DeleteContainerAsync(client, redisContainerId);
     }
 
     private static async Task RunFactorySampleAsync<TKey>(IVectorStore vectorStore, ITextEmbeddingGenerationService embeddingService, TKey recordKey)
@@ -333,96 +366,6 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
 
         // Example 3: Delete collection.
         await vectorStore.DeleteCollectionAsync("hotels");
-    }
-
-    /// <summary>
-    /// Setup the qdrant container by pulling the image and running it.
-    /// </summary>
-    /// <param name="client">The docker client to create the container with.</param>
-    /// <returns>The id of the container.</returns>
-    private static async Task<string> SetupQdrantContainerAsync(DockerClient client)
-    {
-        await client.Images.CreateImageAsync(
-            new ImagesCreateParameters
-            {
-                FromImage = "qdrant/qdrant",
-                Tag = "latest",
-            },
-            null,
-            new Progress<JSONMessage>());
-
-        var container = await client.Containers.CreateContainerAsync(new CreateContainerParameters()
-        {
-            Image = "qdrant/qdrant",
-            HostConfig = new HostConfig()
-            {
-                PortBindings = new Dictionary<string, IList<PortBinding>>
-                {
-                    {"6333", new List<PortBinding> {new() {HostPort = "6333" } }},
-                    {"6334", new List<PortBinding> {new() {HostPort = "6334" } }}
-                },
-                PublishAllPorts = true
-            },
-            ExposedPorts = new Dictionary<string, EmptyStruct>
-            {
-                { "6333", default },
-                { "6334", default }
-            },
-        });
-
-        await client.Containers.StartContainerAsync(
-            container.ID,
-            new ContainerStartParameters());
-
-        return container.ID;
-    }
-
-    /// <summary>
-    /// Setup the redis container by pulling the image and running it.
-    /// </summary>
-    /// <param name="client">The docker client to create the container with.</param>
-    /// <returns>The id of the container.</returns>
-    private static async Task<string> SetupRedisContainerAsync(DockerClient client)
-    {
-        await client.Images.CreateImageAsync(
-            new ImagesCreateParameters
-            {
-                FromImage = "redis/redis-stack",
-                Tag = "latest",
-            },
-            null,
-            new Progress<JSONMessage>());
-
-        var container = await client.Containers.CreateContainerAsync(new CreateContainerParameters()
-        {
-            Image = "redis/redis-stack",
-            HostConfig = new HostConfig()
-            {
-                PortBindings = new Dictionary<string, IList<PortBinding>>
-                {
-                    {"6379", new List<PortBinding> {new() {HostPort = "6379"}}},
-                    {"8001", new List<PortBinding> {new() {HostPort = "8001"}}}
-                },
-                PublishAllPorts = true
-            },
-            ExposedPorts = new Dictionary<string, EmptyStruct>
-            {
-                { "6379", default },
-                { "8001", default }
-            },
-        });
-
-        await client.Containers.StartContainerAsync(
-            container.ID,
-            new ContainerStartParameters());
-
-        return container.ID;
-    }
-
-    private static async Task DeleteContainerAsync(DockerClient client, string containerId)
-    {
-        await client.Containers.StopContainerAsync(containerId, new ContainerStopParameters());
-        await client.Containers.RemoveContainerAsync(containerId, new ContainerRemoveParameters());
     }
 }
 
