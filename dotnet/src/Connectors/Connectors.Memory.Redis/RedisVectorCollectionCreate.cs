@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Data;
 using NRedisStack.RedisStackCommands;
 using NRedisStack.Search;
+using NRedisStack.Search.Literals.Enums;
 using StackExchange.Redis;
 
 namespace Microsoft.SemanticKernel.Connectors.Redis;
@@ -143,12 +144,12 @@ public sealed class RedisVectorCollectionCreate : IVectorCollectionCreate, IConf
 
                 if (dataProperty.PropertyType == typeof(string))
                 {
-                    schema.AddTextField(dataProperty.PropertyName);
+                    schema.AddTextField(new FieldName($"$.{dataProperty.PropertyName}", dataProperty.PropertyName));
                 }
 
                 if (s_supportedFilterableNumericDataTypes.Contains(dataProperty.PropertyType))
                 {
-                    schema.AddNumericField(dataProperty.PropertyName);
+                    schema.AddNumericField(new FieldName($"$.{dataProperty.PropertyName}", dataProperty.PropertyName));
                 }
             }
 
@@ -163,18 +164,19 @@ public sealed class RedisVectorCollectionCreate : IVectorCollectionCreate, IConf
                 var indexKind = GetSDKIndexKind(vectorProperty);
                 var distanceAlgorithm = GetSDKDistanceAlgorithm(vectorProperty);
                 var dimensions = vectorProperty.Dimensions.Value.ToString(CultureInfo.InvariantCulture);
-                schema.AddVectorField(vectorProperty.PropertyName, indexKind, new Dictionary<string, object>()
+                schema.AddVectorField(new FieldName($"$.{vectorProperty.PropertyName}", vectorProperty.PropertyName), indexKind, new Dictionary<string, object>()
                 {
                     ["TYPE"] = "FLOAT32",
-                    ["DIM"] = "4",
+                    ["DIM"] = dimensions,
                     ["DISTANCE_METRIC"] = distanceAlgorithm
                 });
             }
         }
 
         // Create the index.
-        var createParams = new FTCreateParams();
-        createParams.AddPrefix(name);
+        var createParams = new FTCreateParams()
+            .AddPrefix($"{name}:")
+            .On(IndexDataType.JSON);
         return this._database.FT().CreateAsync(name, createParams, schema);
     }
 
