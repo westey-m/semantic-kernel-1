@@ -56,13 +56,13 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         // Create the qdrant vector store clients.
         var qdrantClient = new QdrantClient("localhost");
         var qdrantCollectionStore = new QdrantVectorCollectionStore(qdrantClient, QdrantVectorCollectionCreate.Create<Hotel<ulong>>(qdrantClient));
-        var qdrantRecordStore = new QdrantVectorRecordStore<Hotel<ulong>>(qdrantClient);
+        var qdrantRecordStore = new QdrantVectorRecordStore<Hotel<ulong>>(qdrantClient, "hotels");
 
         // Create the redis vector store clients.
         ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost:6379");
         var redisDatabase = redis.GetDatabase();
         var redisCollectionStore = new RedisVectorCollectionStore(redisDatabase, RedisVectorCollectionCreate.Create<Hotel<string>>(redisDatabase));
-        var redisRecordStore = new RedisVectorRecordStore<Hotel<string>>(redisDatabase, new() { PrefixCollectionNameToKeyNames = true });
+        var redisRecordStore = new RedisVectorRecordStore<Hotel<string>>(redisDatabase, "hotels", new() { PrefixCollectionNameToKeyNames = true });
 
         // Create Embedding Service
         var embeddingService = new AzureOpenAITextEmbeddingGenerationService(
@@ -127,11 +127,10 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
                 ParkingIncluded = true,
                 Description = description,
                 DescriptionEmbedding = embedding
-            },
-            new() { CollectionName = "hotels" });
+            });
 
         // Retrieve Record.
-        var record = await vectorRecordStore.GetAsync(recordKey, new() { CollectionName = "hotels", IncludeVectors = true });
+        var record = await vectorRecordStore.GetAsync(recordKey, new() { IncludeVectors = true });
     }
     private async Task DeleteRecordAndCollectionAsync<TKey>(
         IVectorCollectionStore collectionStore,
@@ -140,7 +139,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         TKey recordKey)
     {
         // Delete Record.
-        await vectorRecordStore.DeleteAsync(recordKey, new() { CollectionName = "hotels" });
+        await vectorRecordStore.DeleteAsync(recordKey);
 
         // Delete collection.
         await collectionStore.DeleteCollectionAsync("hotels");
@@ -180,7 +179,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
 
         // Create the qdrant vector store client.
         var qdrantClient = new QdrantClient("localhost");
-        var qdrantRecordStore = new QdrantVectorRecordStore<DocumentationSnippet>(qdrantClient, new() { DefaultCollectionName = "docs" });
+        var qdrantRecordStore = new QdrantVectorRecordStore<DocumentationSnippet>(qdrantClient, "docs");
 
         // Get record.
         var docSnippet = await qdrantRecordStore.GetAsync(0, new() { IncludeVectors = true });
@@ -232,7 +231,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         IVectorCollectionStore productsCollectionStore = new QdrantVectorCollectionStore(qdrantClient, QdrantVectorCollectionCreate.Create(qdrantClient, refsCollectionDefinition, new() { HasNamedVectors = true }));
         IVectorCollectionStore usersCollectionStore = new QdrantVectorCollectionStore(qdrantClient, QdrantVectorCollectionCreate.Create(qdrantClient, refsCollectionDefinition, new() { HasNamedVectors = true }));
 
-        var qdrantRecordStore = new QdrantVectorRecordStore<DataReference>(qdrantClient, new() { DefaultCollectionName = "refs", VectorStoreRecordDefinition = refsCollectionDefinition, HasNamedVectors = true });
+        var qdrantRecordStore = new QdrantVectorRecordStore<DataReference>(qdrantClient, "refs", new() { VectorStoreRecordDefinition = refsCollectionDefinition, HasNamedVectors = true });
 
         // Create collection and add data.
         await ConfiguredCreateExampleAsync(configuredQdrantCollectionStore, qdrantCollectionStore, qdrantRecordStore, embeddingService, "refs", refsCollectionDefinition);
@@ -286,15 +285,14 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
                 Key = 0,
                 Reference = "https://learn.microsoft.com/en-us/azure/search/search-faq-frequently-asked-questions#what-is-azure-ai-search-",
                 Embedding = embeddings.First()
-            },
-            new() { CollectionName = collectionName });
+            });
     }
 
     private sealed class RedisVectorStoreFactory : IRedisVectorRecordStoreFactory
     {
         public IVectorRecordStore<TKey, TRecord> CreateRecordStore<TKey, TRecord>(IDatabase database, string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition) where TRecord : class
         {
-            var store = new RedisVectorRecordStore<TRecord>(database, new() { DefaultCollectionName = name, VectorStoreRecordDefinition = vectorStoreRecordDefinition, PrefixCollectionNameToKeyNames = true }) as IVectorRecordStore<TKey, TRecord>;
+            var store = new RedisVectorRecordStore<TRecord>(database, name, new() { VectorStoreRecordDefinition = vectorStoreRecordDefinition, PrefixCollectionNameToKeyNames = true }) as IVectorRecordStore<TKey, TRecord>;
             return store!;
         }
     }
@@ -303,7 +301,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
     {
         public IVectorRecordStore<TKey, TRecord> CreateRecordStore<TKey, TRecord>(QdrantClient qdrantClient, string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition) where TRecord : class
         {
-            var store = new QdrantVectorRecordStore<TRecord>(qdrantClient, new() { DefaultCollectionName = name, VectorStoreRecordDefinition = vectorStoreRecordDefinition, HasNamedVectors = true }) as IVectorRecordStore<TKey, TRecord>;
+            var store = new QdrantVectorRecordStore<TRecord>(qdrantClient, name, new() { VectorStoreRecordDefinition = vectorStoreRecordDefinition, HasNamedVectors = true }) as IVectorRecordStore<TKey, TRecord>;
             return store!;
         }
     }
@@ -332,20 +330,16 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         var qdrantClient = new QdrantClient("localhost");
         var qdrantVectorStore = new TextEmbeddingVectorStore(new QdrantVectorCollectionStore(qdrantClient, QdrantVectorCollectionCreate.Create(qdrantClient, new() { HasNamedVectors = true }), new QdrantVectorStoreFactory()), embeddingService);
 
-        await RunFactorySampleAsync(redisVectorStore, embeddingService, "parpat");
-        await RunFactorySampleAsync(qdrantVectorStore, embeddingService, 5ul);
+        await RunFactorySampleAsync(redisVectorStore, "parpat");
+        await RunFactorySampleAsync(qdrantVectorStore, 5ul);
 
         // Delete docker containers.
         await VectorStore_Infra.DeleteContainerAsync(client, qdrantContainerId);
         await VectorStore_Infra.DeleteContainerAsync(client, redisContainerId);
     }
 
-    private static async Task RunFactorySampleAsync<TKey>(IVectorStore vectorStore, ITextEmbeddingGenerationService embeddingService, TKey recordKey)
+    private static async Task RunFactorySampleAsync<TKey>(IVectorStore vectorStore, TKey recordKey)
     {
-        // Generate Embeddings.
-        var description = "A magical fusion of hotel and beach.";
-        var embeddings = await embeddingService.GenerateEmbeddingsAsync(new List<string> { description });
-
         // Example 1: Create collection and upsert.
         var recordCollection = await vectorStore.CreateCollectionAsync<TKey, Hotel<TKey>>("hotels");
         await recordCollection.UpsertAsync(
@@ -355,7 +349,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
                 HotelName = "Paradise Patch",
                 HotelRating = 4.5f,
                 ParkingIncluded = true,
-                Description = "Great Hotel"
+                Description = "A magical fusion of hotel and beach."
             });
 
         var retrievedHotel = await recordCollection.GetAsync(recordKey, new() { IncludeVectors = true });

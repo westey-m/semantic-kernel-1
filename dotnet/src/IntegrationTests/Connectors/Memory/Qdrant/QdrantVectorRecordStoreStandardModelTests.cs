@@ -29,8 +29,8 @@ public sealed class QdrantVectorRecordStoreStandardModelTests(ITestOutputHelper 
         // Arrange.
         var mapperOptions = new QdrantVectorStoreStandardModelMapperOptions { HasNamedVectors = false, StringDataFieldNames = this._stringDataFieldNames, MetadataFieldNames = this._metadataFieldNames };
         var mapper = new QdrantVectorStoreStandardModelMapper(mapperOptions);
-        var options = new QdrantVectorRecordStoreOptions<VectorDBRecord> { HasNamedVectors = false, DefaultCollectionName = "singleVectorHotels", MapperType = QdrantRecordMapperType.QdrantPointStructCustomMapper, PointStructCustomMapper = mapper };
-        var sut = new QdrantVectorRecordStore<VectorDBRecord>(fixture.QdrantClient, options);
+        var options = new QdrantVectorRecordStoreOptions<VectorDBRecord> { HasNamedVectors = false, MapperType = QdrantRecordMapperType.QdrantPointStructCustomMapper, PointStructCustomMapper = mapper };
+        var sut = new QdrantVectorRecordStore<VectorDBRecord>(fixture.QdrantClient, "singleVectorHotels", options);
 
         // Act.
         var getResult = await sut.GetAsync(11);
@@ -58,8 +58,8 @@ public sealed class QdrantVectorRecordStoreStandardModelTests(ITestOutputHelper 
         // Arrange.
         var mapperOptions = new QdrantVectorStoreStandardModelMapperOptions { HasNamedVectors = false, StringDataFieldNames = this._stringDataFieldNames, MetadataFieldNames = this._metadataFieldNames };
         var mapper = new QdrantVectorStoreStandardModelMapper(mapperOptions);
-        var options = new QdrantVectorRecordStoreOptions<VectorDBRecord> { HasNamedVectors = false, DefaultCollectionName = "singleVectorGuidIdHotels", MapperType = QdrantRecordMapperType.QdrantPointStructCustomMapper, PointStructCustomMapper = mapper };
-        var sut = new QdrantVectorRecordStore<VectorDBRecord>(fixture.QdrantClient, options);
+        var options = new QdrantVectorRecordStoreOptions<VectorDBRecord> { HasNamedVectors = false, MapperType = QdrantRecordMapperType.QdrantPointStructCustomMapper, PointStructCustomMapper = mapper };
+        var sut = new QdrantVectorRecordStore<VectorDBRecord>(fixture.QdrantClient, "singleVectorGuidIdHotels", options);
 
         // Act.
         var getResult = await sut.GetAsync(Guid.Parse("11111111-1111-1111-1111-111111111111"));
@@ -80,8 +80,8 @@ public sealed class QdrantVectorRecordStoreStandardModelTests(ITestOutputHelper 
         // Arrange.
         var mapperOptions = new QdrantVectorStoreStandardModelMapperOptions { HasNamedVectors = false, StringDataFieldNames = this._stringDataFieldNames, MetadataFieldNames = this._metadataFieldNames };
         var mapper = new QdrantVectorStoreStandardModelMapper(mapperOptions);
-        var options = new QdrantVectorRecordStoreOptions<VectorDBRecord> { HasNamedVectors = false, DefaultCollectionName = "singleVectorHotels", MapperType = QdrantRecordMapperType.QdrantPointStructCustomMapper, PointStructCustomMapper = mapper };
-        var sut = new QdrantVectorRecordStore<VectorDBRecord>(fixture.QdrantClient, options);
+        var options = new QdrantVectorRecordStoreOptions<VectorDBRecord> { HasNamedVectors = false, MapperType = QdrantRecordMapperType.QdrantPointStructCustomMapper, PointStructCustomMapper = mapper };
+        var sut = new QdrantVectorRecordStore<VectorDBRecord>(fixture.QdrantClient, "singleVectorHotels", options);
 
         // Act.
         var getResult = await sut.GetAsync(11, new GetRecordOptions { IncludeVectors = true });
@@ -109,8 +109,8 @@ public sealed class QdrantVectorRecordStoreStandardModelTests(ITestOutputHelper 
         // Arrange.
         var mapperOptions = new QdrantVectorStoreStandardModelMapperOptions { HasNamedVectors = true, StringDataFieldNames = this._stringDataFieldNames, MetadataFieldNames = this._metadataFieldNames };
         var mapper = new QdrantVectorStoreStandardModelMapper(mapperOptions);
-        var options = new QdrantVectorRecordStoreOptions<VectorDBRecord> { HasNamedVectors = true, DefaultCollectionName = "namedVectorsHotels", MapperType = QdrantRecordMapperType.QdrantPointStructCustomMapper, PointStructCustomMapper = mapper };
-        var sut = new QdrantVectorRecordStore<VectorDBRecord>(fixture.QdrantClient, options);
+        var options = new QdrantVectorRecordStoreOptions<VectorDBRecord> { HasNamedVectors = true, MapperType = QdrantRecordMapperType.QdrantPointStructCustomMapper, PointStructCustomMapper = mapper };
+        var sut = new QdrantVectorRecordStore<VectorDBRecord>(fixture.QdrantClient, "namedVectorsHotels", options);
 
         // Act.
         var getResult = await sut.GetAsync(1);
@@ -138,8 +138,8 @@ public sealed class QdrantVectorRecordStoreStandardModelTests(ITestOutputHelper 
         // Arrange.
         var mapperOptions = new QdrantVectorStoreStandardModelMapperOptions { HasNamedVectors = true, StringDataFieldNames = this._stringDataFieldNames, MetadataFieldNames = this._metadataFieldNames };
         var mapper = new QdrantVectorStoreStandardModelMapper(mapperOptions);
-        var options = new QdrantVectorRecordStoreOptions<VectorDBRecord> { HasNamedVectors = true, DefaultCollectionName = "namedVectorsHotels", MapperType = QdrantRecordMapperType.QdrantPointStructCustomMapper, PointStructCustomMapper = mapper };
-        var sut = new QdrantVectorRecordStore<VectorDBRecord>(fixture.QdrantClient, options);
+        var options = new QdrantVectorRecordStoreOptions<VectorDBRecord> { HasNamedVectors = true, MapperType = QdrantRecordMapperType.QdrantPointStructCustomMapper, PointStructCustomMapper = mapper };
+        var sut = new QdrantVectorRecordStore<VectorDBRecord>(fixture.QdrantClient, "namedVectorsHotels", options);
 
         // Act.
         var getResult = await sut.GetAsync(1, new GetRecordOptions { IncludeVectors = true });
@@ -167,8 +167,8 @@ public sealed class QdrantVectorRecordStoreStandardModelTests(ITestOutputHelper 
         // Arrange.
         var mapperOptions = new QdrantVectorStoreStandardModelMapperOptions { HasNamedVectors = true, StringDataFieldNames = this._stringDataFieldNames, MetadataFieldNames = this._metadataFieldNames };
         var mapper = new QdrantVectorStoreStandardModelMapper(mapperOptions);
-        var options = new QdrantVectorRecordStoreOptions<VectorDBRecord> { HasNamedVectors = true, DefaultCollectionName = "namedVectorsHotels", MapperType = QdrantRecordMapperType.QdrantPointStructCustomMapper, PointStructCustomMapper = mapper };
-        var sut = new QdrantVectorRecordStore<VectorDBRecord>(fixture.QdrantClient, options);
+        var options = new QdrantVectorRecordStoreOptions<VectorDBRecord> { HasNamedVectors = true, MapperType = QdrantRecordMapperType.QdrantPointStructCustomMapper, PointStructCustomMapper = mapper };
+        var sut = new QdrantVectorRecordStore<VectorDBRecord>(fixture.QdrantClient, "namedVectorsHotels", options);
 
         var record = new VectorDBRecord(20ul)
         {

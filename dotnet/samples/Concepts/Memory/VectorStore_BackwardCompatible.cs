@@ -1,11 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Docker.DotNet;
-using Microsoft.SemanticKernel.Connectors.OpenAI;
-using Microsoft.SemanticKernel.Connectors.Qdrant;
 using Microsoft.SemanticKernel.Connectors.Redis;
 using Microsoft.SemanticKernel.Memory;
-using Qdrant.Client;
 using StackExchange.Redis;
 
 namespace Memory;
@@ -30,7 +27,7 @@ public class VectorStore_BackwardCompatible(ITestOutputHelper output) : BaseTest
         ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost:6379");
         var redisDatabase = redis.GetDatabase();
         var redisMemoryStore = new RedisMemoryStore(redisDatabase);
-        ///var redisRecordStore = new RedisVectorRecordStore<MemoryRecord>(redisDatabase);
+        ////var redisRecordStore = new RedisVectorRecordStore<MemoryRecord>(redisDatabase);
 
         // Create collection and add data.
         await redisMemoryStore.CreateCollectionAsync("testCollection");

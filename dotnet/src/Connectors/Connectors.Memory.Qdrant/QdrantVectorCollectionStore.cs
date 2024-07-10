@@ -104,7 +104,7 @@ public sealed class QdrantVectorCollectionStore : IVectorCollectionStore, IConfi
             return this._recordStoreFactory.CreateRecordStore<TKey, TRecord>(this._qdrantClient, name, vectorStoreRecordDefinition);
         }
 
-        var directlyCreatedStore = new QdrantVectorRecordStore<TRecord>(this._qdrantClient) as IVectorRecordStore<TKey, TRecord>;
+        var directlyCreatedStore = new QdrantVectorRecordStore<TRecord>(this._qdrantClient, name, new QdrantVectorRecordStoreOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition }) as IVectorRecordStore<TKey, TRecord>;
         return directlyCreatedStore!;
     }
 
