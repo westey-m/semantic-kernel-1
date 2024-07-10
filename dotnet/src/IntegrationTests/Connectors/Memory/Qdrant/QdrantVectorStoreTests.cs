@@ -6,11 +6,12 @@ using Microsoft.SemanticKernel.Connectors.Qdrant;
 using Qdrant.Client.Grpc;
 using Xunit;
 using Xunit.Abstractions;
+using static SemanticKernel.IntegrationTests.Connectors.Memory.Qdrant.QdrantVectorStoreFixture;
 
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.Qdrant;
 
 [Collection("QdrantVectorStoreCollection")]
-public class QdrantVectorCollectionTests(ITestOutputHelper output, QdrantVectorStoreFixture fixture)
+public class QdrantVectorStoreTests(ITestOutputHelper output, QdrantVectorStoreFixture fixture)
 {
     [Theory]
     [InlineData(true, true)]
@@ -23,15 +24,13 @@ public class QdrantVectorCollectionTests(ITestOutputHelper output, QdrantVectorS
         var collectionNamePostfix1 = useDefinition ? "WithDefinition" : "WithType";
         var collectionNamePostfix2 = hasNamedVectors ? "HasNamedVectors" : "SingleUnnamedVector";
         var testCollectionName = $"createtest{collectionNamePostfix1}{collectionNamePostfix2}";
-        var options = new QdrantVectorCollectionCreateOptions { HasNamedVectors = hasNamedVectors };
-        var sut = new QdrantVectorCollectionStore(
+        var options = new QdrantVectorStoreOptions { HasNamedVectors = hasNamedVectors };
+        var sut = new QdrantVectorStore(
             fixture.QdrantClient,
-            useDefinition ?
-                QdrantVectorCollectionCreate.Create(fixture.QdrantClient, fixture.HotelVectorStoreRecordDefinition, options) :
-                QdrantVectorCollectionCreate.Create<QdrantVectorStoreFixture.HotelInfo>(fixture.QdrantClient, options));
+            options);
 
         // Act
-        await sut.CreateCollectionAsync(testCollectionName);
+        await sut.CreateCollectionAsync<ulong, HotelInfo>(testCollectionName, useDefinition ? fixture.HotelVectorStoreRecordDefinition : null);
 
         // Assert
         var existResult = await sut.CollectionExistsAsync(testCollectionName);
@@ -46,7 +45,7 @@ public class QdrantVectorCollectionTests(ITestOutputHelper output, QdrantVectorS
     public async Task ItCanCheckIfCollectionExistsForExistingCollectionAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorCollectionStore(fixture.QdrantClient, QdrantVectorCollectionCreate.Create(fixture.QdrantClient, fixture.HotelVectorStoreRecordDefinition));
+        var sut = new QdrantVectorStore(fixture.QdrantClient);
 
         // Act.
         var doesExistResult = await sut.CollectionExistsAsync("namedVectorsHotels");
@@ -62,7 +61,7 @@ public class QdrantVectorCollectionTests(ITestOutputHelper output, QdrantVectorS
     public async Task ItCanCheckIfCollectionExistsForNonExistingCollectionAsync()
     {
         // Arrange.
-        var sut = new QdrantVectorCollectionStore(fixture.QdrantClient, QdrantVectorCollectionCreate.Create(fixture.QdrantClient, fixture.HotelVectorStoreRecordDefinition));
+        var sut = new QdrantVectorStore(fixture.QdrantClient);
 
         // Act.
         var doesExistResult = await sut.CollectionExistsAsync("non-existing-collection");
@@ -78,7 +77,7 @@ public class QdrantVectorCollectionTests(ITestOutputHelper output, QdrantVectorS
     public async Task ItCanGetAListOfExistingCollectionNamesAsync()
     {
         // Arrange
-        var sut = new QdrantVectorCollectionStore(fixture.QdrantClient, QdrantVectorCollectionCreate.Create(fixture.QdrantClient, fixture.HotelVectorStoreRecordDefinition));
+        var sut = new QdrantVectorStore(fixture.QdrantClient);
 
         // Act
         var collectionNames = await sut.ListCollectionNamesAsync().ToListAsync();
@@ -102,7 +101,7 @@ public class QdrantVectorCollectionTests(ITestOutputHelper output, QdrantVectorS
             tempCollectionName,
             new VectorParams { Size = 4, Distance = Distance.Cosine });
 
-        var sut = new QdrantVectorCollectionStore(fixture.QdrantClient, QdrantVectorCollectionCreate.Create(fixture.QdrantClient, fixture.HotelVectorStoreRecordDefinition));
+        var sut = new QdrantVectorStore(fixture.QdrantClient);
 
         // Act
         await sut.DeleteCollectionAsync(tempCollectionName);

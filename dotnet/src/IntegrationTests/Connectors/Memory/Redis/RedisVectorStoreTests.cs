@@ -11,7 +11,7 @@ using Xunit.Abstractions;
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.Redis;
 
 [Collection("RedisVectorStoreCollection")]
-public class RedisVectorCollectionTests(ITestOutputHelper output, RedisVectorStoreFixture fixture)
+public class RedisVectorStoreTests(ITestOutputHelper output, RedisVectorStoreFixture fixture)
 {
     [Theory]
     [InlineData(true)]
@@ -21,14 +21,10 @@ public class RedisVectorCollectionTests(ITestOutputHelper output, RedisVectorSto
         // Arrange
         var collectionNamePostfix = useDefinition ? "withDefinition" : "withType";
         var testCollectionName = $"createtest{collectionNamePostfix}";
-        var sut = new RedisVectorCollectionStore(
-            fixture.Database,
-            useDefinition ?
-                RedisVectorCollectionCreate.Create(fixture.Database, fixture.VectorStoreRecordDefinition) :
-                RedisVectorCollectionCreate.Create<RedisVectorStoreFixture.Hotel>(fixture.Database));
+        var sut = new RedisVectorStore(fixture.Database);
 
         // Act
-        await sut.CreateCollectionAsync(testCollectionName);
+        await sut.CreateCollectionAsync<string, RedisVectorStoreFixture.Hotel>(testCollectionName, useDefinition ? fixture.VectorStoreRecordDefinition : null);
 
         // Assert
         var existResult = await sut.CollectionExistsAsync(testCollectionName);
@@ -43,7 +39,7 @@ public class RedisVectorCollectionTests(ITestOutputHelper output, RedisVectorSto
     public async Task ItCanCheckIfCollectionExistsForExistingCollectionAsync()
     {
         // Arrange.
-        var sut = new RedisVectorCollectionStore(fixture.Database, RedisVectorCollectionCreate.Create(fixture.Database, fixture.VectorStoreRecordDefinition));
+        var sut = new RedisVectorStore(fixture.Database);
 
         // Act.
         var doesExistResult = await sut.CollectionExistsAsync("hotels");
@@ -59,7 +55,7 @@ public class RedisVectorCollectionTests(ITestOutputHelper output, RedisVectorSto
     public async Task ItCanCheckIfCollectionExistsForNonExistingCollectionAsync()
     {
         // Arrange.
-        var sut = new RedisVectorCollectionStore(fixture.Database, RedisVectorCollectionCreate.Create(fixture.Database, fixture.VectorStoreRecordDefinition));
+        var sut = new RedisVectorStore(fixture.Database);
 
         // Act.
         var doesExistResult = await sut.CollectionExistsAsync("non-existing-collection");
@@ -75,7 +71,7 @@ public class RedisVectorCollectionTests(ITestOutputHelper output, RedisVectorSto
     public async Task ItCanGetAListOfExistingCollectionNamesAsync()
     {
         // Arrange
-        var sut = new RedisVectorCollectionStore(fixture.Database, RedisVectorCollectionCreate.Create(fixture.Database, fixture.VectorStoreRecordDefinition));
+        var sut = new RedisVectorStore(fixture.Database);
 
         // Act
         var collectionNames = await sut.ListCollectionNamesAsync().ToListAsync();
@@ -99,7 +95,7 @@ public class RedisVectorCollectionTests(ITestOutputHelper output, RedisVectorSto
         createParams.AddPrefix(tempCollectionName);
         await fixture.Database.FT().CreateAsync(tempCollectionName, createParams, schema);
 
-        var sut = new RedisVectorCollectionStore(fixture.Database, RedisVectorCollectionCreate.Create(fixture.Database, fixture.VectorStoreRecordDefinition));
+        var sut = new RedisVectorStore(fixture.Database);
 
         // Act
         await sut.DeleteCollectionAsync(tempCollectionName);

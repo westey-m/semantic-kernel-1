@@ -8,7 +8,7 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 /// <summary>
 /// Interface for constructing <see cref="IVectorRecordStore{TKey, TRecord}"/> Qdrant instances when using <see cref="IVectorStore"/> to retrieve these.
 /// </summary>
-public interface IQdrantVectorRecordStoreFactory
+public interface IQdrantVectorStoreCollectionFactory
 {
     /// <summary>
     /// Constructs a new instance of the <see cref="IVectorRecordStore{TKey, TRecord}"/>.
@@ -19,5 +19,5 @@ public interface IQdrantVectorRecordStoreFactory
     /// <param name="name">The name of the collection to connect to.</param>
     /// <param name="vectorStoreRecordDefinition">An optional record definition that defines the schema of the record type. If not present, attributes on <typeparamref name="TRecord"/> will be used.</param>
     /// <returns>The new instance of <see cref="IVectorRecordStore{TKey, TRecord}"/>.</returns>
-    IVectorRecordStore<TKey, TRecord> CreateRecordStore<TKey, TRecord>(QdrantClient qdrantClient, string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition) where TRecord : class;
+    IVectorRecordStore<TKey, TRecord> CreateVectorStoreCollection<TKey, TRecord>(QdrantClient qdrantClient, string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition) where TRecord : class;
 }

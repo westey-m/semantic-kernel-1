@@ -2,11 +2,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Data;
 using NRedisStack.RedisStackCommands;
+using NRedisStack.Search.Literals.Enums;
+using NRedisStack.Search;
 using StackExchange.Redis;
 
 namespace Microsoft.SemanticKernel.Connectors.Redis;
@@ -14,81 +17,25 @@ namespace Microsoft.SemanticKernel.Connectors.Redis;
 /// <summary>
 /// Provides collection retrieval and deletion for Redis.
 /// </summary>
-public sealed class RedisVectorCollectionStore : IVectorCollectionStore, IConfiguredVectorCollectionStore, IVectorStore
+public sealed class RedisVectorStore : IVectorStore
 {
     /// <summary>The redis database to read/write indices from.</summary>
     private readonly IDatabase _database;
 
-    /// <summary>Used to create new collections in the vector store using configuration on the constructor.</summary>
-    private readonly IVectorCollectionCreate? _vectorCollectionCreate;
-
-    /// <summary>Used to create new collections in the vector store using configuration on the method.</summary>
-    private readonly IConfiguredVectorCollectionCreate? _configuredVectorCollectionCreate;
-
-    /// <summary>Optional factory used to construct vector store instances, for cases where options need to be customized.</summary>
-    private readonly IRedisVectorRecordStoreFactory? _recordStoreFactory;
+    /// <summary>Optional configuration options for this class.</summary>
+    private readonly RedisVectorStoreOptions _options;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="RedisVectorCollectionStore"/> class.
+    /// Initializes a new instance of the <see cref="RedisVectorStore"/> class.
     /// </summary>
     /// <param name="database">The redis database to read/write indices from.</param>
-    /// <param name="vectorCollectionCreate">Used to create new collections in the vector store.</param>
-    public RedisVectorCollectionStore(IDatabase database, IVectorCollectionCreate vectorCollectionCreate)
+    /// <param name="options">Optional configuration options for this class.</param>
+    public RedisVectorStore(IDatabase database, RedisVectorStoreOptions? options = default)
     {
         Verify.NotNull(database);
-        Verify.NotNull(vectorCollectionCreate);
 
         this._database = database;
-        this._vectorCollectionCreate = vectorCollectionCreate;
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="RedisVectorCollectionStore"/> class.
-    /// </summary>
-    /// <param name="database">The redis database to read/write indices from.</param>
-    /// <param name="configuredVectorCollectionCreate">Used to create new collections in the vector store.</param>
-    /// <param name="recordStoreFactory">An optional factory to use for constructing <see cref="RedisVectorRecordStore{TRecord}"/> instances, if custom options are required.</param>
-    public RedisVectorCollectionStore(IDatabase database, IConfiguredVectorCollectionCreate configuredVectorCollectionCreate, IRedisVectorRecordStoreFactory? recordStoreFactory = default)
-    {
-        Verify.NotNull(database);
-        Verify.NotNull(configuredVectorCollectionCreate);
-
-        this._database = database;
-        this._configuredVectorCollectionCreate = configuredVectorCollectionCreate;
-        this._recordStoreFactory = recordStoreFactory;
-    }
-
-    /// <inheritdoc />
-    public Task CreateCollectionAsync(string name, CancellationToken cancellationToken = default)
-    {
-        if (this._vectorCollectionCreate is null)
-        {
-            throw new InvalidOperationException($"Cannot create a collection without a {nameof(IVectorCollectionCreate)}.");
-        }
-
-        return this._vectorCollectionCreate.CreateCollectionAsync(name, cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public Task CreateCollectionAsync(string name, VectorStoreRecordDefinition vectorStoreRecordDefinition, CancellationToken cancellationToken = default)
-    {
-        if (this._configuredVectorCollectionCreate is null)
-        {
-            throw new InvalidOperationException($"Cannot create a collection without a {nameof(IConfiguredVectorCollectionCreate)}.");
-        }
-
-        return this._configuredVectorCollectionCreate.CreateCollectionAsync(name, vectorStoreRecordDefinition, cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public Task CreateCollectionAsync<TRecord>(string name, CancellationToken cancellationToken = default)
-    {
-        if (this._configuredVectorCollectionCreate is null)
-        {
-            throw new InvalidOperationException($"Cannot create a collection without a {nameof(IConfiguredVectorCollectionCreate)}.");
-        }
-
-        return this._configuredVectorCollectionCreate.CreateCollectionAsync<TRecord>(name, cancellationToken);
+        this._options = options ?? new RedisVectorStoreOptions();
     }
 
     /// <inheritdoc />
@@ -99,9 +46,9 @@ public sealed class RedisVectorCollectionStore : IVectorCollectionStore, IConfig
             throw new NotSupportedException("Only string keys are supported.");
         }
 
-        if (this._recordStoreFactory is not null)
+        if (this._options.VectorStoreCollectionFactory is not null)
         {
-            return this._recordStoreFactory.CreateRecordStore<TKey, TRecord>(this._database, name, vectorStoreRecordDefinition);
+            return this._options.VectorStoreCollectionFactory.CreateVectorStoreCollection<TKey, TRecord>(this._database, name, vectorStoreRecordDefinition);
         }
 
         var directlyCreatedStore = new RedisVectorRecordStore<TRecord>(this._database, name, new RedisVectorRecordStoreOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition }) as IVectorRecordStore<TKey, TRecord>;
@@ -121,7 +68,62 @@ public sealed class RedisVectorCollectionStore : IVectorCollectionStore, IConfig
             vectorStoreRecordDefinition = VectorStoreRecordPropertyReader.CreateVectorStoreRecordDefinitionFromType(typeof(TRecord), true);
         }
 
-        await this.CreateCollectionAsync(name, vectorStoreRecordDefinition, cancellationToken).ConfigureAwait(false);
+        var schema = new Schema();
+
+        // Loop through all properties and create the index fields.
+        foreach (var property in vectorStoreRecordDefinition.Properties)
+        {
+            // Key property.
+            if (property is VectorStoreRecordKeyProperty keyProperty)
+            {
+                // Do nothing, since key is not stored as part of the payload and therefore doesn't have to be added to the index.
+            }
+
+            // Data property.
+            if (property is VectorStoreRecordDataProperty dataProperty && dataProperty.IsFilterable)
+            {
+                if (dataProperty.PropertyType is null)
+                {
+                    throw new InvalidOperationException($"Property {nameof(dataProperty.PropertyType)} on {nameof(VectorStoreRecordDataProperty)} '{dataProperty.PropertyName}' must be set to create a collection, since the property is filterable.");
+                }
+
+                if (dataProperty.PropertyType == typeof(string))
+                {
+                    schema.AddTextField(new FieldName($"$.{dataProperty.PropertyName}", dataProperty.PropertyName));
+                }
+
+                if (RedisVectorStoreCollectionCreateMapping.s_supportedFilterableNumericDataTypes.Contains(dataProperty.PropertyType))
+                {
+                    schema.AddNumericField(new FieldName($"$.{dataProperty.PropertyName}", dataProperty.PropertyName));
+                }
+            }
+
+            // Vector property.
+            if (property is VectorStoreRecordVectorProperty vectorProperty)
+            {
+                if (vectorProperty.Dimensions is not > 0)
+                {
+                    throw new InvalidOperationException($"Property {nameof(vectorProperty.Dimensions)} on {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}' must be set to a positive ingeteger to create a collection.");
+                }
+
+                var indexKind = RedisVectorStoreCollectionCreateMapping.GetSDKIndexKind(vectorProperty);
+                var distanceAlgorithm = RedisVectorStoreCollectionCreateMapping.GetSDKDistanceAlgorithm(vectorProperty);
+                var dimensions = vectorProperty.Dimensions.Value.ToString(CultureInfo.InvariantCulture);
+                schema.AddVectorField(new FieldName($"$.{vectorProperty.PropertyName}", vectorProperty.PropertyName), indexKind, new Dictionary<string, object>()
+                {
+                    ["TYPE"] = "FLOAT32",
+                    ["DIM"] = dimensions,
+                    ["DISTANCE_METRIC"] = distanceAlgorithm
+                });
+            }
+        }
+
+        // Create the index.
+        var createParams = new FTCreateParams()
+            .AddPrefix($"{name}:")
+            .On(IndexDataType.JSON);
+        await this._database.FT().CreateAsync(name, createParams, schema).ConfigureAwait(false);
+
         return this.GetCollection<TKey, TRecord>(name, vectorStoreRecordDefinition);
     }
 
