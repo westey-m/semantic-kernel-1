@@ -19,8 +19,7 @@ internal static class AzureAISearchVectorStoreCollectionCreateMapping
     /// If none is configured the default is <see cref="IndexKind.Hnsw"/>.
     /// </summary>
     /// <param name="vectorProperty">The vector property definition.</param>
-    /// <returns>The chosen <see cref="IndexKind"/>.</returns>
-    /// <exception cref="InvalidOperationException">Thrown if a index type was chosen that isn't supported by Azure AI Search.</exception>
+    /// <returns>The configured or default <see cref="IndexKind"/>.</returns>
     public static IndexKind GetSKIndexKind(VectorStoreRecordVectorProperty vectorProperty)
     {
         if (vectorProperty.IndexKind is null)
@@ -28,12 +27,7 @@ internal static class AzureAISearchVectorStoreCollectionCreateMapping
             return IndexKind.Hnsw;
         }
 
-        return vectorProperty.IndexKind switch
-        {
-            IndexKind.Hnsw => IndexKind.Hnsw,
-            IndexKind.Flat => IndexKind.Flat,
-            _ => throw new InvalidOperationException($"Unsupported index kind '{vectorProperty.IndexKind}' for {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}'.")
-        };
+        return (IndexKind)vectorProperty.IndexKind;
     }
 
     /// <summary>
@@ -95,13 +89,17 @@ internal static class AzureAISearchVectorStoreCollectionCreateMapping
             return typeof(object);
         }
 
+        else if (type.IsArray)
+        {
+            return type.GetElementType()!;
+        }
+
         if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
         {
             return type.GetGenericArguments()[0];
         }
 
-        var enumerableInterface = type.GetInterfaces().FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
-        if (enumerableInterface is not null)
+        if (type.GetInterfaces().FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>)) is Type enumerableInterface)
         {
             return enumerableInterface.GetGenericArguments()[0];
         }
