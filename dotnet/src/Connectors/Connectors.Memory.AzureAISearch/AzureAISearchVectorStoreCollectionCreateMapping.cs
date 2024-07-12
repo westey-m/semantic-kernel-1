@@ -88,7 +88,6 @@ internal static class AzureAISearchVectorStoreCollectionCreateMapping
         {
             return typeof(object);
         }
-
         else if (type.IsArray)
         {
             return type.GetElementType()!;

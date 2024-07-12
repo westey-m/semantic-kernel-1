@@ -51,8 +51,16 @@ public sealed class RedisVectorStore : IVectorStore
             return this._options.VectorStoreCollectionFactory.CreateVectorStoreCollection<TKey, TRecord>(this._database, name, vectorStoreRecordDefinition);
         }
 
-        var directlyCreatedStore = new RedisVectorRecordStore<TRecord>(this._database, name, new RedisVectorRecordStoreOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition }) as IVectorRecordStore<TKey, TRecord>;
-        return directlyCreatedStore!;
+        if (this._options.StorageType == RedisStorageType.Hashes)
+        {
+            var directlyCreatedStore = new RedisHashSetVectorRecordStore<TRecord>(this._database, name, new RedisHashSetVectorRecordStoreOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition }) as IVectorRecordStore<TKey, TRecord>;
+            return directlyCreatedStore!;
+        }
+        else
+        {
+            var directlyCreatedStore = new RedisVectorRecordStore<TRecord>(this._database, name, new RedisVectorRecordStoreOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition }) as IVectorRecordStore<TKey, TRecord>;
+            return directlyCreatedStore!;
+        }
     }
 
     /// <inheritdoc />
@@ -118,10 +126,21 @@ public sealed class RedisVectorStore : IVectorStore
             }
         }
 
-        // Create the index.
+        // Create the index creation params.
         var createParams = new FTCreateParams()
-            .AddPrefix($"{name}:")
-            .On(IndexDataType.JSON);
+            .AddPrefix($"{name}:");
+
+        if (this._options.StorageType == RedisStorageType.Hashes)
+        {
+            createParams = createParams.On(IndexDataType.HASH);
+        }
+
+        if (this._options.StorageType == RedisStorageType.Json)
+        {
+            createParams = createParams.On(IndexDataType.JSON);
+        }
+
+        // Create the index.
         await this._database.FT().CreateAsync(name, createParams, schema).ConfigureAwait(false);
 
         return this.GetCollection<TKey, TRecord>(name, vectorStoreRecordDefinition);
