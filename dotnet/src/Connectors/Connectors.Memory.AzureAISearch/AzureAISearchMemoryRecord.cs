@@ -199,7 +199,7 @@ internal sealed class AzureAISearchMemoryRecord
     /// </summary>
     /// <param name="encodedId">The encoded ID.</param>
     /// <returns>The decoded ID.</returns>
-    private static string DecodeId(string encodedId)
+    internal static string DecodeId(string encodedId)
     {
         var bytes = Convert.FromBase64String(encodedId);
         return Encoding.UTF8.GetString(bytes);
