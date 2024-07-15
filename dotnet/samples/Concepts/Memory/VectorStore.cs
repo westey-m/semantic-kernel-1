@@ -96,8 +96,8 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         var searchResult2 = await redisDatabase.FT().SearchAsync("hotels", query2);
 
         // Delete record and collection.
-        await this.DeleteRecordAndCollectionAsync(redisCollectionStore, redisRecordStore, embeddingService, "testRecord");
-        await this.DeleteRecordAndCollectionAsync(qdrantVectorStore, qdrantRecordStore, embeddingService, 5ul);
+        await this.DeleteRecordAndCollectionAsync(redisRecordStore, embeddingService, "testRecord");
+        await this.DeleteRecordAndCollectionAsync(qdrantRecordStore, embeddingService, 5ul);
 
         // Delete docker containers.
         await VectorStore_Infra.DeleteContainerAsync(client, qdrantContainerId);
@@ -133,7 +133,6 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         var record = await vectorRecordStore.GetAsync(recordKey, new() { IncludeVectors = true });
     }
     private async Task DeleteRecordAndCollectionAsync<TKey>(
-        IVectorStore vectorStore,
         IVectorStoreRecordCollection<TKey, Hotel<TKey>> vectorRecordStore,
         ITextEmbeddingGenerationService embeddingGenerationService,
         TKey recordKey)
@@ -142,7 +141,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         await vectorRecordStore.DeleteAsync(recordKey);
 
         // Delete collection.
-        await vectorStore.DeleteCollectionAsync("hotels");
+        await vectorRecordStore.DeleteCollectionAsync();
     }
 
     private sealed class DocumentationSnippet
@@ -335,7 +334,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         await existingCollection.DeleteAsync(recordKey);
 
         // Example 3: Delete collection.
-        await vectorStore.DeleteCollectionAsync("hotels");
+        await existingCollection.DeleteCollectionAsync();
     }
 }
 

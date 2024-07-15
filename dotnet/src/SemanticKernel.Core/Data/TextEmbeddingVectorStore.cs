@@ -13,7 +13,7 @@ namespace Microsoft.SemanticKernel.Data;
 public class TextEmbeddingVectorStore : IVectorStore
 {
     /// <summary>The decorated <see cref="IVectorStore"/>.</summary>
-    private readonly IVectorStore _decoratedVectorRecordStore;
+    private readonly IVectorStore _decoratedVectorStoreRecordCollection;
 
     /// <summary>The service to use for generating the embeddings.</summary>
     private readonly ITextEmbeddingGenerationService _textEmbeddingGenerationService;
@@ -21,58 +21,46 @@ public class TextEmbeddingVectorStore : IVectorStore
     /// <summary>
     /// Initializes a new instance of the <see cref="TextEmbeddingVectorStore"/> class.
     /// </summary>
-    /// <param name="decoratedVectorRecordStore">The decorated <see cref="IVectorStore"/>.</param>
+    /// <param name="decoratedVectorStoreRecordCollection">The decorated <see cref="IVectorStore"/>.</param>
     /// <param name="textEmbeddingGenerationService">The service to use for generating the embeddings.</param>
-    public TextEmbeddingVectorStore(IVectorStore decoratedVectorRecordStore, ITextEmbeddingGenerationService textEmbeddingGenerationService)
+    public TextEmbeddingVectorStore(IVectorStore decoratedVectorStoreRecordCollection, ITextEmbeddingGenerationService textEmbeddingGenerationService)
     {
         // Verify.
-        Verify.NotNull(decoratedVectorRecordStore);
+        Verify.NotNull(decoratedVectorStoreRecordCollection);
         Verify.NotNull(textEmbeddingGenerationService);
 
         // Assign.
-        this._decoratedVectorRecordStore = decoratedVectorRecordStore;
+        this._decoratedVectorStoreRecordCollection = decoratedVectorStoreRecordCollection;
         this._textEmbeddingGenerationService = textEmbeddingGenerationService;
-    }
-
-    /// <inheritdoc />
-    public Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default)
-    {
-        return this._decoratedVectorRecordStore.CollectionExistsAsync(name, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task<IVectorStoreRecordCollection<TKey, TRecord>> CreateCollectionAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
     {
-        var recordStore = await this._decoratedVectorRecordStore.CreateCollectionAsync<TKey, TRecord>(name, vectorStoreRecordDefinition, cancellationToken).ConfigureAwait(false);
-        var embeddingStore = new TextEmbeddingVectorStoreRecordCollection<TKey, TRecord>(recordStore, this._textEmbeddingGenerationService, new TextEmbeddingVectorStoreRecordCollectionOptions { VectorStoreRecordDefinition = vectorStoreRecordDefinition });
+        var collection = await this._decoratedVectorStoreRecordCollection.CreateCollectionAsync<TKey, TRecord>(name, vectorStoreRecordDefinition, cancellationToken).ConfigureAwait(false);
+        var embeddingStore = new TextEmbeddingVectorStoreRecordCollection<TKey, TRecord>(collection, this._textEmbeddingGenerationService, new TextEmbeddingVectorStoreRecordCollectionOptions { VectorStoreRecordDefinition = vectorStoreRecordDefinition });
         return embeddingStore;
     }
 
     /// <inheritdoc />
     public async Task<IVectorStoreRecordCollection<TKey, TRecord>> CreateCollectionIfNotExistsAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
     {
-        var recordStore = await this._decoratedVectorRecordStore.CreateCollectionIfNotExistsAsync<TKey, TRecord>(name, vectorStoreRecordDefinition, cancellationToken).ConfigureAwait(false);
-        var embeddingStore = new TextEmbeddingVectorStoreRecordCollection<TKey, TRecord>(recordStore, this._textEmbeddingGenerationService, new TextEmbeddingVectorStoreRecordCollectionOptions { VectorStoreRecordDefinition = vectorStoreRecordDefinition });
+        var collection = await this._decoratedVectorStoreRecordCollection.CreateCollectionIfNotExistsAsync<TKey, TRecord>(name, vectorStoreRecordDefinition, cancellationToken).ConfigureAwait(false);
+        var embeddingStore = new TextEmbeddingVectorStoreRecordCollection<TKey, TRecord>(collection, this._textEmbeddingGenerationService, new TextEmbeddingVectorStoreRecordCollectionOptions { VectorStoreRecordDefinition = vectorStoreRecordDefinition });
         return embeddingStore;
-    }
-
-    /// <inheritdoc />
-    public Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default)
-    {
-        return this._decoratedVectorRecordStore.DeleteCollectionAsync(name, cancellationToken);
     }
 
     /// <inheritdoc />
     public IVectorStoreRecordCollection<TKey, TRecord> GetCollection<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null) where TRecord : class
     {
-        var recordStore = this._decoratedVectorRecordStore.GetCollection<TKey, TRecord>(name, vectorStoreRecordDefinition);
-        var embeddingStore = new TextEmbeddingVectorStoreRecordCollection<TKey, TRecord>(recordStore, this._textEmbeddingGenerationService, new TextEmbeddingVectorStoreRecordCollectionOptions { VectorStoreRecordDefinition = vectorStoreRecordDefinition });
+        var collection = this._decoratedVectorStoreRecordCollection.GetCollection<TKey, TRecord>(name, vectorStoreRecordDefinition);
+        var embeddingStore = new TextEmbeddingVectorStoreRecordCollection<TKey, TRecord>(collection, this._textEmbeddingGenerationService, new TextEmbeddingVectorStoreRecordCollectionOptions { VectorStoreRecordDefinition = vectorStoreRecordDefinition });
         return embeddingStore;
     }
 
     /// <inheritdoc />
     public IAsyncEnumerable<string> ListCollectionNamesAsync(CancellationToken cancellationToken = default)
     {
-        return this._decoratedVectorRecordStore.ListCollectionNamesAsync(cancellationToken);
+        return this._decoratedVectorStoreRecordCollection.ListCollectionNamesAsync(cancellationToken);
     }
 }

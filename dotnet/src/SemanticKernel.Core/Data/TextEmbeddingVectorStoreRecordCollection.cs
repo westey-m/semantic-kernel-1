@@ -24,7 +24,7 @@ public class TextEmbeddingVectorStoreRecordCollection<TKey, TRecord> : IVectorSt
     where TRecord : class
 {
     /// <summary>The decorated <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/>.</summary>
-    private readonly IVectorStoreRecordCollection<TKey, TRecord> _decoratedVectorRecordStore;
+    private readonly IVectorStoreRecordCollection<TKey, TRecord> _decoratedVectorStoreRecordCollection;
 
     /// <summary>The service to use for generating the embeddings.</summary>
     private readonly ITextEmbeddingGenerationService _textEmbeddingGenerationService;
@@ -38,19 +38,19 @@ public class TextEmbeddingVectorStoreRecordCollection<TKey, TRecord> : IVectorSt
     /// <summary>
     /// Initializes a new instance of the <see cref="TextEmbeddingVectorStoreRecordCollection{TKey, TRecord}"/> class.
     /// </summary>
-    /// <param name="decoratedVectorRecordStore">The decorated <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/>.</param>
+    /// <param name="decoratedVectorStoreRecordCollection">The decorated <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/>.</param>
     /// <param name="textEmbeddingGenerationService">The service to use for generating the embeddings.</param>
     /// <param name="options">Optional configuration options for this class.</param>
     /// <exception cref="ArgumentException">Thrown when data properties are referencing embedding properties that do not exist.</exception>
     /// <exception cref="ArgumentNullException">Thrown when required parameters are null.</exception>
-    public TextEmbeddingVectorStoreRecordCollection(IVectorStoreRecordCollection<TKey, TRecord> decoratedVectorRecordStore, ITextEmbeddingGenerationService textEmbeddingGenerationService, TextEmbeddingVectorStoreRecordCollectionOptions? options)
+    public TextEmbeddingVectorStoreRecordCollection(IVectorStoreRecordCollection<TKey, TRecord> decoratedVectorStoreRecordCollection, ITextEmbeddingGenerationService textEmbeddingGenerationService, TextEmbeddingVectorStoreRecordCollectionOptions? options)
     {
         // Verify.
-        Verify.NotNull(decoratedVectorRecordStore);
+        Verify.NotNull(decoratedVectorStoreRecordCollection);
         Verify.NotNull(textEmbeddingGenerationService);
 
         // Assign.
-        this._decoratedVectorRecordStore = decoratedVectorRecordStore;
+        this._decoratedVectorStoreRecordCollection = decoratedVectorStoreRecordCollection;
         this._textEmbeddingGenerationService = textEmbeddingGenerationService;
         this._options = options ?? new TextEmbeddingVectorStoreRecordCollectionOptions();
 
@@ -71,34 +71,49 @@ public class TextEmbeddingVectorStoreRecordCollection<TKey, TRecord> : IVectorSt
     }
 
     /// <inheritdoc />
+    public string CollectionName => this._decoratedVectorStoreRecordCollection.CollectionName;
+
+    /// <inheritdoc />
+    public Task<bool> CollectionExistsAsync(CancellationToken cancellationToken = default)
+    {
+        return this._decoratedVectorStoreRecordCollection.CollectionExistsAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task DeleteCollectionAsync(CancellationToken cancellationToken = default)
+    {
+        return this._decoratedVectorStoreRecordCollection.DeleteCollectionAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task DeleteAsync(TKey key, DeleteRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
-        return this._decoratedVectorRecordStore.DeleteAsync(key, options, cancellationToken);
+        return this._decoratedVectorStoreRecordCollection.DeleteAsync(key, options, cancellationToken);
     }
 
     /// <inheritdoc />
     public Task DeleteBatchAsync(IEnumerable<TKey> keys, DeleteRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
-        return this._decoratedVectorRecordStore.DeleteBatchAsync(keys, options, cancellationToken);
+        return this._decoratedVectorStoreRecordCollection.DeleteBatchAsync(keys, options, cancellationToken);
     }
 
     /// <inheritdoc />
     public Task<TRecord?> GetAsync(TKey key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
-        return this._decoratedVectorRecordStore.GetAsync(key, options, cancellationToken);
+        return this._decoratedVectorStoreRecordCollection.GetAsync(key, options, cancellationToken);
     }
 
     /// <inheritdoc />
     public IAsyncEnumerable<TRecord> GetBatchAsync(IEnumerable<TKey> keys, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
-        return this._decoratedVectorRecordStore.GetBatchAsync(keys, options, cancellationToken);
+        return this._decoratedVectorStoreRecordCollection.GetBatchAsync(keys, options, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task<TKey> UpsertAsync(TRecord record, UpsertRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
         var recordWithEmbeddings = await this.AddEmbeddingsAsync(record, cancellationToken).ConfigureAwait(false);
-        return await this._decoratedVectorRecordStore.UpsertAsync(recordWithEmbeddings, options, cancellationToken).ConfigureAwait(false);
+        return await this._decoratedVectorStoreRecordCollection.UpsertAsync(recordWithEmbeddings, options, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -106,7 +121,7 @@ public class TextEmbeddingVectorStoreRecordCollection<TKey, TRecord> : IVectorSt
     {
         var recordWithEmbeddingsTasks = records.Select(r => this.AddEmbeddingsAsync(r, cancellationToken));
         var recordWithEmbeddings = await Task.WhenAll(recordWithEmbeddingsTasks).ConfigureAwait(false);
-        var upserResults = this._decoratedVectorRecordStore.UpsertBatchAsync(records, options, cancellationToken);
+        var upserResults = this._decoratedVectorStoreRecordCollection.UpsertBatchAsync(records, options, cancellationToken);
         await foreach (var upsertResult in upserResults.ConfigureAwait(false))
         {
             yield return upsertResult;

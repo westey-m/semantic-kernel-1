@@ -3,7 +3,6 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Connectors.Qdrant;
-using Qdrant.Client.Grpc;
 using Xunit;
 using Xunit.Abstractions;
 using static SemanticKernel.IntegrationTests.Connectors.Memory.Qdrant.QdrantVectorStoreFixture;
@@ -28,49 +27,18 @@ public class QdrantVectorStoreTests(ITestOutputHelper output, QdrantVectorStoreF
         var sut = new QdrantVectorStore(
             fixture.QdrantClient,
             options);
+        var collection = sut.GetCollection<ulong, HotelInfo>(testCollectionName);
 
         // Act
         await sut.CreateCollectionAsync<ulong, HotelInfo>(testCollectionName, useDefinition ? fixture.HotelVectorStoreRecordDefinition : null);
 
         // Assert
-        var existResult = await sut.CollectionExistsAsync(testCollectionName);
+        var existResult = await collection.CollectionExistsAsync();
         Assert.True(existResult);
-        await sut.DeleteCollectionAsync(testCollectionName);
+        await collection.DeleteCollectionAsync();
 
         // Output
         output.WriteLine(existResult.ToString());
-    }
-
-    [Fact]
-    public async Task ItCanCheckIfCollectionExistsForExistingCollectionAsync()
-    {
-        // Arrange.
-        var sut = new QdrantVectorStore(fixture.QdrantClient);
-
-        // Act.
-        var doesExistResult = await sut.CollectionExistsAsync("namedVectorsHotels");
-
-        // Assert.
-        Assert.True(doesExistResult);
-
-        // Output.
-        output.WriteLine(doesExistResult.ToString());
-    }
-
-    [Fact]
-    public async Task ItCanCheckIfCollectionExistsForNonExistingCollectionAsync()
-    {
-        // Arrange.
-        var sut = new QdrantVectorStore(fixture.QdrantClient);
-
-        // Act.
-        var doesExistResult = await sut.CollectionExistsAsync("non-existing-collection");
-
-        // Assert.
-        Assert.False(doesExistResult);
-
-        // Output.
-        output.WriteLine(doesExistResult.ToString());
     }
 
     [Fact]
@@ -90,23 +58,5 @@ public class QdrantVectorStoreTests(ITestOutputHelper output, QdrantVectorStoreF
 
         // Output
         output.WriteLine(string.Join(",", collectionNames));
-    }
-
-    [Fact]
-    public async Task ItCanDeleteACollectionAsync()
-    {
-        // Arrange
-        var tempCollectionName = "temp-test";
-        await fixture.QdrantClient.CreateCollectionAsync(
-            tempCollectionName,
-            new VectorParams { Size = 4, Distance = Distance.Cosine });
-
-        var sut = new QdrantVectorStore(fixture.QdrantClient);
-
-        // Act
-        await sut.DeleteCollectionAsync(tempCollectionName);
-
-        // Assert
-        Assert.False(await sut.CollectionExistsAsync(tempCollectionName));
     }
 }

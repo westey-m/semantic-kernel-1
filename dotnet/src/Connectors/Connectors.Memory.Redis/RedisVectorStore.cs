@@ -163,7 +163,7 @@ public sealed class RedisVectorStore : IVectorStore
     }
 
     /// <inheritdoc />
-    public async Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default)
+    private async Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -173,19 +173,6 @@ public sealed class RedisVectorStore : IVectorStore
         catch (RedisServerException ex) when (ex.Message.Contains("Unknown index name"))
         {
             return false;
-        }
-    }
-
-    /// <inheritdoc />
-    public async Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            await this._database.FT().DropIndexAsync(name).ConfigureAwait(false);
-        }
-        catch (RedisServerException ex)
-        {
-            throw new HttpOperationException(ex.Message, ex);
         }
     }
 

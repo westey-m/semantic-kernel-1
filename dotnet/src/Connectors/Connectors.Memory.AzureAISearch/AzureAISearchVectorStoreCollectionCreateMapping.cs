@@ -15,6 +15,70 @@ namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 internal static class AzureAISearchVectorStoreCollectionCreateMapping
 {
     /// <summary>
+    /// Map from a <see cref="VectorStoreRecordKeyProperty"/> to an Azure AI Search <see cref="SearchableField"/>.
+    /// </summary>
+    /// <param name="keyProperty">The key property definition.</param>
+    /// <returns>The <see cref="SearchableField"/> for the provided property definition.</returns>
+    public static SearchableField MapKeyField(VectorStoreRecordKeyProperty keyProperty)
+    {
+        return new SearchableField(keyProperty.PropertyName) { IsKey = true, IsFilterable = true };
+    }
+
+    /// <summary>
+    /// Map from a <see cref="VectorStoreRecordDataProperty"/> to an Azure AI Search <see cref="SimpleField"/>.
+    /// </summary>
+    /// <param name="dataProperty">The data property definition.</param>
+    /// <returns>The <see cref="SimpleField"/> for the provided property definition.</returns>
+    /// <exception cref="InvalidOperationException">Throws when the definition is missing required information.</exception>
+    public static SimpleField MapDataField(VectorStoreRecordDataProperty dataProperty)
+    {
+        if (dataProperty.PropertyType == typeof(string))
+        {
+            return new SearchableField(dataProperty.PropertyName) { IsFilterable = dataProperty.IsFilterable };
+        }
+
+        if (dataProperty.PropertyType is null)
+        {
+            throw new InvalidOperationException($"Property {nameof(dataProperty.PropertyType)} on {nameof(VectorStoreRecordDataProperty)} '{dataProperty.PropertyName}' must be set to create a collection.");
+        }
+
+        return new SimpleField(dataProperty.PropertyName, AzureAISearchVectorStoreCollectionCreateMapping.GetSDKFieldDataType(dataProperty.PropertyType)) { IsFilterable = dataProperty.IsFilterable };
+    }
+
+    /// <summary>
+    /// Map form a <see cref="VectorStoreRecordVectorProperty"/> to an Azure AI Search <see cref="VectorSearchField"/> and generate the required index configuration.
+    /// </summary>
+    /// <param name="vectorProperty">The vector property definition.</param>
+    /// <returns>The <see cref="VectorSearchField"/> and requried index configuration.</returns>
+    /// <exception cref="InvalidOperationException">Throws when the definition is missing required information, or unsupported options are configured.</exception>
+    public static (VectorSearchField vectorSearchField, VectorSearchAlgorithmConfiguration algorithmConfiguration, VectorSearchProfile vectorSearchProfile) MapVectorField(VectorStoreRecordVectorProperty vectorProperty)
+    {
+        if (vectorProperty.Dimensions is not > 0)
+        {
+            throw new InvalidOperationException($"Property {nameof(vectorProperty.Dimensions)} on {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}' must be set to a positive ingeteger to create a collection.");
+        }
+
+        // Build a name for the profile and algorithm configuration based on the property name
+        // since we'll just create a separate one for each vector property.
+        var vectorSearchProfileName = $"{vectorProperty.PropertyName}Profile";
+        var algorithmConfigName = $"{vectorProperty.PropertyName}AlgoConfig";
+
+        // Read the vector index settings from the property definition and create the right index configuration.
+        var indexKind = AzureAISearchVectorStoreCollectionCreateMapping.GetSKIndexKind(vectorProperty);
+        var algorithmMetric = AzureAISearchVectorStoreCollectionCreateMapping.GetSDKDistanceAlgorithm(vectorProperty);
+
+        VectorSearchAlgorithmConfiguration algorithmConfiguration = indexKind switch
+        {
+            IndexKind.Hnsw => new HnswAlgorithmConfiguration(algorithmConfigName) { Parameters = new HnswParameters { Metric = algorithmMetric } },
+            IndexKind.Flat => new ExhaustiveKnnAlgorithmConfiguration(algorithmConfigName) { Parameters = new ExhaustiveKnnParameters { Metric = algorithmMetric } },
+            _ => throw new InvalidOperationException($"Unsupported index kind '{indexKind}' on {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}'.")
+        };
+        var vectorSearchProfile = new VectorSearchProfile(vectorSearchProfileName, algorithmConfigName);
+
+        return (new VectorSearchField(vectorProperty.PropertyName, vectorProperty.Dimensions.Value, vectorSearchProfileName), algorithmConfiguration, vectorSearchProfile);
+    }
+
+    /// <summary>
     /// Get the configured <see cref="IndexKind"/> from the given <paramref name="vectorProperty"/>.
     /// If none is configured the default is <see cref="IndexKind.Hnsw"/>.
     /// </summary>

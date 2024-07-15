@@ -23,47 +23,16 @@ public class AzureAISearchVectorStoreTests(ITestOutputHelper output, AzureAISear
         // Arrange
         var testCollectionName = $"{fixture.TestIndexName}-createtest";
         var sut = new AzureAISearchVectorStore(fixture.SearchIndexClient);
-        await sut.DeleteCollectionAsync(testCollectionName);
+        var collection = sut.GetCollection<string, AzureAISearchVectorStoreFixture.Hotel>(testCollectionName);
+        await collection.DeleteCollectionAsync();
 
         // Act
         await sut.CreateCollectionAsync<string, AzureAISearchVectorStoreFixture.Hotel>(testCollectionName, useDefinition ? fixture.VectorStoreRecordDefinition : null);
 
         // Assert
-        var existResult = await sut.CollectionExistsAsync(testCollectionName);
+        var existResult = await collection.CollectionExistsAsync();
         Assert.True(existResult);
-        await sut.DeleteCollectionAsync(testCollectionName);
-
-        // Output
-        output.WriteLine(existResult.ToString());
-    }
-
-    [Fact(Skip = SkipReason)]
-    public async Task ItCanCheckIfCollectionExistsForExistingCollectionAsync()
-    {
-        // Arrange
-        var sut = new AzureAISearchVectorStore(fixture.SearchIndexClient);
-
-        // Act
-        var existResult = await sut.CollectionExistsAsync(fixture.TestIndexName);
-
-        // Assert
-        Assert.True(existResult);
-
-        // Output
-        output.WriteLine(existResult.ToString());
-    }
-
-    [Fact(Skip = SkipReason)]
-    public async Task ItCanCheckIfCollectionExistsForNonExistingCollectionAsync()
-    {
-        // Arrange
-        var sut = new AzureAISearchVectorStore(fixture.SearchIndexClient);
-
-        // Act
-        var existResult = await sut.CollectionExistsAsync("non-existing-collection");
-
-        // Assert
-        Assert.False(existResult);
+        await collection.DeleteCollectionAsync();
 
         // Output
         output.WriteLine(existResult.ToString());
@@ -91,20 +60,5 @@ public class AzureAISearchVectorStoreTests(ITestOutputHelper output, AzureAISear
 
         // Cleanup
         await AzureAISearchVectorStoreFixture.DeleteIndexIfExistsAsync(additionalCollectionName, fixture.SearchIndexClient);
-    }
-
-    [Fact(Skip = SkipReason)]
-    public async Task ItCanDeleteACollectionAsync()
-    {
-        // Arrange
-        var tempCollectionName = fixture.TestIndexName + "-delete";
-        await AzureAISearchVectorStoreFixture.CreateIndexAsync(tempCollectionName, fixture.SearchIndexClient);
-        var sut = new AzureAISearchVectorStore(fixture.SearchIndexClient);
-
-        // Act
-        await sut.DeleteCollectionAsync(tempCollectionName);
-
-        // Assert
-        Assert.False(await sut.CollectionExistsAsync(tempCollectionName));
     }
 }

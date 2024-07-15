@@ -19,7 +19,7 @@ public class MemoryVectorStoreRecordCollection<TStorageKey, TStorageRecord> : IV
     where TStorageRecord : class
 {
     /// <summary>The <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/> that is decorated by this class.</summary>
-    private readonly IVectorStoreRecordCollection<TStorageKey, TStorageRecord> _innnerVectorRecordStore;
+    private readonly IVectorStoreRecordCollection<TStorageKey, TStorageRecord> _innnerVectorStoreRecordCollection;
 
     /// <summary>Function that is used to encode the record id before it is written to storage or used to retrieve a record.</summary>
     private readonly Func<string, TStorageKey> _recordKeyEncoder;
@@ -33,33 +33,48 @@ public class MemoryVectorStoreRecordCollection<TStorageKey, TStorageRecord> : IV
     /// <summary>
     /// Initializes a new instance of the <see cref="MemoryVectorStoreRecordCollection{TKey, TStorageRecord}"/> class.
     /// </summary>
-    /// <param name="innnerVectorRecordStore">The <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/> that is decorated by this class.</param>
+    /// <param name="innnerVectorStoreRecordCollection">The <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/> that is decorated by this class.</param>
     /// <param name="recordKeyEncoder">Function that is used to encode the record id before it is written to storage or used to retrieve a record.</param>
     /// <param name="recordKeyDecoder">Function that is used to decode the record id after it is retrieved from storage or after upserting.</param>
     /// <param name="mapper">A mapper to map from the <see cref="MemoryRecord"/> type to the internal storage model.</param>
     public MemoryVectorStoreRecordCollection(
-        IVectorStoreRecordCollection<TStorageKey, TStorageRecord> innnerVectorRecordStore,
+        IVectorStoreRecordCollection<TStorageKey, TStorageRecord> innnerVectorStoreRecordCollection,
         Func<string, TStorageKey> recordKeyEncoder,
         Func<TStorageKey, string> recordKeyDecoder,
         IVectorStoreRecordMapper<MemoryRecord, TStorageRecord> mapper)
     {
         // Verify.
-        Verify.NotNull(innnerVectorRecordStore);
+        Verify.NotNull(innnerVectorStoreRecordCollection);
         Verify.NotNull(recordKeyEncoder);
         Verify.NotNull(recordKeyDecoder);
         Verify.NotNull(mapper);
 
         // Assign.
-        this._innnerVectorRecordStore = innnerVectorRecordStore;
+        this._innnerVectorStoreRecordCollection = innnerVectorStoreRecordCollection;
         this._recordKeyEncoder = recordKeyEncoder;
         this._recordKeyDecoder = recordKeyDecoder;
         this._mapper = mapper;
     }
 
     /// <inheritdoc />
+    public string CollectionName => this._innnerVectorStoreRecordCollection.CollectionName;
+
+    /// <inheritdoc />
+    public Task<bool> CollectionExistsAsync(CancellationToken cancellationToken = default)
+    {
+        return this._innnerVectorStoreRecordCollection.CollectionExistsAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task DeleteCollectionAsync(CancellationToken cancellationToken = default)
+    {
+        return this._innnerVectorStoreRecordCollection.DeleteCollectionAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<MemoryRecord?> GetAsync(string key, GetRecordOptions? options = null, CancellationToken cancellationToken = default)
     {
-        var result = await this._innnerVectorRecordStore.GetAsync(
+        var result = await this._innnerVectorStoreRecordCollection.GetAsync(
             this._recordKeyEncoder(key),
             options,
             cancellationToken).ConfigureAwait(false);
@@ -76,7 +91,7 @@ public class MemoryVectorStoreRecordCollection<TStorageKey, TStorageRecord> : IV
     public async IAsyncEnumerable<MemoryRecord> GetBatchAsync(IEnumerable<string> keys, GetRecordOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var encodedKeys = keys.Select(this._recordKeyEncoder);
-        var results = this._innnerVectorRecordStore.GetBatchAsync(
+        var results = this._innnerVectorStoreRecordCollection.GetBatchAsync(
             encodedKeys,
             options,
             cancellationToken);
@@ -90,7 +105,7 @@ public class MemoryVectorStoreRecordCollection<TStorageKey, TStorageRecord> : IV
     /// <inheritdoc />
     public async Task DeleteAsync(string key, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
-        await this._innnerVectorRecordStore.DeleteAsync(
+        await this._innnerVectorStoreRecordCollection.DeleteAsync(
             this._recordKeyEncoder(key),
             options,
             cancellationToken).ConfigureAwait(false);
@@ -99,7 +114,7 @@ public class MemoryVectorStoreRecordCollection<TStorageKey, TStorageRecord> : IV
     /// <inheritdoc />
     public async Task DeleteBatchAsync(IEnumerable<string> keys, DeleteRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
-        await this._innnerVectorRecordStore.DeleteBatchAsync(
+        await this._innnerVectorStoreRecordCollection.DeleteBatchAsync(
             keys.Select(this._recordKeyEncoder),
             options,
             cancellationToken).ConfigureAwait(false);
@@ -108,7 +123,7 @@ public class MemoryVectorStoreRecordCollection<TStorageKey, TStorageRecord> : IV
     /// <inheritdoc />
     public async Task<string> UpsertAsync(MemoryRecord record, UpsertRecordOptions? options = default, CancellationToken cancellationToken = default)
     {
-        var result = await this._innnerVectorRecordStore.UpsertAsync(
+        var result = await this._innnerVectorStoreRecordCollection.UpsertAsync(
             this._mapper.MapFromDataToStorageModel(record),
             options,
             cancellationToken).ConfigureAwait(false);
@@ -121,7 +136,7 @@ public class MemoryVectorStoreRecordCollection<TStorageKey, TStorageRecord> : IV
     {
         var storageRecords = records.Select(this._mapper.MapFromDataToStorageModel);
 
-        var results = this._innnerVectorRecordStore.UpsertBatchAsync(
+        var results = this._innnerVectorStoreRecordCollection.UpsertBatchAsync(
             storageRecords,
             options,
             cancellationToken);

@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Data;
+using NRedisStack.RedisStackCommands;
 using StackExchange.Redis;
 
 namespace Microsoft.SemanticKernel.Connectors.Redis;
@@ -124,6 +125,38 @@ public sealed class RedisHashSetVectorStoreRecordCollection<TRecord> : IVectorSt
             var keyJsonPropertyName = VectorStoreRecordPropertyReader.GetJsonPropertyName(JsonSerializerOptions.Default, properties.keyProperty);
             this._mapper = new RedisHashSetVectorStoreRecordMapper<TRecord>(properties.keyProperty, keyJsonPropertyName, properties.dataProperties, properties.vectorProperties);
         }
+    }
+
+    /// <inheritdoc />
+    public string CollectionName => this._collectionName;
+
+    /// <inheritdoc />
+    public async Task<bool> CollectionExistsAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await this._database.FT().InfoAsync(this._collectionName).ConfigureAwait(false);
+            return true;
+        }
+        catch (RedisServerException ex) when (ex.Message.Contains("Unknown index name"))
+        {
+            return false;
+        }
+        catch (RedisConnectionException ex)
+        {
+            throw new VectorStoreOperationException("Call to vector store failed.", ex)
+            {
+                VectorStoreType = DatabaseName,
+                CollectionName = this._collectionName,
+                OperationName = "FT.INFO"
+            };
+        }
+    }
+
+    /// <inheritdoc />
+    public Task DeleteCollectionAsync(CancellationToken cancellationToken = default)
+    {
+        return this.RunOperationAsync("FT.DROPINDEX", () => this._database.FT().DropIndexAsync(this._collectionName));
     }
 
     /// <inheritdoc />

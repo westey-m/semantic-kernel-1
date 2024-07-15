@@ -70,13 +70,13 @@ public static class AzureAISearchKernelBuilderExtensions
             serviceId,
             (sp, obj) =>
             {
-                var vectorRecordStore = new AzureAISearchVectorStoreRecordCollection<AzureAISearchMemoryRecord>(
+                var recordCollection = new AzureAISearchVectorStoreRecordCollection<AzureAISearchMemoryRecord>(
                     sp.GetRequiredService<SearchIndexClient>(),
                     collectionName,
                     new() { VectorStoreRecordDefinition = s_azureAISearchMemoryRecordDefinition });
 
                 return new MemoryVectorStoreRecordCollection<string, AzureAISearchMemoryRecord>(
-                    vectorRecordStore,
+                    recordCollection,
                     AzureAISearchMemoryRecord.EncodeId,
                     AzureAISearchMemoryRecord.DecodeId,
                     new AzureAISearchMemoryRecordMapper());

@@ -75,56 +75,24 @@ public sealed class AzureAISearchVectorStore : IVectorStore
             // Key property.
             if (property is VectorStoreRecordKeyProperty keyProperty)
             {
-                searchFields.Add(new SearchableField(keyProperty.PropertyName) { IsKey = true, IsFilterable = true });
+                searchFields.Add(AzureAISearchVectorStoreCollectionCreateMapping.MapKeyField(keyProperty));
             }
 
             // Data property.
             if (property is VectorStoreRecordDataProperty dataProperty)
             {
-                if (dataProperty.PropertyType == typeof(string))
-                {
-                    searchFields.Add(new SearchableField(dataProperty.PropertyName) { IsFilterable = dataProperty.IsFilterable });
-                }
-                else
-                {
-                    if (dataProperty.PropertyType is null)
-                    {
-                        throw new InvalidOperationException($"Property {nameof(dataProperty.PropertyType)} on {nameof(VectorStoreRecordDataProperty)} '{dataProperty.PropertyName}' must be set to create a collection.");
-                    }
-
-                    searchFields.Add(new SimpleField(dataProperty.PropertyName, AzureAISearchVectorStoreCollectionCreateMapping.GetSDKFieldDataType(dataProperty.PropertyType)) { IsFilterable = dataProperty.IsFilterable });
-                }
+                searchFields.Add(AzureAISearchVectorStoreCollectionCreateMapping.MapDataField(dataProperty));
             }
 
             // Vector property.
             if (property is VectorStoreRecordVectorProperty vectorProperty)
             {
-                if (vectorProperty.Dimensions is not > 0)
-                {
-                    throw new InvalidOperationException($"Property {nameof(vectorProperty.Dimensions)} on {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}' must be set to a positive ingeteger to create a collection.");
-                }
-
-                // Build a name for the profile and algorithm configuration based on the property name
-                // since we'll just create a separate one for each vector property.
-                var vectorSearchProfileName = $"{vectorProperty.PropertyName}Profile";
-                var algorithmConfigName = $"{vectorProperty.PropertyName}AlgoConfig";
-
-                // Read the vector index settings from the property definition and create the right index configuration.
-                var indexKind = AzureAISearchVectorStoreCollectionCreateMapping.GetSKIndexKind(vectorProperty);
-                var algorithmMetric = AzureAISearchVectorStoreCollectionCreateMapping.GetSDKDistanceAlgorithm(vectorProperty);
-
-                VectorSearchAlgorithmConfiguration algorithmConfiguration = indexKind switch
-                {
-                    IndexKind.Hnsw => new HnswAlgorithmConfiguration(algorithmConfigName) { Parameters = new HnswParameters { Metric = algorithmMetric } },
-                    IndexKind.Flat => new ExhaustiveKnnAlgorithmConfiguration(algorithmConfigName) { Parameters = new ExhaustiveKnnParameters { Metric = algorithmMetric } },
-                    _ => throw new InvalidOperationException($"Unsupported index kind '{indexKind}' on {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}'.")
-                };
-                var vectorSeachProfile = new VectorSearchProfile(vectorSearchProfileName, algorithmConfigName);
+                (VectorSearchField vectorSearchField, VectorSearchAlgorithmConfiguration algorithmConfiguration, VectorSearchProfile vectorSearchProfile) = AzureAISearchVectorStoreCollectionCreateMapping.MapVectorField(vectorProperty);
 
                 // Add the search field, plus its profile and algorithm configuration to the search config.
-                searchFields.Add(new VectorSearchField(vectorProperty.PropertyName, vectorProperty.Dimensions.Value, vectorSearchProfileName));
+                searchFields.Add(vectorSearchField);
                 vectorSearchConfig.Algorithms.Add(algorithmConfiguration);
-                vectorSearchConfig.Profiles.Add(vectorSeachProfile);
+                vectorSearchConfig.Profiles.Add(vectorSearchProfile);
             }
         }
 
@@ -148,20 +116,7 @@ public sealed class AzureAISearchVectorStore : IVectorStore
     }
 
     /// <inheritdoc />
-    public async Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            await this._searchIndexClient.DeleteIndexAsync(name, cancellationToken).ConfigureAwait(false);
-        }
-        catch (RequestFailedException e)
-        {
-            throw e.ToHttpOperationException();
-        }
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default)
+    private async Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default)
     {
         Verify.NotNullOrWhiteSpace(name);
 

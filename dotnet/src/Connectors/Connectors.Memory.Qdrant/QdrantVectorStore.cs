@@ -159,20 +159,7 @@ public sealed class QdrantVectorStore : IVectorStore
     }
 
     /// <inheritdoc />
-    public async Task DeleteCollectionAsync(string name, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            await this._qdrantClient.DeleteCollectionAsync(name, null, cancellationToken).ConfigureAwait(false);
-        }
-        catch (RpcException ex)
-        {
-            throw new HttpOperationException(ex.Message, ex);
-        }
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default)
+    private async Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default)
     {
         try
         {
