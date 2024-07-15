@@ -5,10 +5,10 @@ using System.Diagnostics.CodeAnalysis;
 namespace Microsoft.SemanticKernel.Data;
 
 /// <summary>
-/// Options when creating a <see cref="VolatileVectorRecordStore{TRecord}"/>.
+/// Options when creating a <see cref="TextEmbeddingVectorStoreRecordCollection{TKey, TRecord}"/>.
 /// </summary>
 [Experimental("SKEXP0001")]
-public sealed class VolatileVectorRecordStoreOptions
+public class TextEmbeddingVectorStoreRecordCollectionOptions
 {
     /// <summary>
     /// Gets or sets an optional record definition that defines the schema of the record type.

@@ -13,35 +13,37 @@ using Microsoft.SemanticKernel.Embeddings;
 namespace Microsoft.SemanticKernel.Data;
 
 /// <summary>
-/// Decorator for a <see cref="IVectorRecordStore{TKey, TRecord}"/> that generates embeddings for records on upsert.
+/// Decorator for a <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/> that generates embeddings for records on upsert.
 /// </summary>
 /// <typeparam name="TKey">The data type of the record key.</typeparam>
 /// <typeparam name="TRecord">The record data model to use for adding, updating and retrieving data from the store.</typeparam>
 [Experimental("SKEXP0001")]
-public class TextEmbeddingVectorRecordStore<TKey, TRecord> : IVectorRecordStore<TKey, TRecord>
+#pragma warning disable CA1711 // Identifiers should not have incorrect suffix
+public class TextEmbeddingVectorStoreRecordCollection<TKey, TRecord> : IVectorStoreRecordCollection<TKey, TRecord>
+#pragma warning restore CA1711 // Identifiers should not have incorrect suffix
     where TRecord : class
 {
-    /// <summary>The decorated <see cref="IVectorRecordStore{TKey, TRecord}"/>.</summary>
-    private readonly IVectorRecordStore<TKey, TRecord> _decoratedVectorRecordStore;
+    /// <summary>The decorated <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/>.</summary>
+    private readonly IVectorStoreRecordCollection<TKey, TRecord> _decoratedVectorRecordStore;
 
     /// <summary>The service to use for generating the embeddings.</summary>
     private readonly ITextEmbeddingGenerationService _textEmbeddingGenerationService;
 
     /// <summary>Optional configuration options for this class.</summary>
-    private readonly TextEmbeddingVectorRecordStoreOptions _options;
+    private readonly TextEmbeddingVectorStoreRecordCollectionOptions _options;
 
     /// <summary>Optional configuration options for this class.</summary>
     private readonly IEnumerable<(PropertyInfo PropertyInfo, PropertyInfo EmbeddingPropertyInfo)> _dataPropertiesWithEmbeddingProperties;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="TextEmbeddingVectorRecordStore{TKey, TRecord}"/> class.
+    /// Initializes a new instance of the <see cref="TextEmbeddingVectorStoreRecordCollection{TKey, TRecord}"/> class.
     /// </summary>
-    /// <param name="decoratedVectorRecordStore">The decorated <see cref="IVectorRecordStore{TKey, TRecord}"/>.</param>
+    /// <param name="decoratedVectorRecordStore">The decorated <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/>.</param>
     /// <param name="textEmbeddingGenerationService">The service to use for generating the embeddings.</param>
     /// <param name="options">Optional configuration options for this class.</param>
     /// <exception cref="ArgumentException">Thrown when data properties are referencing embedding properties that do not exist.</exception>
     /// <exception cref="ArgumentNullException">Thrown when required parameters are null.</exception>
-    public TextEmbeddingVectorRecordStore(IVectorRecordStore<TKey, TRecord> decoratedVectorRecordStore, ITextEmbeddingGenerationService textEmbeddingGenerationService, TextEmbeddingVectorRecordStoreOptions? options)
+    public TextEmbeddingVectorStoreRecordCollection(IVectorStoreRecordCollection<TKey, TRecord> decoratedVectorRecordStore, ITextEmbeddingGenerationService textEmbeddingGenerationService, TextEmbeddingVectorStoreRecordCollectionOptions? options)
     {
         // Verify.
         Verify.NotNull(decoratedVectorRecordStore);
@@ -50,7 +52,7 @@ public class TextEmbeddingVectorRecordStore<TKey, TRecord> : IVectorRecordStore<
         // Assign.
         this._decoratedVectorRecordStore = decoratedVectorRecordStore;
         this._textEmbeddingGenerationService = textEmbeddingGenerationService;
-        this._options = options ?? new TextEmbeddingVectorRecordStoreOptions();
+        this._options = options ?? new TextEmbeddingVectorStoreRecordCollectionOptions();
 
         // Enumerate public properties using configuration or attributes.
         (PropertyInfo keyProperty, List<PropertyInfo> dataProperties, List<PropertyInfo> vectorProperties) properties;

@@ -6,9 +6,9 @@ using StackExchange.Redis;
 namespace Microsoft.SemanticKernel.Connectors.Redis;
 
 /// <summary>
-/// Options when creating a <see cref="RedisHashSetVectorRecordStoreOptions{TRecord}"/>.
+/// Options when creating a <see cref="RedisHashSetVectorStoreRecordCollectionOptions{TRecord}"/>.
 /// </summary>
-public sealed class RedisHashSetVectorRecordStoreOptions<TRecord>
+public sealed class RedisHashSetVectorStoreRecordCollectionOptions<TRecord>
     where TRecord : class
 {
     /// <summary>

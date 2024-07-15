@@ -41,18 +41,18 @@ public class TextEmbeddingVectorStore : IVectorStore
     }
 
     /// <inheritdoc />
-    public async Task<IVectorRecordStore<TKey, TRecord>> CreateCollectionAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
+    public async Task<IVectorStoreRecordCollection<TKey, TRecord>> CreateCollectionAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
     {
         var recordStore = await this._decoratedVectorRecordStore.CreateCollectionAsync<TKey, TRecord>(name, vectorStoreRecordDefinition, cancellationToken).ConfigureAwait(false);
-        var embeddingStore = new TextEmbeddingVectorRecordStore<TKey, TRecord>(recordStore, this._textEmbeddingGenerationService, new TextEmbeddingVectorRecordStoreOptions { VectorStoreRecordDefinition = vectorStoreRecordDefinition });
+        var embeddingStore = new TextEmbeddingVectorStoreRecordCollection<TKey, TRecord>(recordStore, this._textEmbeddingGenerationService, new TextEmbeddingVectorStoreRecordCollectionOptions { VectorStoreRecordDefinition = vectorStoreRecordDefinition });
         return embeddingStore;
     }
 
     /// <inheritdoc />
-    public async Task<IVectorRecordStore<TKey, TRecord>> CreateCollectionIfNotExistsAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
+    public async Task<IVectorStoreRecordCollection<TKey, TRecord>> CreateCollectionIfNotExistsAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
     {
         var recordStore = await this._decoratedVectorRecordStore.CreateCollectionIfNotExistsAsync<TKey, TRecord>(name, vectorStoreRecordDefinition, cancellationToken).ConfigureAwait(false);
-        var embeddingStore = new TextEmbeddingVectorRecordStore<TKey, TRecord>(recordStore, this._textEmbeddingGenerationService, new TextEmbeddingVectorRecordStoreOptions { VectorStoreRecordDefinition = vectorStoreRecordDefinition });
+        var embeddingStore = new TextEmbeddingVectorStoreRecordCollection<TKey, TRecord>(recordStore, this._textEmbeddingGenerationService, new TextEmbeddingVectorStoreRecordCollectionOptions { VectorStoreRecordDefinition = vectorStoreRecordDefinition });
         return embeddingStore;
     }
 
@@ -63,10 +63,10 @@ public class TextEmbeddingVectorStore : IVectorStore
     }
 
     /// <inheritdoc />
-    public IVectorRecordStore<TKey, TRecord> GetCollection<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null) where TRecord : class
+    public IVectorStoreRecordCollection<TKey, TRecord> GetCollection<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null) where TRecord : class
     {
         var recordStore = this._decoratedVectorRecordStore.GetCollection<TKey, TRecord>(name, vectorStoreRecordDefinition);
-        var embeddingStore = new TextEmbeddingVectorRecordStore<TKey, TRecord>(recordStore, this._textEmbeddingGenerationService, new TextEmbeddingVectorRecordStoreOptions { VectorStoreRecordDefinition = vectorStoreRecordDefinition });
+        var embeddingStore = new TextEmbeddingVectorStoreRecordCollection<TKey, TRecord>(recordStore, this._textEmbeddingGenerationService, new TextEmbeddingVectorStoreRecordCollectionOptions { VectorStoreRecordDefinition = vectorStoreRecordDefinition });
         return embeddingStore;
     }
 

@@ -58,24 +58,24 @@ public static class AzureAISearchKernelBuilderExtensions
     }
 
     /// <summary>
-    /// Register an Azure AI Search vector record store with the specified service ID.
+    /// Register an Azure AI Search vector store record collection with the specified service ID.
     /// </summary>
-    /// <param name="builder">The builder to register the vector record store on.</param>
-    /// <param name="collectionName">The collection that the vector record store should access.</param>
+    /// <param name="builder">The builder to register the vector store record collection on.</param>
+    /// <param name="collectionName">The collection that the vector store record collection should access.</param>
     /// <param name="serviceId">An optional service id to use as the service key.</param>
     /// <returns>The kernel builder.</returns>
-    public static IKernelBuilder AddAzureAISearchMemoryVectorRecordStore(this IKernelBuilder builder, string collectionName, string? serviceId = default)
+    public static IKernelBuilder AddAzureAISearchMemoryVectorStoreRecordCollection(this IKernelBuilder builder, string collectionName, string? serviceId = default)
     {
-        builder.Services.AddKeyedTransient<IVectorRecordStore<string, MemoryRecord>>(
+        builder.Services.AddKeyedTransient<IVectorStoreRecordCollection<string, MemoryRecord>>(
             serviceId,
             (sp, obj) =>
             {
-                var vectorRecordStore = new AzureAISearchVectorRecordStore<AzureAISearchMemoryRecord>(
+                var vectorRecordStore = new AzureAISearchVectorStoreRecordCollection<AzureAISearchMemoryRecord>(
                     sp.GetRequiredService<SearchIndexClient>(),
                     collectionName,
                     new() { VectorStoreRecordDefinition = s_azureAISearchMemoryRecordDefinition });
 
-                return new MemoryVectorRecordStore<string, AzureAISearchMemoryRecord>(
+                return new MemoryVectorStoreRecordCollection<string, AzureAISearchMemoryRecord>(
                     vectorRecordStore,
                     AzureAISearchMemoryRecord.EncodeId,
                     AzureAISearchMemoryRecord.DecodeId,

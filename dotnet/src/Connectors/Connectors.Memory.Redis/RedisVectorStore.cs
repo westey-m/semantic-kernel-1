@@ -39,7 +39,7 @@ public sealed class RedisVectorStore : IVectorStore
     }
 
     /// <inheritdoc />
-    public IVectorRecordStore<TKey, TRecord> GetCollection<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null) where TRecord : class
+    public IVectorStoreRecordCollection<TKey, TRecord> GetCollection<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null) where TRecord : class
     {
         if (typeof(TKey) != typeof(string))
         {
@@ -48,23 +48,23 @@ public sealed class RedisVectorStore : IVectorStore
 
         if (this._options.VectorStoreCollectionFactory is not null)
         {
-            return this._options.VectorStoreCollectionFactory.CreateVectorStoreCollection<TKey, TRecord>(this._database, name, vectorStoreRecordDefinition);
+            return this._options.VectorStoreCollectionFactory.CreateVectorStoreRecordCollection<TKey, TRecord>(this._database, name, vectorStoreRecordDefinition);
         }
 
         if (this._options.StorageType == RedisStorageType.Hashes)
         {
-            var directlyCreatedStore = new RedisHashSetVectorRecordStore<TRecord>(this._database, name, new RedisHashSetVectorRecordStoreOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition }) as IVectorRecordStore<TKey, TRecord>;
+            var directlyCreatedStore = new RedisHashSetVectorStoreRecordCollection<TRecord>(this._database, name, new RedisHashSetVectorStoreRecordCollectionOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition }) as IVectorStoreRecordCollection<TKey, TRecord>;
             return directlyCreatedStore!;
         }
         else
         {
-            var directlyCreatedStore = new RedisVectorRecordStore<TRecord>(this._database, name, new RedisVectorRecordStoreOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition }) as IVectorRecordStore<TKey, TRecord>;
+            var directlyCreatedStore = new RedisVectorStoreRecordCollection<TRecord>(this._database, name, new RedisVectorStoreRecordCollectionOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition }) as IVectorStoreRecordCollection<TKey, TRecord>;
             return directlyCreatedStore!;
         }
     }
 
     /// <inheritdoc />
-    public async Task<IVectorRecordStore<TKey, TRecord>> CreateCollectionAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
+    public async Task<IVectorStoreRecordCollection<TKey, TRecord>> CreateCollectionAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
     {
         if (typeof(TKey) != typeof(string))
         {
@@ -147,7 +147,7 @@ public sealed class RedisVectorStore : IVectorStore
     }
 
     /// <inheritdoc />
-    public async Task<IVectorRecordStore<TKey, TRecord>> CreateCollectionIfNotExistsAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
+    public async Task<IVectorStoreRecordCollection<TKey, TRecord>> CreateCollectionIfNotExistsAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
     {
         if (typeof(TKey) != typeof(string))
         {

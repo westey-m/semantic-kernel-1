@@ -8,9 +8,9 @@ namespace Microsoft.SemanticKernel.Connectors.Redis;
 public class RedisVectorStoreOptions
 {
     /// <summary>
-    /// An optional factory to use for constructing <see cref="RedisVectorRecordStore{TRecord}"/> instances, if custom options are required.
+    /// An optional factory to use for constructing <see cref="RedisVectorStoreRecordCollection{TRecord}"/> instances, if custom options are required.
     /// </summary>
-    public IRedisVectorStoreCollectionFactory? VectorStoreCollectionFactory { get; init; }
+    public IRedisVectorStoreRecordCollectionFactory? VectorStoreCollectionFactory { get; init; }
 
     /// <summary>
     /// Indicates the way in which data should be stored in redis. Default is <see cref="RedisStorageType.Json"/>.

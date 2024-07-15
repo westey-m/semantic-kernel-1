@@ -37,7 +37,7 @@ public sealed class AzureAISearchVectorStore : IVectorStore
     }
 
     /// <inheritdoc />
-    public IVectorRecordStore<TKey, TRecord> GetCollection<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null) where TRecord : class
+    public IVectorStoreRecordCollection<TKey, TRecord> GetCollection<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null) where TRecord : class
     {
         if (typeof(TKey) != typeof(string))
         {
@@ -46,15 +46,15 @@ public sealed class AzureAISearchVectorStore : IVectorStore
 
         if (this._options.VectorStoreCollectionFactory is not null)
         {
-            return this._options.VectorStoreCollectionFactory.CreateVectorStoreCollection<TKey, TRecord>(this._searchIndexClient, name, vectorStoreRecordDefinition);
+            return this._options.VectorStoreCollectionFactory.CreateVectorStoreRecordCollection<TKey, TRecord>(this._searchIndexClient, name, vectorStoreRecordDefinition);
         }
 
-        var directlyCreatedStore = new AzureAISearchVectorRecordStore<TRecord>(this._searchIndexClient, name, new AzureAISearchVectorRecordStoreOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition }) as IVectorRecordStore<TKey, TRecord>;
+        var directlyCreatedStore = new AzureAISearchVectorStoreRecordCollection<TRecord>(this._searchIndexClient, name, new AzureAISearchVectorStoreRecordCollectionOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition }) as IVectorStoreRecordCollection<TKey, TRecord>;
         return directlyCreatedStore!;
     }
 
     /// <inheritdoc />
-    public async Task<IVectorRecordStore<TKey, TRecord>> CreateCollectionAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
+    public async Task<IVectorStoreRecordCollection<TKey, TRecord>> CreateCollectionAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
     {
         if (typeof(TKey) != typeof(string))
         {
@@ -137,7 +137,7 @@ public sealed class AzureAISearchVectorStore : IVectorStore
     }
 
     /// <inheritdoc />
-    public async Task<IVectorRecordStore<TKey, TRecord>> CreateCollectionIfNotExistsAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
+    public async Task<IVectorStoreRecordCollection<TKey, TRecord>> CreateCollectionIfNotExistsAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
     {
         if (!await this.CollectionExistsAsync(name, cancellationToken).ConfigureAwait(false))
         {

@@ -17,7 +17,9 @@ namespace Microsoft.SemanticKernel.Connectors.Redis;
 /// Service for storing and retrieving vector records, that uses Redis as the underlying storage.
 /// </summary>
 /// <typeparam name="TRecord">The data model to use for adding, updating and retrieving data from storage.</typeparam>
-public sealed class RedisHashSetVectorRecordStore<TRecord> : IVectorRecordStore<string, TRecord>
+#pragma warning disable CA1711 // Identifiers should not have incorrect suffix
+public sealed class RedisHashSetVectorStoreRecordCollection<TRecord> : IVectorStoreRecordCollection<string, TRecord>
+#pragma warning restore CA1711 // Identifiers should not have incorrect suffix
     where TRecord : class
 {
     /// <summary>The name of this database for telemetry purposes.</summary>
@@ -61,11 +63,11 @@ public sealed class RedisHashSetVectorRecordStore<TRecord> : IVectorRecordStore<
     /// <summary>The Redis database to read/write records from.</summary>
     private readonly IDatabase _database;
 
-    /// <summary>The name of the collection that this <see cref="RedisVectorRecordStore{TRecord}"/> will access.</summary>
+    /// <summary>The name of the collection that this <see cref="RedisVectorStoreRecordCollection{TRecord}"/> will access.</summary>
     private readonly string _collectionName;
 
     /// <summary>Optional configuration options for this class.</summary>
-    private readonly RedisHashSetVectorRecordStoreOptions<TRecord> _options;
+    private readonly RedisHashSetVectorStoreRecordCollectionOptions<TRecord> _options;
 
     /// <summary>An array of the names of all the data properties that are part of the Redis payload, i.e. all properties except the key and vector properties.</summary>
     private readonly string[] _dataPropertyNames;
@@ -74,13 +76,13 @@ public sealed class RedisHashSetVectorRecordStore<TRecord> : IVectorRecordStore<
     private readonly IVectorStoreRecordMapper<TRecord, (string Key, HashEntry[] HashEntries)> _mapper;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="RedisHashSetVectorRecordStore{TRecord}"/> class.
+    /// Initializes a new instance of the <see cref="RedisHashSetVectorStoreRecordCollection{TRecord}"/> class.
     /// </summary>
     /// <param name="database">The Redis database to read/write records from.</param>
-    /// <param name="collectionName">The name of the collection that this <see cref="RedisHashSetVectorRecordStoreOptions{TRecord}"/> will access.</param>
+    /// <param name="collectionName">The name of the collection that this <see cref="RedisHashSetVectorStoreRecordCollectionOptions{TRecord}"/> will access.</param>
     /// <param name="options">Optional configuration options for this class.</param>
     /// <exception cref="ArgumentNullException">Throw when parameters are invalid.</exception>
-    public RedisHashSetVectorRecordStore(IDatabase database, string collectionName, RedisHashSetVectorRecordStoreOptions<TRecord>? options = null)
+    public RedisHashSetVectorStoreRecordCollection(IDatabase database, string collectionName, RedisHashSetVectorStoreRecordCollectionOptions<TRecord>? options = null)
     {
         // Verify.
         Verify.NotNull(database);
@@ -89,7 +91,7 @@ public sealed class RedisHashSetVectorRecordStore<TRecord> : IVectorRecordStore<
         // Assign.
         this._database = database;
         this._collectionName = collectionName;
-        this._options = options ?? new RedisHashSetVectorRecordStoreOptions<TRecord>();
+        this._options = options ?? new RedisHashSetVectorStoreRecordCollectionOptions<TRecord>();
 
         // Enumerate public properties using configuration or attributes.
         (PropertyInfo keyProperty, List<PropertyInfo> dataProperties, List<PropertyInfo> vectorProperties) properties;
@@ -283,7 +285,6 @@ public sealed class RedisHashSetVectorRecordStore<TRecord> : IVectorRecordStore<
             };
         }
     }
-
 
     /// <summary>
     /// Run the given operation and wrap any Redis exceptions with <see cref="VectorStoreOperationException"/>."/>

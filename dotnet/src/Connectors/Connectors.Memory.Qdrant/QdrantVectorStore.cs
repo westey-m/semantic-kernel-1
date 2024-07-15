@@ -38,7 +38,7 @@ public sealed class QdrantVectorStore : IVectorStore
     }
 
     /// <inheritdoc />
-    public IVectorRecordStore<TKey, TRecord> GetCollection<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null) where TRecord : class
+    public IVectorStoreRecordCollection<TKey, TRecord> GetCollection<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null) where TRecord : class
     {
         if (typeof(TKey) != typeof(ulong) && typeof(TKey) != typeof(Guid))
         {
@@ -47,15 +47,15 @@ public sealed class QdrantVectorStore : IVectorStore
 
         if (this._options.VectorStoreCollectionFactory is not null)
         {
-            return this._options.VectorStoreCollectionFactory.CreateVectorStoreCollection<TKey, TRecord>(this._qdrantClient, name, vectorStoreRecordDefinition);
+            return this._options.VectorStoreCollectionFactory.CreateVectorStoreRecordCollection<TKey, TRecord>(this._qdrantClient, name, vectorStoreRecordDefinition);
         }
 
-        var directlyCreatedStore = new QdrantVectorRecordStore<TRecord>(this._qdrantClient, name, new QdrantVectorRecordStoreOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition }) as IVectorRecordStore<TKey, TRecord>;
+        var directlyCreatedStore = new QdrantVectorStoreRecordCollection<TRecord>(this._qdrantClient, name, new QdrantVectorStoreRecordCollectionOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition }) as IVectorStoreRecordCollection<TKey, TRecord>;
         return directlyCreatedStore!;
     }
 
     /// <inheritdoc />
-    public async Task<IVectorRecordStore<TKey, TRecord>> CreateCollectionAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
+    public async Task<IVectorStoreRecordCollection<TKey, TRecord>> CreateCollectionAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
     {
         if (typeof(TKey) != typeof(ulong) && typeof(TKey) != typeof(Guid))
         {
@@ -143,7 +143,7 @@ public sealed class QdrantVectorStore : IVectorStore
     }
 
     /// <inheritdoc />
-    public async Task<IVectorRecordStore<TKey, TRecord>> CreateCollectionIfNotExistsAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
+    public async Task<IVectorStoreRecordCollection<TKey, TRecord>> CreateCollectionIfNotExistsAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
     {
         if (typeof(TKey) != typeof(ulong) && typeof(TKey) != typeof(Guid))
         {

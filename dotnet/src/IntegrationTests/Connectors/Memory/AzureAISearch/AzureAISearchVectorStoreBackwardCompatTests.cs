@@ -12,7 +12,7 @@ using Azure.Search.Documents.Indexes;
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.AzureAISearch;
 
 /// <summary>
-/// Tests teh backwards compatibility layer of <see cref="AzureAISearchVectorRecordStore{TRecord}"/> with the <see cref="AzureAISearchMemoryStore"/>.
+/// Tests teh backwards compatibility layer of <see cref="AzureAISearchVectorStoreRecordCollection{TRecord}"/> with the <see cref="AzureAISearchMemoryStore"/>.
 /// </summary>
 /// <param name="fixture">The test fixture.</param>
 [Collection("AzureAISearchVectorStoreCollection")]
@@ -28,11 +28,11 @@ public class AzureAISearchVectorStoreBackwardCompatTests(AzureAISearchVectorStor
 
         var kernelBuilder = Kernel
             .CreateBuilder()
-            .AddAzureAISearchMemoryVectorRecordStore(testCollectionName);
+            .AddAzureAISearchMemoryVectorStoreRecordCollection(testCollectionName);
         kernelBuilder.Services.AddTransient<SearchIndexClient>((sp) => fixture.SearchIndexClient);
         var kernel = kernelBuilder.Build();
 
-        var sut = kernel.GetRequiredService<IVectorRecordStore<string, MemoryRecord>>();
+        var sut = kernel.GetRequiredService<IVectorStoreRecordCollection<string, MemoryRecord>>();
 
         if (!await memoryStore.DoesCollectionExistAsync(testCollectionName))
         {

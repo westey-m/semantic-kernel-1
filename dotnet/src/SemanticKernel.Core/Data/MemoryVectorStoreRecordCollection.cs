@@ -11,13 +11,15 @@ using Microsoft.SemanticKernel.Memory;
 namespace Microsoft.SemanticKernel.Data;
 
 /// <summary>
-/// Decorator class for <see cref="IVectorRecordStore{TKey, TRecord}"/> that allows the use of any <see cref="IVectorRecordStore{TKey, TRecord}"/> with mapping to and from <see cref="MemoryRecord"/>.
+/// Decorator class for <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/> that allows the use of any <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/> with mapping to and from <see cref="MemoryRecord"/>.
 /// </summary>
-public class MemoryVectorRecordStore<TStorageKey, TStorageRecord> : IVectorRecordStore<string, MemoryRecord>
+#pragma warning disable CA1711 // Identifiers should not have incorrect suffix
+public class MemoryVectorStoreRecordCollection<TStorageKey, TStorageRecord> : IVectorStoreRecordCollection<string, MemoryRecord>
+#pragma warning restore CA1711 // Identifiers should not have incorrect suffix
     where TStorageRecord : class
 {
-    /// <summary>The <see cref="IVectorRecordStore{TKey, TRecord}"/> that is decorated by this class.</summary>
-    private readonly IVectorRecordStore<TStorageKey, TStorageRecord> _innnerVectorRecordStore;
+    /// <summary>The <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/> that is decorated by this class.</summary>
+    private readonly IVectorStoreRecordCollection<TStorageKey, TStorageRecord> _innnerVectorRecordStore;
 
     /// <summary>Function that is used to encode the record id before it is written to storage or used to retrieve a record.</summary>
     private readonly Func<string, TStorageKey> _recordKeyEncoder;
@@ -29,14 +31,14 @@ public class MemoryVectorRecordStore<TStorageKey, TStorageRecord> : IVectorRecor
     private readonly IVectorStoreRecordMapper<MemoryRecord, TStorageRecord> _mapper;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="MemoryVectorRecordStore{TKey, TStorageRecord}"/> class.
+    /// Initializes a new instance of the <see cref="MemoryVectorStoreRecordCollection{TKey, TStorageRecord}"/> class.
     /// </summary>
-    /// <param name="innnerVectorRecordStore">The <see cref="IVectorRecordStore{TKey, TRecord}"/> that is decorated by this class.</param>
+    /// <param name="innnerVectorRecordStore">The <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/> that is decorated by this class.</param>
     /// <param name="recordKeyEncoder">Function that is used to encode the record id before it is written to storage or used to retrieve a record.</param>
     /// <param name="recordKeyDecoder">Function that is used to decode the record id after it is retrieved from storage or after upserting.</param>
     /// <param name="mapper">A mapper to map from the <see cref="MemoryRecord"/> type to the internal storage model.</param>
-    public MemoryVectorRecordStore(
-        IVectorRecordStore<TStorageKey, TStorageRecord> innnerVectorRecordStore,
+    public MemoryVectorStoreRecordCollection(
+        IVectorStoreRecordCollection<TStorageKey, TStorageRecord> innnerVectorRecordStore,
         Func<string, TStorageKey> recordKeyEncoder,
         Func<TStorageKey, string> recordKeyDecoder,
         IVectorStoreRecordMapper<MemoryRecord, TStorageRecord> mapper)
