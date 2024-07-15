@@ -151,12 +151,6 @@ public sealed class RedisHashSetVectorRecordStore<TRecord> : IVectorRecordStore<
             retrievedHashEntries = fieldKeys.Zip(retrievedValues, (field, value) => new HashEntry(field, value)).ToArray();
         }
 
-        // Check if the key was found before trying to parse the result.
-        ////if (redisResult.IsNull || redisResult is null)
-        ////{
-        ////    return null;
-        ////}
-
         // Convert to the caller's data model.
         return VectorStoreErrorHandler.RunModelConversion(
             DatabaseName,

@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -86,10 +87,38 @@ internal sealed class RedisHashSetVectorStoreRecordMapper<TConsumerDataModel> : 
     {
         var jsonObject = new JsonObject();
 
-        // TODO: Fix conversion to actual types required by model.
-        foreach (var hashEntry in storageModel.HashEntries)
+        foreach (var property in this._dataPropertiesInfo)
         {
-            jsonObject.Add(hashEntry.Name!, JsonValue.Create(hashEntry.Value.Box()));
+            var hashEntry = storageModel.HashEntries.FirstOrDefault(x => x.Name == property.Name);
+            if (hashEntry.Name.HasValue)
+            {
+                jsonObject.Add(hashEntry.Name!, JsonValue.Create(Convert.ChangeType(hashEntry.Value, property.PropertyType)));
+            }
+        }
+
+        if (options.IncludeVectors)
+        {
+            foreach (var property in this._vectorPropertiesInfo)
+            {
+                var hashEntry = storageModel.HashEntries.FirstOrDefault(x => x.Name == property.Name);
+                if (hashEntry.Name.HasValue)
+                {
+                    if (property.PropertyType == typeof(ReadOnlyMemory<float>) || property.PropertyType == typeof(ReadOnlyMemory<float>?))
+                    {
+                        var array = MemoryMarshal.Cast<byte, float>((byte[])hashEntry.Value!).ToArray();
+                        jsonObject.Add(hashEntry.Name!, JsonValue.Create(array));
+                    }
+                    else if (property.PropertyType == typeof(ReadOnlyMemory<double>) || property.PropertyType == typeof(ReadOnlyMemory<double>?))
+                    {
+                        var array = MemoryMarshal.Cast<byte, double>((byte[])hashEntry.Value!).ToArray();
+                        jsonObject.Add(hashEntry.Name!, JsonValue.Create(array));
+                    }
+                    else
+                    {
+                        throw new VectorStoreRecordMappingException($"Invalid vector type '{property.PropertyType.Name}' found on property '{property.Name}' on provided record of type '{typeof(TConsumerDataModel).FullName}'. Only float and double vectors are supported.");
+                    }
+                }
+            }
         }
 
         // Check that the key field is not already present in the redis value.
