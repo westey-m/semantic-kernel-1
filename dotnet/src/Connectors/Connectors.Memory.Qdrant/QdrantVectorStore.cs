@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Grpc.Core;
 using Microsoft.SemanticKernel.Data;
 using Qdrant.Client;
-using Qdrant.Client.Grpc;
 
 namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 
@@ -18,8 +17,11 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 /// </summary>
 public sealed class QdrantVectorStore : IVectorStore
 {
+    /// <summary>The name of this database for telemetry purposes.</summary>
+    private const string DatabaseName = "Qdrant";
+
     /// <summary>Qdrant client that can be used to manage the collections and points in a Qdrant store.</summary>
-    private readonly QdrantClient _qdrantClient;
+    private readonly MockableQdrantClient _qdrantClient;
 
     /// <summary>Optional configuration options for this class.</summary>
     private readonly QdrantVectorStoreOptions _options;
@@ -30,6 +32,16 @@ public sealed class QdrantVectorStore : IVectorStore
     /// <param name="qdrantClient">Qdrant client that can be used to manage the collections and points in a Qdrant store.</param>
     /// <param name="options">Optional configuration options for this class.</param>
     public QdrantVectorStore(QdrantClient qdrantClient, QdrantVectorStoreOptions? options = default)
+        : this(new MockableQdrantClient(qdrantClient), options)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="QdrantVectorStore"/> class.
+    /// </summary>
+    /// <param name="qdrantClient">Qdrant client that can be used to manage the collections and points in a Qdrant store.</param>
+    /// <param name="options">Optional configuration options for this class.</param>
+    internal QdrantVectorStore(MockableQdrantClient qdrantClient, QdrantVectorStoreOptions? options = default)
     {
         Verify.NotNull(qdrantClient);
 
@@ -47,11 +59,12 @@ public sealed class QdrantVectorStore : IVectorStore
 
         if (this._options.VectorStoreCollectionFactory is not null)
         {
-            return this._options.VectorStoreCollectionFactory.CreateVectorStoreRecordCollection<TKey, TRecord>(this._qdrantClient, name, vectorStoreRecordDefinition);
+            return this._options.VectorStoreCollectionFactory.CreateVectorStoreRecordCollection<TKey, TRecord>(this._qdrantClient.QdrantClient, name, vectorStoreRecordDefinition);
         }
 
-        var directlyCreatedStore = new QdrantVectorStoreRecordCollection<TRecord>(this._qdrantClient, name, new QdrantVectorStoreRecordCollectionOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition }) as IVectorStoreRecordCollection<TKey, TRecord>;
-        return directlyCreatedStore!;
+        var directlyCreatedStore = new QdrantVectorStoreRecordCollection<TRecord>(this._qdrantClient, name, new QdrantVectorStoreRecordCollectionOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition });
+        var castCreatedStore = directlyCreatedStore as IVectorStoreRecordCollection<TKey, TRecord>;
+        return castCreatedStore!;
     }
 
     /// <inheritdoc />
@@ -69,52 +82,25 @@ public sealed class QdrantVectorStore : IVectorStore
 
         if (!this._options.HasNamedVectors)
         {
-            // If we are not using named vectors, we can only have one vector property.
+            // If we are not using named vectors, we can only have one vector property. We can assume we have at least one, since this is already verified in the constructor.
             var singleVectorProperty = vectorStoreRecordDefinition.Properties.First(x => x is VectorStoreRecordVectorProperty vectorProperty) as VectorStoreRecordVectorProperty;
 
-            if (singleVectorProperty!.Dimensions is not > 0)
-            {
-                throw new InvalidOperationException($"Property {nameof(singleVectorProperty.Dimensions)} on {nameof(VectorStoreRecordVectorProperty)} '{singleVectorProperty.PropertyName}' must be set to a positive ingeteger to create a collection.");
-            }
-
-            if (singleVectorProperty!.IndexKind is not null && singleVectorProperty!.IndexKind != IndexKind.Hnsw)
-            {
-                throw new InvalidOperationException($"Unsupported index kind '{singleVectorProperty!.IndexKind}' for {nameof(VectorStoreRecordVectorProperty)} '{singleVectorProperty.PropertyName}'.");
-            }
+            // Map the single vector property to the qdrant config.
+            var vectorParams = QdrantVectorStoreCollectionCreateMapping.MapSingleVector(singleVectorProperty!);
 
             // Create the collection with the single unnamed vector.
             await this._qdrantClient.CreateCollectionAsync(
                 name,
-                new VectorParams { Size = (ulong)singleVectorProperty.Dimensions, Distance = QdrantVectorStoreCollectionCreateMapping.GetSDKDistanceAlgorithm(singleVectorProperty) },
+                vectorParams,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
         }
         else
         {
-            var vectorParamsMap = new VectorParamsMap();
-
             // Since we are using named vectors, iterate over all vector properties.
             var vectorProperties = vectorStoreRecordDefinition.Properties.Where(x => x is VectorStoreRecordVectorProperty).Select(x => (VectorStoreRecordVectorProperty)x);
-            foreach (var vectorProperty in vectorProperties)
-            {
-                if (vectorProperty.Dimensions is not > 0)
-                {
-                    throw new InvalidOperationException($"Property {nameof(vectorProperty.Dimensions)} on {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}' must be set to a positive ingeteger to create a collection.");
-                }
 
-                if (vectorProperty.IndexKind is not null && vectorProperty.IndexKind != IndexKind.Hnsw)
-                {
-                    throw new InvalidOperationException($"Unsupported index kind '{vectorProperty.IndexKind}' for {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}'.");
-                }
-
-                // Add each vector property to the vectors map.
-                vectorParamsMap.Map.Add(
-                    vectorProperty.PropertyName,
-                    new VectorParams
-                    {
-                        Size = (ulong)vectorProperty.Dimensions,
-                        Distance = QdrantVectorStoreCollectionCreateMapping.GetSDKDistanceAlgorithm(vectorProperty)
-                    });
-            }
+            // Map the named vectors to the qdrant config.
+            var vectorParamsMap = QdrantVectorStoreCollectionCreateMapping.MapNamedVectors(vectorProperties, new Dictionary<string, string>());
 
             // Create the collection with named vectors.
             await this._qdrantClient.CreateCollectionAsync(
@@ -159,35 +145,46 @@ public sealed class QdrantVectorStore : IVectorStore
     }
 
     /// <inheritdoc />
-    private async Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default)
+    private Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await this._qdrantClient.CollectionExistsAsync(name, cancellationToken).ConfigureAwait(false);
-        }
-        catch (RpcException ex)
-        {
-            throw new HttpOperationException(ex.Message, ex);
-        }
+        return this.RunOperationAsync(
+            "CollectionExists",
+            () => this._qdrantClient.CollectionExistsAsync(name, cancellationToken));
     }
 
     /// <inheritdoc />
     public async IAsyncEnumerable<string> ListCollectionNamesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<string> collections;
-
-        try
-        {
-            collections = await this._qdrantClient.ListCollectionsAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (RpcException ex)
-        {
-            throw new HttpOperationException(ex.Message, ex);
-        }
+        var collections = await this.RunOperationAsync(
+            "ListCollections",
+            () => this._qdrantClient.ListCollectionsAsync(cancellationToken)).ConfigureAwait(false);
 
         foreach (var collection in collections)
         {
             yield return collection;
+        }
+    }
+
+    /// <summary>
+    /// Run the given operation and wrap any <see cref="RpcException"/> with <see cref="VectorStoreOperationException"/>."/>
+    /// </summary>
+    /// <typeparam name="T">The response type of the operation.</typeparam>
+    /// <param name="operationName">The type of database operation being run.</param>
+    /// <param name="operation">The operation to run.</param>
+    /// <returns>The result of the operation.</returns>
+    private async Task<T> RunOperationAsync<T>(string operationName, Func<Task<T>> operation)
+    {
+        try
+        {
+            return await operation.Invoke().ConfigureAwait(false);
+        }
+        catch (RpcException ex)
+        {
+            throw new VectorStoreOperationException("Call to vector store failed.", ex)
+            {
+                VectorStoreType = DatabaseName,
+                OperationName = operationName
+            };
         }
     }
 }

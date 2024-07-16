@@ -111,7 +111,7 @@ public class AzureAISearchVectorStoreTests
     }
 
     [Fact]
-    public async Task ListCollectionNamesGetsIndexNamesAsync()
+    public async Task ListCollectionNamesCallsSDKAsync()
     {
         // Arrange async enumerator mock.
         var iterationCounter = 0;

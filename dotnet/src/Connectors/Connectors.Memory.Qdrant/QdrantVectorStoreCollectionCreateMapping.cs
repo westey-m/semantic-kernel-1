@@ -48,6 +48,51 @@ internal static class QdrantVectorStoreCollectionCreateMapping
     };
 
     /// <summary>
+    /// Maps a single <see cref="VectorStoreRecordVectorProperty"/> to a qdrant <see cref="VectorParams"/>.
+    /// </summary>
+    /// <param name="vectorProperty">The property to map.</param>
+    /// <returns>The mapped <see cref="VectorParams"/>.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the property is missing information or has unsupported options specified.</exception>
+    public static VectorParams MapSingleVector(VectorStoreRecordVectorProperty vectorProperty)
+    {
+        if (vectorProperty!.Dimensions is not > 0)
+        {
+            throw new InvalidOperationException($"Property {nameof(vectorProperty.Dimensions)} on {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}' must be set to a positive ingeteger to create a collection.");
+        }
+
+        if (vectorProperty!.IndexKind is not null && vectorProperty!.IndexKind != IndexKind.Hnsw)
+        {
+            throw new InvalidOperationException($"Unsupported index kind '{vectorProperty!.IndexKind}' for {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}'.");
+        }
+
+        return new VectorParams { Size = (ulong)vectorProperty.Dimensions, Distance = QdrantVectorStoreCollectionCreateMapping.GetSDKDistanceAlgorithm(vectorProperty) };
+    }
+
+    /// <summary>
+    /// Maps a collection of <see cref="VectorStoreRecordVectorProperty"/> to a qdrant <see cref="VectorParamsMap"/>.
+    /// </summary>
+    /// <param name="vectorProperties">The properties to map.</param>
+    /// <param name="storagePropertyNames">The mapping of property names to storage names.</param>
+    /// <returns>THe mapped <see cref="VectorParamsMap"/>.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the property is missing information or has unsupported options specified.</exception>
+    public static VectorParamsMap MapNamedVectors(IEnumerable<VectorStoreRecordVectorProperty> vectorProperties, Dictionary<string, string> storagePropertyNames)
+    {
+        var vectorParamsMap = new VectorParamsMap();
+
+        foreach (var vectorProperty in vectorProperties)
+        {
+            var storageName = storagePropertyNames[vectorProperty.PropertyName];
+
+            // Add each vector property to the vectors map.
+            vectorParamsMap.Map.Add(
+                storageName,
+                MapSingleVector(vectorProperty));
+        }
+
+        return vectorParamsMap;
+    }
+
+    /// <summary>
     /// Get the configured <see cref="Distance"/> from the given <paramref name="vectorProperty"/>.
     /// If none is configured, the default is <see cref="Distance.Cosine"/>.
     /// </summary>
