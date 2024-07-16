@@ -34,7 +34,7 @@ public sealed class VectorStoreRecordVectorAttribute : Attribute
     /// <param name="Dimensions">The number of dimensions that the vector has.</param>
     /// <param name="IndexKind">The kind of index to use.</param>
     /// <param name="DistanceFunction">The distance function to use when comparing vectors.</param>
-    public VectorStoreRecordVectorAttribute(int Dimensions, IndexKind IndexKind, DistanceFunction DistanceFunction)
+    public VectorStoreRecordVectorAttribute(int Dimensions, string IndexKind, string DistanceFunction)
     {
         this.Dimensions = Dimensions;
         this.IndexKind = IndexKind;
@@ -49,12 +49,14 @@ public sealed class VectorStoreRecordVectorAttribute : Attribute
     /// <summary>
     /// Gets the kind of index to use.
     /// </summary>
-    public IndexKind? IndexKind { get; private set; }
+    /// <seealso cref="IndexKind"/>
+    public string? IndexKind { get; private set; }
 
     /// <summary>
     /// Gets the distance function to use when comparing vectors.
     /// </summary>
-    public DistanceFunction? DistanceFunction { get; private set; }
+    /// <seealso cref="DistanceFunction"/>
+    public string? DistanceFunction { get; private set; }
 
     /// <summary>
     /// Gets or sets an optional name to use for the property in storage, if different from the property name.

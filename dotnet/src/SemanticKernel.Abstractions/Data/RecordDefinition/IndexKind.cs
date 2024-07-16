@@ -5,15 +5,15 @@ namespace Microsoft.SemanticKernel.Data;
 /// <summary>
 /// Defines the index types that can be used to index vectors.
 /// </summary>
-public enum IndexKind
+public static class IndexKind
 {
     /// <summary>
-    /// Hierarchical Navigable Small World, which performs an aproximate nearest neighbour (ANN) search.
+    /// Hierarchical Navigable Small World, which performs an approximate nearest neighbour (ANN) search.
     /// </summary>
     /// <remarks>
     /// Lower accuracy than exhaustive k nearest neighbor, but faster and more efficient.
     /// </remarks>
-    Hnsw,
+    public const string Hnsw = nameof(Hnsw);
 
     /// <summary>
     /// Does a brute force search to find the nearest neighbors.
@@ -24,5 +24,5 @@ public enum IndexKind
     /// High recall accuracy, but slower and more expensive than HNSW.
     /// Better with smaller datasets.
     /// </remarks>
-    Flat,
+    public const string Flat = nameof(Flat);
 }

@@ -36,10 +36,12 @@ public sealed class VectorStoreRecordVectorProperty : VectorStoreRecordProperty
     /// <summary>
     /// Gets the kind of index to use.
     /// </summary>
-    public IndexKind? IndexKind { get; init; }
+    /// <seealso cref="IndexKind"/>
+    public string? IndexKind { get; init; }
 
     /// <summary>
     /// Gets the distance function to use when comparing vectors.
     /// </summary>
-    public DistanceFunction? DistanceFunction { get; init; }
+    /// <seealso cref="DistanceFunction"/>
+    public string? DistanceFunction { get; init; }
 }

@@ -77,7 +77,7 @@ public sealed class QdrantVectorStore : IVectorStore
                 throw new InvalidOperationException($"Property {nameof(singleVectorProperty.Dimensions)} on {nameof(VectorStoreRecordVectorProperty)} '{singleVectorProperty.PropertyName}' must be set to a positive ingeteger to create a collection.");
             }
 
-            if (singleVectorProperty!.IndexKind is not null && singleVectorProperty!.IndexKind is not IndexKind.Hnsw)
+            if (singleVectorProperty!.IndexKind is not null && singleVectorProperty!.IndexKind != IndexKind.Hnsw)
             {
                 throw new InvalidOperationException($"Unsupported index kind '{singleVectorProperty!.IndexKind}' for {nameof(VectorStoreRecordVectorProperty)} '{singleVectorProperty.PropertyName}'.");
             }
@@ -101,7 +101,7 @@ public sealed class QdrantVectorStore : IVectorStore
                     throw new InvalidOperationException($"Property {nameof(vectorProperty.Dimensions)} on {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}' must be set to a positive ingeteger to create a collection.");
                 }
 
-                if (vectorProperty.IndexKind is not null && vectorProperty.IndexKind is not IndexKind.Hnsw)
+                if (vectorProperty.IndexKind is not null && vectorProperty.IndexKind != IndexKind.Hnsw)
                 {
                     throw new InvalidOperationException($"Unsupported index kind '{vectorProperty.IndexKind}' for {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}'.");
                 }

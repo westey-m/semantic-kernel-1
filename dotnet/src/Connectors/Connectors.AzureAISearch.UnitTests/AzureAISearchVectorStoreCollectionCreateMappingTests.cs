@@ -1,11 +1,11 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using Microsoft.SemanticKernel.Connectors.AzureAISearch;
-using Xunit;
-using Microsoft.SemanticKernel.Data;
-using Azure.Search.Documents.Indexes.Models;
 using System;
 using System.Collections.Generic;
+using Azure.Search.Documents.Indexes.Models;
+using Microsoft.SemanticKernel.Connectors.AzureAISearch;
+using Microsoft.SemanticKernel.Data;
+using Xunit;
 
 namespace SemanticKernel.Connectors.AzureAISearch.UnitTests;
 
@@ -107,7 +107,7 @@ public class AzureAISearchVectorStoreCollectionCreateMappingTests
     [Theory]
     [InlineData(IndexKind.Hnsw, typeof(HnswAlgorithmConfiguration))]
     [InlineData(IndexKind.Flat, typeof(ExhaustiveKnnAlgorithmConfiguration))]
-    public void MapVectorFieldCreatesExpectedAlgoConfigTypes(IndexKind indexKind, Type algoConfigType)
+    public void MapVectorFieldCreatesExpectedAlgoConfigTypes(string indexKind, Type algoConfigType)
     {
         // Arrange
         var vectorProperty = new VectorStoreRecordVectorProperty("testvector") { Dimensions = 10, IndexKind = indexKind, DistanceFunction = DistanceFunction.DotProductSimilarity };

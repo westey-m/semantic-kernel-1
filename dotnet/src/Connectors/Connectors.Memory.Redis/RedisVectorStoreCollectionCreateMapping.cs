@@ -68,7 +68,7 @@ internal static class RedisVectorStoreCollectionCreateMapping
     /// </summary>
     /// <param name="vectorProperty">The vector property definition.</param>
     /// <returns>The chosen distance metric.</returns>
-    /// <exception cref="InvalidOperationException">Thrown if a distance function is chosen that isn't suported by Redis.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if a distance function is chosen that isn't supported by Redis.</exception>
     public static string GetSDKDistanceAlgorithm(VectorStoreRecordVectorProperty vectorProperty)
     {
         if (vectorProperty.DistanceFunction is null)

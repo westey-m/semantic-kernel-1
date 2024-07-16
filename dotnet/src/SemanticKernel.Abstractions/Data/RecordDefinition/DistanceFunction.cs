@@ -5,7 +5,7 @@ namespace Microsoft.SemanticKernel.Data;
 /// <summary>
 /// Defines the distance functions that can be used to compare vectors.
 /// </summary>
-public enum DistanceFunction
+public static class DistanceFunction
 {
     /// <summary>
     /// The cosine (angular) similarty between two vectors.
@@ -17,7 +17,7 @@ public enum DistanceFunction
     /// 0 means vectors are orthogonal.
     /// 1 means vectors are identical.
     /// </remarks>
-    CosineSimilarity,
+    public const string CosineSimilarity = nameof(CosineSimilarity);
 
     /// <summary>
     /// The cosine (angular) similarty between two vectors.
@@ -28,7 +28,7 @@ public enum DistanceFunction
     /// 1 means vectors are orthogonal.
     /// 0 means vectors are identical.
     /// </remarks>
-    CosineDistance,
+    public const string CosineDistance = nameof(CosineDistance);
 
     /// <summary>
     /// Measures both the length and angle between two vectors.
@@ -36,7 +36,7 @@ public enum DistanceFunction
     /// <remarks>
     /// Same as cosine similarity if the vectors are the same length, but more performant.
     /// </remarks>
-    DotProductSimilarity,
+    public const string DotProductSimilarity = nameof(DotProductSimilarity);
 
     /// <summary>
     /// Measures the Euclidean distance between two vectors.
@@ -44,10 +44,10 @@ public enum DistanceFunction
     /// <remarks>
     /// Also known as l2-norm.
     /// </remarks>
-    EuclideanDistance,
+    public const string EuclideanDistance = nameof(EuclideanDistance);
 
     /// <summary>
     /// Measures the Manhattan distance between two vectors.
     /// </summary>
-    ManhattanDistance,
+    public const string ManhattanDistance = nameof(ManhattanDistance);
 }
