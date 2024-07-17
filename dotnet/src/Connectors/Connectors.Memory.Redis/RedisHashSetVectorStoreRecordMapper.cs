@@ -31,24 +31,40 @@ internal sealed class RedisHashSetVectorStoreRecordMapper<TConsumerDataModel> : 
     /// <summary>A list of property info objects that point at the vector properties in the current model, and allows easy reading and writing of these properties.</summary>
     private readonly IEnumerable<PropertyInfo> _vectorPropertiesInfo;
 
+    /// <summary>A dictionary that maps from a property name to the configured name that should be used when storing it.</summary>
+    private readonly Dictionary<string, string> _storagePropertyNames;
+
+    /// <summary>A dictionary that maps from a property name to the configured name that should be used when serializing it to json for data and vector properties.</summary>
+    private readonly Dictionary<string, string> _jsonPropertyNames = new();
+
     /// <summary>
     /// Initializes a new instance of the <see cref="RedisHashSetVectorStoreRecordMapper{TConsumerDataModel}"/> class.
     /// </summary>
     /// <param name="keyPropertyInfo">The property info object that points at the key property for the current model.</param>
-    /// <param name="keyFieldJsonPropertyName">The name of the key field on the model when serialized to json.</param>
     /// <param name="dataPropertiesInfo">The property info objects that point at the payload properties in the current model.</param>
     /// <param name="vectorPropertiesInfo">The property info objects that point at the vector properties in the current model.</param>
-    public RedisHashSetVectorStoreRecordMapper(PropertyInfo keyPropertyInfo, string keyFieldJsonPropertyName, IEnumerable<PropertyInfo> dataPropertiesInfo, IEnumerable<PropertyInfo> vectorPropertiesInfo)
+    /// <param name="storagePropertyNames">A dictionary that maps from a property name to the configured name that should be used when storing it.</param>
+    public RedisHashSetVectorStoreRecordMapper(
+        PropertyInfo keyPropertyInfo,
+        IEnumerable<PropertyInfo> dataPropertiesInfo,
+        IEnumerable<PropertyInfo> vectorPropertiesInfo,
+        Dictionary<string, string> storagePropertyNames)
     {
         Verify.NotNull(keyPropertyInfo);
-        Verify.NotNullOrWhiteSpace(keyFieldJsonPropertyName);
         Verify.NotNull(dataPropertiesInfo);
         Verify.NotNull(vectorPropertiesInfo);
+        Verify.NotNull(storagePropertyNames);
 
         this._keyPropertyInfo = keyPropertyInfo;
-        this._keyFieldJsonPropertyName = keyFieldJsonPropertyName;
         this._dataPropertiesInfo = dataPropertiesInfo;
         this._vectorPropertiesInfo = vectorPropertiesInfo;
+        this._storagePropertyNames = storagePropertyNames;
+
+        this._keyFieldJsonPropertyName = VectorStoreRecordPropertyReader.GetJsonPropertyName(JsonSerializerOptions.Default, keyPropertyInfo);
+        foreach (var property in dataPropertiesInfo.Concat(vectorPropertiesInfo))
+        {
+            this._jsonPropertyNames[property.Name] = VectorStoreRecordPropertyReader.GetJsonPropertyName(JsonSerializerOptions.Default, property);
+        }
     }
 
     /// <inheritdoc />
@@ -89,10 +105,12 @@ internal sealed class RedisHashSetVectorStoreRecordMapper<TConsumerDataModel> : 
 
         foreach (var property in this._dataPropertiesInfo)
         {
-            var hashEntry = storageModel.HashEntries.FirstOrDefault(x => x.Name == property.Name);
+            var storageName = this._storagePropertyNames[property.Name];
+            var jsonName = this._jsonPropertyNames[property.Name];
+            var hashEntry = storageModel.HashEntries.FirstOrDefault(x => x.Name == storageName);
             if (hashEntry.Name.HasValue)
             {
-                jsonObject.Add(hashEntry.Name!, JsonValue.Create(Convert.ChangeType(hashEntry.Value, property.PropertyType)));
+                jsonObject.Add(jsonName, JsonValue.Create(Convert.ChangeType(hashEntry.Value, property.PropertyType)));
             }
         }
 
@@ -100,18 +118,21 @@ internal sealed class RedisHashSetVectorStoreRecordMapper<TConsumerDataModel> : 
         {
             foreach (var property in this._vectorPropertiesInfo)
             {
-                var hashEntry = storageModel.HashEntries.FirstOrDefault(x => x.Name == property.Name);
+                var storageName = this._storagePropertyNames[property.Name];
+                var jsonName = this._jsonPropertyNames[property.Name];
+
+                var hashEntry = storageModel.HashEntries.FirstOrDefault(x => x.Name == storageName);
                 if (hashEntry.Name.HasValue)
                 {
                     if (property.PropertyType == typeof(ReadOnlyMemory<float>) || property.PropertyType == typeof(ReadOnlyMemory<float>?))
                     {
                         var array = MemoryMarshal.Cast<byte, float>((byte[])hashEntry.Value!).ToArray();
-                        jsonObject.Add(hashEntry.Name!, JsonValue.Create(array));
+                        jsonObject.Add(jsonName, JsonValue.Create(array));
                     }
                     else if (property.PropertyType == typeof(ReadOnlyMemory<double>) || property.PropertyType == typeof(ReadOnlyMemory<double>?))
                     {
                         var array = MemoryMarshal.Cast<byte, double>((byte[])hashEntry.Value!).ToArray();
-                        jsonObject.Add(hashEntry.Name!, JsonValue.Create(array));
+                        jsonObject.Add(jsonName, JsonValue.Create(array));
                     }
                     else
                     {

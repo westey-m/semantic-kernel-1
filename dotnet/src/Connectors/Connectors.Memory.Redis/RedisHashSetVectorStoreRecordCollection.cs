@@ -128,8 +128,8 @@ public sealed class RedisHashSetVectorStoreRecordCollection<TRecord> : IVectorSt
         }
         else
         {
-            var keyJsonPropertyName = VectorStoreRecordPropertyReader.GetJsonPropertyName(JsonSerializerOptions.Default, properties.keyProperty);
-            this._mapper = new RedisHashSetVectorStoreRecordMapper<TRecord>(properties.keyProperty, keyJsonPropertyName, properties.dataProperties, properties.vectorProperties);
+            var storagePropertyNames = VectorStoreRecordPropertyReader.BuildPropertyNameToStorageNameMap(properties, this._options.VectorStoreRecordDefinition);
+            this._mapper = new RedisHashSetVectorStoreRecordMapper<TRecord>(properties.keyProperty, properties.dataProperties, properties.vectorProperties, storagePropertyNames);
         }
     }
 

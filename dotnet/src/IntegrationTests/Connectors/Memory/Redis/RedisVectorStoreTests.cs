@@ -8,6 +8,11 @@ using Xunit.Abstractions;
 
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.Redis;
 
+/// <summary>
+/// Contains tests for the <see cref="RedisVectorStore"/> class.
+/// </summary>
+/// <param name="output">Used to write to the test output stream.</param>
+/// <param name="fixture">The test fixture.</param>
 [Collection("RedisVectorStoreCollection")]
 public class RedisVectorStoreTests(ITestOutputHelper output, RedisVectorStoreFixture fixture)
 {

@@ -11,10 +11,16 @@ using StackExchange.Redis;
 namespace Microsoft.SemanticKernel.Connectors.Redis;
 
 /// <summary>
-/// Provides collection retrieval and deletion for Redis.
+/// Class for accessing the list of collections in a Redis vector store.
 /// </summary>
+/// <remarks>
+/// This class can be used with collections of any schema type, but requires you to provide schema information when getting a collection.
+/// </remarks>
 public sealed class RedisVectorStore : IVectorStore
 {
+    /// <summary>The name of this database for telemetry purposes.</summary>
+    private const string DatabaseName = "Redis";
+
     /// <summary>The redis database to read/write indices from.</summary>
     private readonly IDatabase _database;
 
@@ -62,15 +68,20 @@ public sealed class RedisVectorStore : IVectorStore
     /// <inheritdoc />
     public async IAsyncEnumerable<string> ListCollectionNamesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        const string OperationName = "";
         RedisResult[] listResult;
 
         try
         {
             listResult = await this._database.FT()._ListAsync().ConfigureAwait(false);
         }
-        catch (RedisServerException ex)
+        catch (RedisException ex)
         {
-            throw new HttpOperationException(ex.Message, ex);
+            throw new VectorStoreOperationException("Call to vector store failed.", ex)
+            {
+                VectorStoreType = DatabaseName,
+                OperationName = OperationName
+            };
         }
 
         foreach (var item in listResult)

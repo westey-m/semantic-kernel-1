@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
 using Grpc.Core;
 using Microsoft.SemanticKernel.Data;
 using Qdrant.Client;
@@ -12,8 +11,11 @@ using Qdrant.Client;
 namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 
 /// <summary>
-/// Provides collection retrieval and deletion for Qdrant.
+/// Class for accessing the list of collections in a Qdrant vector store.
 /// </summary>
+/// <remarks>
+/// This class can be used with collections of any schema type, but requires you to provide schema information when getting a collection.
+/// </remarks>
 public sealed class QdrantVectorStore : IVectorStore
 {
     /// <summary>The name of this database for telemetry purposes.</summary>
@@ -69,36 +71,24 @@ public sealed class QdrantVectorStore : IVectorStore
     /// <inheritdoc />
     public async IAsyncEnumerable<string> ListCollectionNamesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var collections = await this.RunOperationAsync(
-            "ListCollections",
-            () => this._qdrantClient.ListCollectionsAsync(cancellationToken)).ConfigureAwait(false);
+        IReadOnlyList<string> collections;
 
-        foreach (var collection in collections)
-        {
-            yield return collection;
-        }
-    }
-
-    /// <summary>
-    /// Run the given operation and wrap any <see cref="RpcException"/> with <see cref="VectorStoreOperationException"/>."/>
-    /// </summary>
-    /// <typeparam name="T">The response type of the operation.</typeparam>
-    /// <param name="operationName">The type of database operation being run.</param>
-    /// <param name="operation">The operation to run.</param>
-    /// <returns>The result of the operation.</returns>
-    private async Task<T> RunOperationAsync<T>(string operationName, Func<Task<T>> operation)
-    {
         try
         {
-            return await operation.Invoke().ConfigureAwait(false);
+            collections = await this._qdrantClient.ListCollectionsAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (RpcException ex)
         {
             throw new VectorStoreOperationException("Call to vector store failed.", ex)
             {
                 VectorStoreType = DatabaseName,
-                OperationName = operationName
+                OperationName = "ListCollections"
             };
+        }
+
+        foreach (var collection in collections)
+        {
+            yield return collection;
         }
     }
 }
