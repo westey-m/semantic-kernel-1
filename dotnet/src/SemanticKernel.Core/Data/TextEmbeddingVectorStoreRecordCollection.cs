@@ -80,6 +80,21 @@ public class TextEmbeddingVectorStoreRecordCollection<TKey, TRecord> : IVectorSt
     }
 
     /// <inheritdoc />
+    public Task CreateCollectionAsync(CancellationToken cancellationToken = default)
+    {
+        return this._decoratedVectorStoreRecordCollection.CreateCollectionAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task CreateCollectionIfNotExistsAsync(CancellationToken cancellationToken = default)
+    {
+        if (!await this.CollectionExistsAsync(cancellationToken).ConfigureAwait(false))
+        {
+            await this.CreateCollectionAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <inheritdoc />
     public Task DeleteCollectionAsync(CancellationToken cancellationToken = default)
     {
         return this._decoratedVectorStoreRecordCollection.DeleteCollectionAsync(cancellationToken);
