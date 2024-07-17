@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -76,57 +75,11 @@ public sealed class RedisVectorStore : IVectorStore
             vectorStoreRecordDefinition = VectorStoreRecordPropertyReader.CreateVectorStoreRecordDefinitionFromType(typeof(TRecord), true);
         }
 
-        var schema = new Schema();
-
-        // Loop through all properties and create the index fields.
-        foreach (var property in vectorStoreRecordDefinition.Properties)
-        {
-            // Key property.
-            if (property is VectorStoreRecordKeyProperty keyProperty)
-            {
-                // Do nothing, since key is not stored as part of the payload and therefore doesn't have to be added to the index.
-            }
-
-            // Data property.
-            if (property is VectorStoreRecordDataProperty dataProperty && dataProperty.IsFilterable)
-            {
-                if (dataProperty.PropertyType is null)
-                {
-                    throw new InvalidOperationException($"Property {nameof(dataProperty.PropertyType)} on {nameof(VectorStoreRecordDataProperty)} '{dataProperty.PropertyName}' must be set to create a collection, since the property is filterable.");
-                }
-
-                if (dataProperty.PropertyType == typeof(string))
-                {
-                    schema.AddTextField(new FieldName($"$.{dataProperty.PropertyName}", dataProperty.PropertyName));
-                }
-
-                if (RedisVectorStoreCollectionCreateMapping.s_supportedFilterableNumericDataTypes.Contains(dataProperty.PropertyType))
-                {
-                    schema.AddNumericField(new FieldName($"$.{dataProperty.PropertyName}", dataProperty.PropertyName));
-                }
-            }
-
-            // Vector property.
-            if (property is VectorStoreRecordVectorProperty vectorProperty)
-            {
-                if (vectorProperty.Dimensions is not > 0)
-                {
-                    throw new InvalidOperationException($"Property {nameof(vectorProperty.Dimensions)} on {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}' must be set to a positive ingeteger to create a collection.");
-                }
-
-                var indexKind = RedisVectorStoreCollectionCreateMapping.GetSDKIndexKind(vectorProperty);
-                var distanceAlgorithm = RedisVectorStoreCollectionCreateMapping.GetSDKDistanceAlgorithm(vectorProperty);
-                var dimensions = vectorProperty.Dimensions.Value.ToString(CultureInfo.InvariantCulture);
-                schema.AddVectorField(new FieldName($"$.{vectorProperty.PropertyName}", vectorProperty.PropertyName), indexKind, new Dictionary<string, object>()
-                {
-                    ["TYPE"] = "FLOAT32",
-                    ["DIM"] = dimensions,
-                    ["DISTANCE_METRIC"] = distanceAlgorithm
-                });
-            }
-        }
+        // Map the record definition to a schema.
+        var schema = RedisVectorStoreCollectionCreateMapping.MapToSchema(vectorStoreRecordDefinition.Properties);
 
         // Create the index creation params.
+        // Add the collection name and colon as the index prefix, which means that any record where the key is prefixed with this text will be indexed by this index
         var createParams = new FTCreateParams()
             .AddPrefix($"{name}:");
 

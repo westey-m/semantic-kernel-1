@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Microsoft.SemanticKernel.Data;
 using NRedisStack.Search;
 
@@ -39,6 +40,67 @@ internal static class RedisVectorStoreCollectionCreateMapping
         typeof(double?),
         typeof(decimal?),
     ];
+
+    /// <summary>
+    /// Map from the given list of <see cref="VectorStoreRecordProperty"/> items to the Redis <see cref="Schema"/>.
+    /// </summary>
+    /// <param name="properties">The property definitions to map from.</param>
+    /// <returns>The mapped Redis <see cref="Schema"/>.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if there are missing required or unsupported configuration options set.</exception>
+    public static Schema MapToSchema(IEnumerable<VectorStoreRecordProperty> properties)
+    {
+        var schema = new Schema();
+
+        // Loop through all properties and create the index fields.
+        foreach (var property in properties)
+        {
+            // Key property.
+            if (property is VectorStoreRecordKeyProperty keyProperty)
+            {
+                // Do nothing, since key is not stored as part of the payload and therefore doesn't have to be added to the index.
+            }
+
+            // Data property.
+            if (property is VectorStoreRecordDataProperty dataProperty && dataProperty.IsFilterable)
+            {
+                if (dataProperty.PropertyType is null)
+                {
+                    throw new InvalidOperationException($"Property {nameof(dataProperty.PropertyType)} on {nameof(VectorStoreRecordDataProperty)} '{dataProperty.PropertyName}' must be set to create a collection, since the property is filterable.");
+                }
+
+                if (dataProperty.PropertyType == typeof(string))
+                {
+                    schema.AddTextField(new FieldName($"$.{dataProperty.PropertyName}", dataProperty.PropertyName));
+                }
+
+                if (RedisVectorStoreCollectionCreateMapping.s_supportedFilterableNumericDataTypes.Contains(dataProperty.PropertyType))
+                {
+                    schema.AddNumericField(new FieldName($"$.{dataProperty.PropertyName}", dataProperty.PropertyName));
+                }
+            }
+
+            // Vector property.
+            if (property is VectorStoreRecordVectorProperty vectorProperty)
+            {
+                if (vectorProperty.Dimensions is not > 0)
+                {
+                    throw new InvalidOperationException($"Property {nameof(vectorProperty.Dimensions)} on {nameof(VectorStoreRecordVectorProperty)} '{vectorProperty.PropertyName}' must be set to a positive ingeteger to create a collection.");
+                }
+
+                var indexKind = GetSDKIndexKind(vectorProperty);
+                var distanceAlgorithm = GetSDKDistanceAlgorithm(vectorProperty);
+                var dimensions = vectorProperty.Dimensions.Value.ToString(CultureInfo.InvariantCulture);
+                schema.AddVectorField(new FieldName($"$.{vectorProperty.PropertyName}", vectorProperty.PropertyName), indexKind, new Dictionary<string, object>()
+                {
+                    ["TYPE"] = "FLOAT32",
+                    ["DIM"] = dimensions,
+                    ["DISTANCE_METRIC"] = distanceAlgorithm
+                });
+            }
+        }
+
+        return schema;
+    }
 
     /// <summary>
     /// Get the configured <see cref="Schema.VectorField.VectorAlgo"/> from the given <paramref name="vectorProperty"/>.
