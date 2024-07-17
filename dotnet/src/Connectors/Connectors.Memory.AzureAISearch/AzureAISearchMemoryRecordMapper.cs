@@ -7,6 +7,7 @@ namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 
 /// <summary>
 /// Mapper to use for backward compatibility with <see cref="AzureAISearchMemoryStore"/>.
+/// Maps between the public <see cref="MemoryRecord"/> and the internal <see cref="AzureAISearchMemoryRecord"/> types.
 /// </summary>
 internal sealed class AzureAISearchMemoryRecordMapper : IVectorStoreRecordMapper<MemoryRecord, AzureAISearchMemoryRecord>
 {

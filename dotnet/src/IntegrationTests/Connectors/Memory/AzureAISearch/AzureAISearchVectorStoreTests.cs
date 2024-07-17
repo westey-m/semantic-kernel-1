@@ -9,8 +9,12 @@ using Xunit.Abstractions;
 
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.AzureAISearch;
 
+/// <summary>
+/// Contains integration tests for the <see cref="AzureAISearchVectorStore"/> class.
+/// Tests work with an Azure AI Search Instance.
+/// </summary>
 [Collection("AzureAISearchVectorStoreCollection")]
-public class AzureAISearchVectorStoreTests(ITestOutputHelper output, AzureAISearchVectorStoreFixture fixture) : IClassFixture<AzureAISearchVectorStoreFixture>
+public class AzureAISearchVectorStoreTests(ITestOutputHelper output, AzureAISearchVectorStoreFixture fixture)
 {
     // If null, all tests will be enabled
     private const string SkipReason = null; //"Requires Azure AI Search Service instance up and running";

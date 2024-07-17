@@ -12,10 +12,16 @@ using Microsoft.SemanticKernel.Data;
 namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 
 /// <summary>
-/// Vector storage for Azure AI Search.
+/// Class for accessing the list of collections in a Azure AI Search vector store.
 /// </summary>
+/// <remarks>
+/// This class can be used with collections of any schema type, but requires you to provide schema information when getting a collection.
+/// </remarks>
 public sealed class AzureAISearchVectorStore : IVectorStore
 {
+    /// <summary>The name of this database for telemetry purposes.</summary>
+    private const string DatabaseName = "AzureAISearch";
+
     /// <summary>Azure AI Search client that can be used to manage the list of indices in an Azure AI Search Service.</summary>
     private readonly SearchIndexClient _searchIndexClient;
 
@@ -75,14 +81,28 @@ public sealed class AzureAISearchVectorStore : IVectorStore
     /// <returns>A value indicating whether there are more results and the current string if true.</returns>
     private static async Task<(string name, bool more)> GetNextIndexNameAsync(ConfiguredCancelableAsyncEnumerable<string>.Enumerator enumerator)
     {
+        const string OperationName = "GetIndexNames";
+
         try
         {
             var more = await enumerator.MoveNextAsync();
             return (enumerator.Current, more);
         }
-        catch (RequestFailedException e)
+        catch (AggregateException ex) when (ex.InnerException is RequestFailedException innerEx)
         {
-            throw e.ToHttpOperationException();
+            throw new VectorStoreOperationException("Call to vector store failed.", ex)
+            {
+                VectorStoreType = DatabaseName,
+                OperationName = OperationName
+            };
+        }
+        catch (RequestFailedException ex)
+        {
+            throw new VectorStoreOperationException("Call to vector store failed.", ex)
+            {
+                VectorStoreType = DatabaseName,
+                OperationName = OperationName
+            };
         }
     }
 }

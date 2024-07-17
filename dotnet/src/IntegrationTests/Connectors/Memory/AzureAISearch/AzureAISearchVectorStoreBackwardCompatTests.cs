@@ -12,11 +12,11 @@ using Azure.Search.Documents.Indexes;
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.AzureAISearch;
 
 /// <summary>
-/// Tests teh backwards compatibility layer of <see cref="AzureAISearchVectorStoreRecordCollection{TRecord}"/> with the <see cref="AzureAISearchMemoryStore"/>.
+/// Tests the backwards compatibility layer of <see cref="AzureAISearchVectorStoreRecordCollection{TRecord}"/> with the <see cref="AzureAISearchMemoryStore"/>.
 /// </summary>
 /// <param name="fixture">The test fixture.</param>
 [Collection("AzureAISearchVectorStoreCollection")]
-public class AzureAISearchVectorStoreBackwardCompatTests(AzureAISearchVectorStoreFixture fixture) : IClassFixture<AzureAISearchVectorStoreFixture>
+public class AzureAISearchVectorStoreBackwardCompatTests(AzureAISearchVectorStoreFixture fixture)
 {
     [Fact]
     public async Task ItCanReadDataWrittenByMemoryStoreAsync()
