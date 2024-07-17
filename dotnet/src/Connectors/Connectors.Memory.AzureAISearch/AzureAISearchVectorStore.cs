@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure;
 using Azure.Search.Documents.Indexes;
-using Azure.Search.Documents.Indexes.Models;
 using Microsoft.SemanticKernel.Data;
 
 namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
@@ -51,88 +50,6 @@ public sealed class AzureAISearchVectorStore : IVectorStore
 
         var directlyCreatedStore = new AzureAISearchVectorStoreRecordCollection<TRecord>(this._searchIndexClient, name, new AzureAISearchVectorStoreRecordCollectionOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition }) as IVectorStoreRecordCollection<TKey, TRecord>;
         return directlyCreatedStore!;
-    }
-
-    /// <inheritdoc />
-    public async Task<IVectorStoreRecordCollection<TKey, TRecord>> CreateCollectionAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
-    {
-        if (typeof(TKey) != typeof(string))
-        {
-            throw new NotSupportedException("Only string keys are supported.");
-        }
-
-        var vectorSearchConfig = new VectorSearch();
-        var searchFields = new List<SearchField>();
-
-        if (vectorStoreRecordDefinition is null)
-        {
-            vectorStoreRecordDefinition = VectorStoreRecordPropertyReader.CreateVectorStoreRecordDefinitionFromType(typeof(TRecord), true);
-        }
-
-        // Loop through all properties and create the search fields.
-        foreach (var property in vectorStoreRecordDefinition.Properties)
-        {
-            // Key property.
-            if (property is VectorStoreRecordKeyProperty keyProperty)
-            {
-                searchFields.Add(AzureAISearchVectorStoreCollectionCreateMapping.MapKeyField(keyProperty));
-            }
-
-            // Data property.
-            if (property is VectorStoreRecordDataProperty dataProperty)
-            {
-                searchFields.Add(AzureAISearchVectorStoreCollectionCreateMapping.MapDataField(dataProperty));
-            }
-
-            // Vector property.
-            if (property is VectorStoreRecordVectorProperty vectorProperty)
-            {
-                (VectorSearchField vectorSearchField, VectorSearchAlgorithmConfiguration algorithmConfiguration, VectorSearchProfile vectorSearchProfile) = AzureAISearchVectorStoreCollectionCreateMapping.MapVectorField(vectorProperty);
-
-                // Add the search field, plus its profile and algorithm configuration to the search config.
-                searchFields.Add(vectorSearchField);
-                vectorSearchConfig.Algorithms.Add(algorithmConfiguration);
-                vectorSearchConfig.Profiles.Add(vectorSearchProfile);
-            }
-        }
-
-        // Create the index.
-        var searchIndex = new SearchIndex(name, searchFields);
-        searchIndex.VectorSearch = vectorSearchConfig;
-        await this._searchIndexClient.CreateIndexAsync(searchIndex, cancellationToken).ConfigureAwait(false);
-
-        return this.GetCollection<TKey, TRecord>(name, vectorStoreRecordDefinition);
-    }
-
-    /// <inheritdoc />
-    public async Task<IVectorStoreRecordCollection<TKey, TRecord>> CreateCollectionIfNotExistsAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
-    {
-        if (!await this.CollectionExistsAsync(name, cancellationToken).ConfigureAwait(false))
-        {
-            return await this.CreateCollectionAsync<TKey, TRecord>(name, vectorStoreRecordDefinition, cancellationToken).ConfigureAwait(false);
-        }
-
-        return this.GetCollection<TKey, TRecord>(name, vectorStoreRecordDefinition);
-    }
-
-    /// <inheritdoc />
-    private async Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default)
-    {
-        Verify.NotNullOrWhiteSpace(name);
-
-        try
-        {
-            var getResult = await this._searchIndexClient.GetIndexAsync(name, cancellationToken).ConfigureAwait(false);
-            return true;
-        }
-        catch (RequestFailedException ex) when (ex.Status == 404)
-        {
-            return false;
-        }
-        catch (RequestFailedException e)
-        {
-            throw e.ToHttpOperationException();
-        }
     }
 
     /// <inheritdoc />

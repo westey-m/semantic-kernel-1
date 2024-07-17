@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -65,91 +64,6 @@ public sealed class QdrantVectorStore : IVectorStore
         var directlyCreatedStore = new QdrantVectorStoreRecordCollection<TRecord>(this._qdrantClient, name, new QdrantVectorStoreRecordCollectionOptions<TRecord>() { VectorStoreRecordDefinition = vectorStoreRecordDefinition });
         var castCreatedStore = directlyCreatedStore as IVectorStoreRecordCollection<TKey, TRecord>;
         return castCreatedStore!;
-    }
-
-    /// <inheritdoc />
-    public async Task<IVectorStoreRecordCollection<TKey, TRecord>> CreateCollectionAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
-    {
-        if (typeof(TKey) != typeof(ulong) && typeof(TKey) != typeof(Guid))
-        {
-            throw new NotSupportedException("Only ulong and Guid keys are supported.");
-        }
-
-        if (vectorStoreRecordDefinition is null)
-        {
-            vectorStoreRecordDefinition = VectorStoreRecordPropertyReader.CreateVectorStoreRecordDefinitionFromType(typeof(TRecord), true);
-        }
-
-        if (!this._options.HasNamedVectors)
-        {
-            // If we are not using named vectors, we can only have one vector property. We can assume we have at least one, since this is already verified in the constructor.
-            var singleVectorProperty = vectorStoreRecordDefinition.Properties.First(x => x is VectorStoreRecordVectorProperty vectorProperty) as VectorStoreRecordVectorProperty;
-
-            // Map the single vector property to the qdrant config.
-            var vectorParams = QdrantVectorStoreCollectionCreateMapping.MapSingleVector(singleVectorProperty!);
-
-            // Create the collection with the single unnamed vector.
-            await this._qdrantClient.CreateCollectionAsync(
-                name,
-                vectorParams,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            // Since we are using named vectors, iterate over all vector properties.
-            var vectorProperties = vectorStoreRecordDefinition.Properties.Where(x => x is VectorStoreRecordVectorProperty).Select(x => (VectorStoreRecordVectorProperty)x);
-
-            // Map the named vectors to the qdrant config.
-            var vectorParamsMap = QdrantVectorStoreCollectionCreateMapping.MapNamedVectors(vectorProperties, new Dictionary<string, string>());
-
-            // Create the collection with named vectors.
-            await this._qdrantClient.CreateCollectionAsync(
-                name,
-                vectorParamsMap,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
-        }
-
-        // Add indexes for each of the data properties that require filtering.
-        var dataProperties = vectorStoreRecordDefinition.Properties.Where(x => x is VectorStoreRecordDataProperty).Select(x => (VectorStoreRecordDataProperty)x).Where(x => x.IsFilterable);
-        foreach (var dataProperty in dataProperties)
-        {
-            if (dataProperty.PropertyType is null)
-            {
-                throw new InvalidOperationException($"Property {nameof(dataProperty.PropertyType)} on {nameof(VectorStoreRecordDataProperty)} '{dataProperty.PropertyName}' must be set to create a collection, since the property is filterable.");
-            }
-
-            await this._qdrantClient.CreatePayloadIndexAsync(
-                name,
-                dataProperty.PropertyName,
-                QdrantVectorStoreCollectionCreateMapping.s_schemaTypeMap[dataProperty.PropertyType!],
-                cancellationToken: cancellationToken).ConfigureAwait(false);
-        }
-
-        return this.GetCollection<TKey, TRecord>(name, vectorStoreRecordDefinition);
-    }
-
-    /// <inheritdoc />
-    public async Task<IVectorStoreRecordCollection<TKey, TRecord>> CreateCollectionIfNotExistsAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
-    {
-        if (typeof(TKey) != typeof(ulong) && typeof(TKey) != typeof(Guid))
-        {
-            throw new NotSupportedException("Only ulong and Guid keys are supported.");
-        }
-
-        if (!await this.CollectionExistsAsync(name, cancellationToken).ConfigureAwait(false))
-        {
-            return await this.CreateCollectionAsync<TKey, TRecord>(name, vectorStoreRecordDefinition, cancellationToken).ConfigureAwait(false);
-        }
-
-        return this.GetCollection<TKey, TRecord>(name, vectorStoreRecordDefinition);
-    }
-
-    /// <inheritdoc />
-    private Task<bool> CollectionExistsAsync(string name, CancellationToken cancellationToken = default)
-    {
-        return this.RunOperationAsync(
-            "CollectionExists",
-            () => this._qdrantClient.CollectionExistsAsync(name, cancellationToken));
     }
 
     /// <inheritdoc />

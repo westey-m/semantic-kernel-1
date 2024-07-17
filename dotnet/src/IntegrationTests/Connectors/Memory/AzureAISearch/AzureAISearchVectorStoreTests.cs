@@ -15,29 +15,6 @@ public class AzureAISearchVectorStoreTests(ITestOutputHelper output, AzureAISear
     // If null, all tests will be enabled
     private const string SkipReason = null; //"Requires Azure AI Search Service instance up and running";
 
-    [Theory(Skip = SkipReason)]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task ItCanCreateACollectionAsync(bool useDefinition)
-    {
-        // Arrange
-        var testCollectionName = $"{fixture.TestIndexName}-createtest";
-        var sut = new AzureAISearchVectorStore(fixture.SearchIndexClient);
-        var collection = sut.GetCollection<string, AzureAISearchVectorStoreFixture.Hotel>(testCollectionName);
-        await collection.DeleteCollectionAsync();
-
-        // Act
-        await sut.CreateCollectionAsync<string, AzureAISearchVectorStoreFixture.Hotel>(testCollectionName, useDefinition ? fixture.VectorStoreRecordDefinition : null);
-
-        // Assert
-        var existResult = await collection.CollectionExistsAsync();
-        Assert.True(existResult);
-        await collection.DeleteCollectionAsync();
-
-        // Output
-        output.WriteLine(existResult.ToString());
-    }
-
     [Fact(Skip = SkipReason)]
     public async Task ItCanGetAListOfExistingCollectionNamesAsync()
     {

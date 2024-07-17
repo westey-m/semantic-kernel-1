@@ -71,8 +71,8 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
                 TestConfiguration.AzureOpenAIEmbeddings.ApiKey);
 
         // Create collection and add data.
-        await this.CreateCollectionAndAddDataAsync(redisCollectionStore, redisRecordStore, embeddingService, "testRecord");
-        await this.CreateCollectionAndAddDataAsync(qdrantVectorStore, qdrantRecordStore, embeddingService, 5ul);
+        await this.CreateCollectionAndAddDataAsync(redisRecordStore, embeddingService, "testRecord");
+        await this.CreateCollectionAndAddDataAsync(qdrantRecordStore, embeddingService, 5ul);
 
         // Search.
         var queryEmbedding = await embeddingService.GenerateEmbeddingAsync("A magical fusion of hotel and beach.");
@@ -105,13 +105,12 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
     }
 
     private async Task CreateCollectionAndAddDataAsync<TKey>(
-        IVectorStore vectorStore,
         IVectorStoreRecordCollection<TKey, Hotel<TKey>> vectorRecordStore,
         ITextEmbeddingGenerationService embeddingGenerationService,
         TKey recordKey)
     {
         // Create collection.
-        await vectorStore.CreateCollectionAsync<TKey, Hotel<TKey>>("hotels");
+        await vectorRecordStore.CreateCollectionAsync();
 
         // Generate Embeddings.
         var description = "A magical fusion of hotel and beach.";
@@ -132,6 +131,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         // Retrieve Record.
         var record = await vectorRecordStore.GetAsync(recordKey, new() { IncludeVectors = true });
     }
+
     private async Task DeleteRecordAndCollectionAsync<TKey>(
         IVectorStoreRecordCollection<TKey, Hotel<TKey>> vectorRecordStore,
         ITextEmbeddingGenerationService embeddingGenerationService,
@@ -244,7 +244,8 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         string collectionName,
         VectorStoreRecordDefinition refsCollectionDefinition)
     {
-        var vectorStoreCollection = await vectorStore.CreateCollectionIfNotExistsAsync<ulong, DataReference>(collectionName, refsCollectionDefinition);
+        var vectorStoreCollection = vectorStore.GetCollection<ulong, DataReference>(collectionName, refsCollectionDefinition);
+        await vectorStoreCollection.CreateCollectionIfNotExistsAsync();
 
         // Generate Embeddings.
         var description = """
@@ -316,7 +317,9 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
     private static async Task RunFactorySampleAsync<TKey>(IVectorStore vectorStore, TKey recordKey)
     {
         // Example 1: Create collection and upsert.
-        var recordCollection = await vectorStore.CreateCollectionAsync<TKey, Hotel<TKey>>("hotels");
+        var recordCollection = vectorStore.GetCollection<TKey, Hotel<TKey>>("hotels");
+        await recordCollection.CreateCollectionIfNotExistsAsync();
+
         await recordCollection.UpsertAsync(
             new Hotel<TKey>
             {

@@ -11,7 +11,6 @@ using Xunit;
 using Microsoft.SemanticKernel.Connectors.AzureAISearch;
 using Azure;
 using Microsoft.SemanticKernel.Data;
-using Azure.Search.Documents.Indexes.Models;
 using Azure.Search.Documents;
 
 namespace SemanticKernel.Connectors.AzureAISearch.UnitTests;
@@ -75,39 +74,6 @@ public class AzureAISearchVectorStoreTests
 
         // Act & Assert.
         Assert.Throws<NotSupportedException>(() => sut.GetCollection<int, SinglePropsModel>(TestCollectionName));
-    }
-
-    [Fact]
-    public async Task CreateCollectionCallsSDKAsync()
-    {
-        // Arrange.
-        this._searchIndexClientMock
-            .Setup(x => x.CreateIndexAsync(It.IsAny<SearchIndex>(), this._testCancellationToken))
-            .ReturnsAsync(Response.FromValue(new SearchIndex(TestCollectionName), Mock.Of<Response>()));
-        var sut = new AzureAISearchVectorStore(this._searchIndexClientMock.Object);
-
-        // Act.
-        var actual = await sut.CreateCollectionAsync<string, SinglePropsModel>(TestCollectionName);
-
-        // Assert.
-        Assert.NotNull(actual);
-        Assert.IsType<AzureAISearchVectorStoreRecordCollection<SinglePropsModel>>(actual);
-        this._searchIndexClientMock
-            .Verify(
-                x => x.CreateIndexAsync(
-                    It.Is<SearchIndex>(si => si.Fields.Count == 3 && si.Name == TestCollectionName && si.VectorSearch.Profiles.Count == 1 && si.VectorSearch.Algorithms.Count == 1),
-                    this._testCancellationToken),
-                Times.Once);
-    }
-
-    [Fact]
-    public async Task CreateCollectionThrowsForInvalidKeyTypeAsync()
-    {
-        // Arrange.
-        var sut = new AzureAISearchVectorStore(this._searchIndexClientMock.Object);
-
-        // Act & Assert.
-        await Assert.ThrowsAsync<NotSupportedException>(() => sut.CreateCollectionAsync<int, SinglePropsModel>(TestCollectionName));
     }
 
     [Fact]

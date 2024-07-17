@@ -2,7 +2,6 @@
 
 using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Embeddings;
 
 namespace Microsoft.SemanticKernel.Data;
@@ -32,22 +31,6 @@ public class TextEmbeddingVectorStore : IVectorStore
         // Assign.
         this._decoratedVectorStoreRecordCollection = decoratedVectorStoreRecordCollection;
         this._textEmbeddingGenerationService = textEmbeddingGenerationService;
-    }
-
-    /// <inheritdoc />
-    public async Task<IVectorStoreRecordCollection<TKey, TRecord>> CreateCollectionAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
-    {
-        var collection = await this._decoratedVectorStoreRecordCollection.CreateCollectionAsync<TKey, TRecord>(name, vectorStoreRecordDefinition, cancellationToken).ConfigureAwait(false);
-        var embeddingStore = new TextEmbeddingVectorStoreRecordCollection<TKey, TRecord>(collection, this._textEmbeddingGenerationService, new TextEmbeddingVectorStoreRecordCollectionOptions { VectorStoreRecordDefinition = vectorStoreRecordDefinition });
-        return embeddingStore;
-    }
-
-    /// <inheritdoc />
-    public async Task<IVectorStoreRecordCollection<TKey, TRecord>> CreateCollectionIfNotExistsAsync<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null, CancellationToken cancellationToken = default) where TRecord : class
-    {
-        var collection = await this._decoratedVectorStoreRecordCollection.CreateCollectionIfNotExistsAsync<TKey, TRecord>(name, vectorStoreRecordDefinition, cancellationToken).ConfigureAwait(false);
-        var embeddingStore = new TextEmbeddingVectorStoreRecordCollection<TKey, TRecord>(collection, this._textEmbeddingGenerationService, new TextEmbeddingVectorStoreRecordCollectionOptions { VectorStoreRecordDefinition = vectorStoreRecordDefinition });
-        return embeddingStore;
     }
 
     /// <inheritdoc />
