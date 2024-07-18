@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using Docker.DotNet.Models;
 using Docker.DotNet;
+using Docker.DotNet.Models;
 
 namespace Memory;
 

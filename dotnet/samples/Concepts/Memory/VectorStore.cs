@@ -9,9 +9,9 @@ using Microsoft.SemanticKernel.Data;
 using Microsoft.SemanticKernel.Embeddings;
 using MongoDB.Driver;
 using NRedisStack.RedisStackCommands;
+using NRedisStack.Search;
 using Qdrant.Client;
 using StackExchange.Redis;
-using NRedisStack.Search;
 
 namespace Memory;
 

@@ -10,8 +10,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Data;
 using NRedisStack.RedisStackCommands;
-using NRedisStack.Search.Literals.Enums;
 using NRedisStack.Search;
+using NRedisStack.Search.Literals.Enums;
 using StackExchange.Redis;
 
 namespace Microsoft.SemanticKernel.Connectors.Redis;

@@ -1,13 +1,13 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Threading.Tasks;
-using Xunit;
-using Microsoft.SemanticKernel.Connectors.AzureAISearch;
-using Microsoft.SemanticKernel.Memory;
-using Microsoft.SemanticKernel.Data;
-using Microsoft.SemanticKernel;
-using Microsoft.Extensions.DependencyInjection;
 using Azure.Search.Documents.Indexes;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Connectors.AzureAISearch;
+using Microsoft.SemanticKernel.Data;
+using Microsoft.SemanticKernel.Memory;
+using Xunit;
 
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.AzureAISearch;
 
