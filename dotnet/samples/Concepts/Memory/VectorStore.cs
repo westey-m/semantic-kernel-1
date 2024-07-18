@@ -56,13 +56,13 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         // Create the qdrant vector store clients.
         var qdrantClient = new QdrantClient("localhost");
         var qdrantVectorStore = new QdrantVectorStore(qdrantClient);
-        var qdrantRecordStore = new QdrantVectorStoreRecordCollection<Hotel<ulong>>(qdrantClient, "hotels");
+        var qdrantCollection = qdrantVectorStore.GetCollection<ulong, Hotel<ulong>>("hotels");
 
         // Create the redis vector store clients.
         ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost:6379");
         var redisDatabase = redis.GetDatabase();
-        var redisCollectionStore = new RedisVectorStore(redisDatabase);
-        var redisRecordStore = new RedisVectorStoreRecordCollection<Hotel<string>>(redisDatabase, "hotels", new() { PrefixCollectionNameToKeyNames = true });
+        var redisVectorStore = new RedisVectorStore(redisDatabase);
+        var redisCollection = redisVectorStore.GetCollection<string, Hotel<string>>("hotels");
 
         // Create Embedding Service
         var embeddingService = new AzureOpenAITextEmbeddingGenerationService(
@@ -71,8 +71,8 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
                 TestConfiguration.AzureOpenAIEmbeddings.ApiKey);
 
         // Create collection and add data.
-        await this.CreateCollectionAndAddDataAsync(redisRecordStore, embeddingService, "testRecord");
-        await this.CreateCollectionAndAddDataAsync(qdrantRecordStore, embeddingService, 5ul);
+        await this.CreateCollectionAndAddDataAsync(redisCollection, embeddingService, "testRecord");
+        await this.CreateCollectionAndAddDataAsync(qdrantCollection, embeddingService, 5ul);
 
         // Search.
         var queryEmbedding = await embeddingService.GenerateEmbeddingAsync("A magical fusion of hotel and beach.");
@@ -96,8 +96,8 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         var searchResult2 = await redisDatabase.FT().SearchAsync("hotels", query2);
 
         // Delete record and collection.
-        await this.DeleteRecordAndCollectionAsync(redisRecordStore, embeddingService, "testRecord");
-        await this.DeleteRecordAndCollectionAsync(qdrantRecordStore, embeddingService, 5ul);
+        await this.DeleteRecordAndCollectionAsync(redisCollection, embeddingService, "testRecord");
+        await this.DeleteRecordAndCollectionAsync(qdrantCollection, embeddingService, 5ul);
 
         // Delete docker containers.
         await VectorStore_Infra.DeleteContainerAsync(client, qdrantContainerId);
