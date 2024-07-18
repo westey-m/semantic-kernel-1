@@ -1,41 +1,90 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Docker.DotNet;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Redis;
+using Microsoft.SemanticKernel.Data;
 using Microsoft.SemanticKernel.Memory;
 using StackExchange.Redis;
 
 namespace Memory;
 
+/// <summary>
+/// Shows how to construct and use <see cref="IVectorStore"/> implementations in a way that allows for backward compatibility with the legacy <see cref="IMemoryStore"/> implementations.
+/// </summary>
 public class VectorStore_BackwardCompatible(ITestOutputHelper output) : BaseTest(output)
 {
     [Fact]
-    public async Task RunCreateExampleAsync()
+    public async Task RedisBackwardCompatibleExampleAsync()
     {
-        // Create docker containers.
+        var testCollectionName = "backcompattest";
+        var testId = "testid";
+
+        // Start up a Redis docker container.
         using var dockerClientConfiguration = new DockerClientConfiguration();
         var client = dockerClientConfiguration.CreateClient();
-        ////var qdrantContainerId = await VectorStore_Infra.SetupQdrantContainerAsync(client);
         var redisContainerId = await VectorStore_Infra.SetupRedisContainerAsync(client);
 
-        // Create the qdrant vector store clients.
-        ////var qdrantClient = new QdrantClient("localhost");
-        ////var qdrantCollectionStore = new QdrantVectorCollectionStore(qdrantClient, QdrantVectorCollectionCreate.Create<Hotel<ulong>>(qdrantClient));
-        ////var qdrantRecordStore = new QdrantVectorRecordStore<Hotel<ulong>>(qdrantClient);
+        // Use the kernel for DI purposes.
+        var kernelBuilder = Kernel
+            .CreateBuilder();
 
-        // Create the redis vector store clients.
-        ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost:6379");
-        var redisDatabase = redis.GetDatabase();
-        var redisMemoryStore = new RedisMemoryStore(redisDatabase);
-        ////var redisRecordStore = new RedisVectorRecordStore<MemoryRecord>(redisDatabase);
+        // Register a redis client with DI container.
+        kernelBuilder.Services.AddTransient<IDatabase>((sp) =>
+        {
+            ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost:6379");
+            return redis.GetDatabase();
+        });
 
-        // Create collection and add data.
-        await redisMemoryStore.CreateCollectionAsync("testCollection");
-        var memoryRecord = new MemoryRecord(new MemoryRecordMetadata(false, "testId", "Text", "Description", "eternalSourceName", "AdditionalMetadata"), new ReadOnlyMemory<float>(new float[] { 1, 2, 3, 4 }), "testKey", DateTimeOffset.Now);
-        await redisMemoryStore.UpsertAsync("testCollection", memoryRecord);
+        // Register the legacy Redis memory store with DI container.
+        kernelBuilder.Services.AddTransient<IMemoryStore, RedisMemoryStore>();
 
-        // Delete docker containers.
-        ////await VectorStore_Infra.DeleteContainerAsync(client, qdrantContainerId);
+        // Register the backwards compatible Redis vector store with DI conatiner.
+        kernelBuilder.AddRedisMemoryVectorStoreRecordCollection(testCollectionName);
+
+        // Register the writer and reader with DI container.
+        kernelBuilder.Services.AddTransient<MemoryStoreUser>();
+
+        // Build the kernel.
+        var kernel = kernelBuilder.Build();
+
+        // Build a MemoryStoreUser object using the DI container.
+        var memoryStoreUser = kernel.GetRequiredService<MemoryStoreUser>();
+
+        // Write a record to the collection using the Legacy MemoryStore.
+        var memoryRecord = new MemoryRecord(new MemoryRecordMetadata(false, testId, "Text", "Description", "eternalSourceName", "AdditionalMetadata"), new ReadOnlyMemory<float>(new float[] { 1, 2, 3, 4 }), "testKey", DateTimeOffset.Now);
+        await memoryStoreUser.WriteAsync(testCollectionName, memoryRecord);
+
+        // Read the record from the collection using the new backwards compatible VectorStore.
+        var recordText = await memoryStoreUser.ReadRecordTextAsync(testId);
+        Output.WriteLine(recordText);
+
+        // Delete docker container.
         await VectorStore_Infra.DeleteContainerAsync(client, redisContainerId);
+    }
+
+    /// <summary>
+    /// Sample class that uses both the legacy <see cref="IMemoryStore"/> and a backwards compatible instance of <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/>.
+    /// </summary>
+    /// <param name="memoryStore">The legacy <see cref="IMemoryStore"/> instance.</param>
+    /// <param name="vectorStoreRecordCollection">The backwards compatible <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/> instance.</param>
+    private class MemoryStoreUser(IMemoryStore memoryStore, IVectorStoreRecordCollection<string, MemoryRecord> vectorStoreRecordCollection)
+    {
+        public async Task WriteAsync(string collectionName, MemoryRecord record)
+        {
+            if (!await memoryStore.DoesCollectionExistAsync(collectionName))
+            {
+                await memoryStore.CreateCollectionAsync(collectionName);
+            }
+
+            await memoryStore.UpsertAsync(collectionName, record);
+        }
+
+        public async Task<string> ReadRecordTextAsync(string key)
+        {
+            var record = await vectorStoreRecordCollection.GetAsync(key);
+            return record!.Metadata.Text;
+        }
     }
 }

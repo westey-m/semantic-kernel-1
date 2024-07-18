@@ -18,14 +18,19 @@ namespace SemanticKernel.IntegrationTests.Connectors.Memory.Redis;
 [Collection("RedisVectorStoreCollection")]
 public class RedisVectorStoreBackwardCompatTests(RedisVectorStoreFixture fixture)
 {
-    [Fact]
-    public async Task ItCanReadDataWrittenByMemoryStoreAsync()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ItCanReadDataWrittenByMemoryStoreAsync(bool isReference)
     {
         // Arrange.
         var testCollectionName = "backcompattest";
         var testId = "testid";
+
+        // Arrange legacy memory store.
         using var memoryStore = new RedisMemoryStore(fixture.Database);
 
+        // Arrange new vector store.
         var kernelBuilder = Kernel
             .CreateBuilder()
             .AddRedisMemoryVectorStoreRecordCollection(testCollectionName);
@@ -34,6 +39,7 @@ public class RedisVectorStoreBackwardCompatTests(RedisVectorStoreFixture fixture
 
         var sut = kernel.GetRequiredService<IVectorStoreRecordCollection<string, MemoryRecord>>();
 
+        // Arrange collection with test data using legacy memory store.
         if (!await memoryStore.DoesCollectionExistAsync(testCollectionName))
         {
             await memoryStore.CreateCollectionAsync(testCollectionName);
@@ -42,7 +48,7 @@ public class RedisVectorStoreBackwardCompatTests(RedisVectorStoreFixture fixture
         await memoryStore.UpsertAsync(
             testCollectionName,
             new MemoryRecord(
-                new MemoryRecordMetadata(false, testId, "testtext", "testdescription", "testexternalsourcename", "testadditionalmetadata"),
+                new MemoryRecordMetadata(isReference, testId, "testtext", "testdescription", "testexternalsourcename", "testadditionalmetadata"),
                 new[] { 30f, 31f, 32f, 33f },
                 "testKey"));
         var expected = await memoryStore.GetAsync(testCollectionName, testId, true);

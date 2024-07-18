@@ -76,7 +76,7 @@ public sealed class RedisHashSetVectorStoreRecordCollection<TRecord> : IVectorSt
     private readonly VectorStoreRecordDefinition _vectorStoreRecordDefinition;
 
     /// <summary>An array of the names of all the data properties that are part of the Redis payload, i.e. all properties except the key and vector properties.</summary>
-    private readonly string[] _dataPropertyNames;
+    private readonly RedisValue[] _dataPropertyNames;
 
     /// <summary>The mapper to use when mapping between the consumer data model and the Redis record.</summary>
     private readonly IVectorStoreRecordMapper<TRecord, (string Key, HashEntry[] HashEntries)> _mapper;
@@ -116,9 +116,11 @@ public sealed class RedisHashSetVectorStoreRecordCollection<TRecord> : IVectorSt
         VectorStoreRecordPropertyReader.VerifyPropertyTypes(properties.dataProperties, s_supportedDataTypes, "Data");
         VectorStoreRecordPropertyReader.VerifyPropertyTypes(properties.vectorProperties, s_supportedVectorTypes, "Vector");
 
+        var storagePropertyNames = VectorStoreRecordPropertyReader.BuildPropertyNameToStorageNameMap(properties, this._options.VectorStoreRecordDefinition);
         this._dataPropertyNames = properties
             .dataProperties
-            .Select(x => VectorStoreRecordPropertyReader.GetJsonPropertyName(JsonSerializerOptions.Default, x))
+            .Select(x => storagePropertyNames[x.Name])
+            .Select(RedisValue.Unbox)
             .ToArray();
 
         // Assign Mapper.
@@ -128,7 +130,6 @@ public sealed class RedisHashSetVectorStoreRecordCollection<TRecord> : IVectorSt
         }
         else
         {
-            var storagePropertyNames = VectorStoreRecordPropertyReader.BuildPropertyNameToStorageNameMap(properties, this._options.VectorStoreRecordDefinition);
             this._mapper = new RedisHashSetVectorStoreRecordMapper<TRecord>(properties.keyProperty, properties.dataProperties, properties.vectorProperties, storagePropertyNames);
         }
     }
@@ -210,7 +211,7 @@ public sealed class RedisHashSetVectorStoreRecordCollection<TRecord> : IVectorSt
         }
         else
         {
-            var fieldKeys = this._dataPropertyNames.Select(RedisValue.Unbox).ToArray();
+            var fieldKeys = this._dataPropertyNames;
             var retrievedValues = await this.RunOperationAsync(
                 operationName,
                 () => this._database.HashGetAsync(maybePrefixedKey, fieldKeys)).ConfigureAwait(false);
