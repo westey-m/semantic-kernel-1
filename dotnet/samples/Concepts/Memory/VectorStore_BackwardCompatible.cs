@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Docker.DotNet;
+using Memory.VectorStoreFixtures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Redis;
@@ -69,7 +70,7 @@ public class VectorStore_BackwardCompatible(ITestOutputHelper output) : BaseTest
     /// </summary>
     /// <param name="memoryStore">The legacy <see cref="IMemoryStore"/> instance.</param>
     /// <param name="vectorStoreRecordCollection">The backwards compatible <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/> instance.</param>
-    private class MemoryStoreUser(IMemoryStore memoryStore, IVectorStoreRecordCollection<string, MemoryRecord> vectorStoreRecordCollection)
+    private sealed class MemoryStoreUser(IMemoryStore memoryStore, IVectorStoreRecordCollection<string, MemoryRecord> vectorStoreRecordCollection)
     {
         public async Task WriteAsync(string collectionName, MemoryRecord record)
         {

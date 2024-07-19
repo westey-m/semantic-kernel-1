@@ -3,8 +3,11 @@
 using Docker.DotNet;
 using Docker.DotNet.Models;
 
-namespace Memory;
+namespace Memory.VectorStoreFixtures;
 
+/// <summary>
+/// Helper class that creates and deletes containers for the vector store examples.
+/// </summary>
 internal static class VectorStore_Infra
 {
     /// <summary>
@@ -91,6 +94,12 @@ internal static class VectorStore_Infra
         return container.ID;
     }
 
+    /// <summary>
+    /// Stop and delete the container with the specified id.
+    /// </summary>
+    /// <param name="client">The docker client to delete the container in.</param>
+    /// <param name="containerId">The id of the container to delete.</param>
+    /// <returns>An async task.</returns>
     public static async Task DeleteContainerAsync(DockerClient client, string containerId)
     {
         await client.Containers.StopContainerAsync(containerId, new ContainerStopParameters());

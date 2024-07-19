@@ -2,6 +2,7 @@
 
 using System.Runtime.InteropServices;
 using Docker.DotNet;
+using Memory.VectorStoreFixtures;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Microsoft.SemanticKernel.Connectors.Qdrant;
 using Microsoft.SemanticKernel.Connectors.Redis;

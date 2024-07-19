@@ -2,7 +2,7 @@
 
 using Docker.DotNet;
 
-namespace Memory;
+namespace Memory.VectorStoreFixtures;
 
 /// <summary>
 /// Fixture to use for creating a Redis container before tests and delete it after tests.
