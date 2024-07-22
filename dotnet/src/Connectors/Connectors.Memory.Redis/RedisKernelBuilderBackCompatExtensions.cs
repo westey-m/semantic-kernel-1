@@ -19,7 +19,7 @@ public static class RedisKernelBuilderBackCompatExtensions
     /// <param name="builder">The builder to register the <see cref="IVectorStore"/> on.</param>
     /// <param name="serviceId">An optional service id to use as the service key.</param>
     /// <param name="generateEmbeddings">A value indicating whether to automatically generate embeddings for any data fields marked as having embeddings.</param>
-    /// <param name="options">Optoinal options to further configure the <see cref="IVectorStore"/>.</param>
+    /// <param name="options">Optional options to further configure the <see cref="IVectorStore"/>.</param>
     /// <returns>The kernel builder.</returns>
     internal static IKernelBuilder AddRedisVectorStore(this IKernelBuilder builder, string? serviceId, bool generateEmbeddings, RedisVectorStoreOptions? options = default)
     {
