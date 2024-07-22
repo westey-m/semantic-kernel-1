@@ -25,7 +25,7 @@ public class AzureAISearchServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAzureAISearchVectorStoreRegistersClass()
+    public void AddVectorStoreRegistersClass()
     {
         // Arrange.
         this._serviceCollection.AddSingleton<SearchIndexClient>(Mock.Of<SearchIndexClient>());
@@ -38,7 +38,7 @@ public class AzureAISearchServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAzureAISearchVectorStoreWithUriAndCredsRegistersClass()
+    public void AddVectorStoreWithUriAndCredsRegistersClass()
     {
         // Act.
         this._serviceCollection.AddAzureAISearchVectorStore(new Uri("https://localhost"), new AzureKeyCredential("fakeKey"));
@@ -48,7 +48,7 @@ public class AzureAISearchServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAzureAISearchVectorStoreWithUriAndTokenCredsRegistersClass()
+    public void AddVectorStoreWithUriAndTokenCredsRegistersClass()
     {
         // Act.
         this._serviceCollection.AddAzureAISearchVectorStore(new Uri("https://localhost"), Mock.Of<TokenCredential>());

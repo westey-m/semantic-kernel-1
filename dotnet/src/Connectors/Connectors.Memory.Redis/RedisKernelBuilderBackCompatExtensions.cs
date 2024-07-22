@@ -21,7 +21,7 @@ public static class RedisKernelBuilderBackCompatExtensions
     /// <param name="generateEmbeddings">A value indicating whether to automatically generate embeddings for any data fields marked as having embeddings.</param>
     /// <param name="options">Optoinal options to further configure the <see cref="IVectorStore"/>.</param>
     /// <returns>The kernel builder.</returns>
-    internal static IKernelBuilder AddRedisVectorStore(this IKernelBuilder builder, string? serviceId = default, bool? generateEmbeddings = default, RedisVectorStoreOptions? options = default)
+    internal static IKernelBuilder AddRedisVectorStore(this IKernelBuilder builder, string? serviceId, bool generateEmbeddings, RedisVectorStoreOptions? options = default)
     {
         builder.Services.AddKeyedTransient<IVectorStore>(
             serviceId,

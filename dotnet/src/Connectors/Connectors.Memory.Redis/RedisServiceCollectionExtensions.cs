@@ -21,11 +21,32 @@ public static class RedisServiceCollectionExtensions
     /// <returns>The kernel builder.</returns>
     public static IServiceCollection AddRedisVectorStore(this IServiceCollection services, string? redisConnectionConfiguration = default, string? serviceId = default, RedisVectorStoreOptions? options = default)
     {
-        services.AddKeyedTransient<IVectorStore>(
+        if (redisConnectionConfiguration == null)
+        {
+            // If we are not constructing the ConnectionMultiplexer, add the IVectorStore as transient, since we
+            // cannot make assumptions about how IDatabase is being managed.
+            services.AddKeyedTransient<IVectorStore>(
+                serviceId,
+                (sp, obj) =>
+                {
+                    var database = sp.GetRequiredService<IDatabase>();
+                    var selectedOptions = options ?? sp.GetService<RedisVectorStoreOptions>();
+
+                    return new RedisVectorStore(
+                        database,
+                        selectedOptions);
+                });
+
+            return services;
+        }
+
+        // If we are constructing the ConnectionMultiplexer, add the IVectorStore as singleton, since we are managing the lifetime
+        // of the ConnectionMultiplexer, and the recommendation from StackExchange.Redis is to share the ConnectionMultiplexer.
+        services.AddKeyedSingleton<IVectorStore>(
             serviceId,
             (sp, obj) =>
             {
-                var database = redisConnectionConfiguration == null ? sp.GetRequiredService<IDatabase>() : ConnectionMultiplexer.Connect(redisConnectionConfiguration).GetDatabase();
+                var database = ConnectionMultiplexer.Connect(redisConnectionConfiguration).GetDatabase();
                 var selectedOptions = options ?? sp.GetService<RedisVectorStoreOptions>();
 
                 return new RedisVectorStore(
