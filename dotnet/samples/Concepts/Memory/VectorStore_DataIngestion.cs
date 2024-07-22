@@ -21,6 +21,8 @@ namespace Memory;
 /// 2. Register a class (DataIngestor) with the DI container that uses the vector store and embedding generator to ingest data.
 /// 3. Ingest some data into the vector store.
 /// 4. Read the data back from the vector store.
+///
+/// To run this sample, you need a local instance of Docker running, since the fixtures will try and start Redis and Qdrant containers in the local docker instance for this sample.
 /// </summary>
 public class VectorStore_DataIngestion(ITestOutputHelper output) : BaseTest(output), IClassFixture<VectorStore_RedisContainer_Fixture>, IClassFixture<VectorStore_QdrantContainer_Fixture>
 {
@@ -31,6 +33,7 @@ public class VectorStore_DataIngestion(ITestOutputHelper output) : BaseTest(outp
     [Theory]
     [InlineData("Redis")]
     [InlineData("Qdrant")]
+    [InlineData("Volatile")]
     public async Task ExampleAsync(string databaseType)
     {
         // Use the kernel for DI purposes.
@@ -52,6 +55,10 @@ public class VectorStore_DataIngestion(ITestOutputHelper output) : BaseTest(outp
         {
             kernelBuilder.AddQdrantVectorStore("localhost");
         }
+        else if (databaseType == "Volatile")
+        {
+            kernelBuilder.AddVolatileVectorStore();
+        }
 
         // Register the DataIngestor with the DI container.
         kernelBuilder.Services.AddTransient<DataIngestor>();
@@ -63,8 +70,8 @@ public class VectorStore_DataIngestion(ITestOutputHelper output) : BaseTest(outp
         var dataIngestor = kernel.GetRequiredService<DataIngestor>();
 
         // Invoke the data ingestor using an appropriate key generator function for each database type.
-        // Redis supports string keys, while Qdrant supports ulong or Guid keys, so we use a different key generator for each.
-        if (databaseType == "Redis")
+        // Redis and Volatile supports string keys, while Qdrant supports ulong or Guid keys, so we use a different key generator for each key type.
+        if (databaseType == "Redis" || databaseType == "Volatile")
         {
             await this.UpsertDataAndReadFromVectorStoreAsync(dataIngestor, () => Guid.NewGuid().ToString());
         }
