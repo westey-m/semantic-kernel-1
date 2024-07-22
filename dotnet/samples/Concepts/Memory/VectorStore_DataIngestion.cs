@@ -12,17 +12,17 @@ using Microsoft.SemanticKernel.Embeddings;
 namespace Memory;
 
 /// <summary>
-/// An example showing how to ingest data into a vector store using <see cref="RedisVectorStore"/> or <see cref="QdrantVectorStore"/>.
-/// Since Redis supports string keys and Qdrant supports ulong or Guid keys, this example also shows how you can have common code
+/// An example showing how to ingest data into a vector store using <see cref="RedisVectorStore"/>, <see cref="QdrantVectorStore"/> or <see cref="VolatileVectorStore"/>.
+/// Since Redis and Volatile supports string keys and Qdrant supports ulong or Guid keys, this example also shows how you can have common code
 /// that works with both types of keys by using a generic key generator function.
 ///
-/// The examples shows the following steps:
+/// The example shows the following steps:
 /// 1. Register a vector store and embedding generator with the DI container.
 /// 2. Register a class (DataIngestor) with the DI container that uses the vector store and embedding generator to ingest data.
 /// 3. Ingest some data into the vector store.
 /// 4. Read the data back from the vector store.
 ///
-/// To run this sample, you need a local instance of Docker running, since the fixtures will try and start Redis and Qdrant containers in the local docker instance for this sample.
+/// To run this sample, you need a local instance of Docker running, since the associated fixtures will try and start Redis and Qdrant containers in the local docker instance.
 /// </summary>
 public class VectorStore_DataIngestion(ITestOutputHelper output) : BaseTest(output), IClassFixture<VectorStore_RedisContainer_Fixture>, IClassFixture<VectorStore_QdrantContainer_Fixture>
 {
@@ -102,7 +102,7 @@ public class VectorStore_DataIngestion(ITestOutputHelper output) : BaseTest(outp
     private sealed class DataIngestor(IVectorStore vectorStore, ITextEmbeddingGenerationService textEmbeddingGenerationService)
     {
         /// <summary>
-        /// Create some glossary entries and upert them into the vector store.
+        /// Create some glossary entries and upsert them into the vector store.
         /// </summary>
         /// <returns>The keys of the upserted glossary entries.</returns>
         /// <typeparam name="TKey">The type of the keys in the vector store.</typeparam>
