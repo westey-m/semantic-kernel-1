@@ -25,7 +25,7 @@ public class VectorStore_BackwardCompatible(ITestOutputHelper output) : BaseTest
         // Start up a Redis docker container.
         using var dockerClientConfiguration = new DockerClientConfiguration();
         var client = dockerClientConfiguration.CreateClient();
-        var redisContainerId = await VectorStore_Infra.SetupRedisContainerAsync(client);
+        var redisContainerId = await VectorStoreInfra.SetupRedisContainerAsync(client);
 
         // Use the kernel for DI purposes.
         var kernelBuilder = Kernel
@@ -62,7 +62,7 @@ public class VectorStore_BackwardCompatible(ITestOutputHelper output) : BaseTest
         Output.WriteLine(recordText);
 
         // Delete docker container.
-        await VectorStore_Infra.DeleteContainerAsync(client, redisContainerId);
+        await VectorStoreInfra.DeleteContainerAsync(client, redisContainerId);
     }
 
     /// <summary>

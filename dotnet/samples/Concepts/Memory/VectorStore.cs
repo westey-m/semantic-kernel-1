@@ -51,8 +51,8 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         // Create docker containers.
         using var dockerClientConfiguration = new DockerClientConfiguration();
         var client = dockerClientConfiguration.CreateClient();
-        var qdrantContainerId = await VectorStore_Infra.SetupQdrantContainerAsync(client);
-        var redisContainerId = await VectorStore_Infra.SetupRedisContainerAsync(client);
+        var qdrantContainerId = await VectorStoreInfra.SetupQdrantContainerAsync(client);
+        var redisContainerId = await VectorStoreInfra.SetupRedisContainerAsync(client);
 
         // Create the qdrant vector store clients.
         var qdrantClient = new QdrantClient("localhost");
@@ -101,8 +101,8 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         await this.DeleteRecordAndCollectionAsync(qdrantCollection, embeddingService, 5ul);
 
         // Delete docker containers.
-        await VectorStore_Infra.DeleteContainerAsync(client, qdrantContainerId);
-        await VectorStore_Infra.DeleteContainerAsync(client, redisContainerId);
+        await VectorStoreInfra.DeleteContainerAsync(client, qdrantContainerId);
+        await VectorStoreInfra.DeleteContainerAsync(client, redisContainerId);
     }
 
     private async Task CreateCollectionAndAddDataAsync<TKey>(
@@ -175,7 +175,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         // Create docker containers.
         using var dockerClientConfiguration = new DockerClientConfiguration();
         var client = dockerClientConfiguration.CreateClient();
-        var qdrantContainerId = await VectorStore_Infra.SetupQdrantContainerAsync(client);
+        var qdrantContainerId = await VectorStoreInfra.SetupQdrantContainerAsync(client);
 
         // Create the qdrant vector store client.
         var qdrantClient = new QdrantClient("localhost");
@@ -185,7 +185,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         var docSnippet = await qdrantRecordStore.GetAsync(0, new() { IncludeVectors = true });
 
         // Delete docker containers.
-        await VectorStore_Infra.DeleteContainerAsync(client, qdrantContainerId);
+        await VectorStoreInfra.DeleteContainerAsync(client, qdrantContainerId);
     }
 
     private sealed class DataReference
@@ -203,7 +203,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         // Create docker containers.
         using var dockerClientConfiguration = new DockerClientConfiguration();
         var client = dockerClientConfiguration.CreateClient();
-        var qdrantContainerId = await VectorStore_Infra.SetupQdrantContainerAsync(client);
+        var qdrantContainerId = await VectorStoreInfra.SetupQdrantContainerAsync(client);
 
         // Create Embedding Service
         var embeddingService = new AzureOpenAITextEmbeddingGenerationService(
@@ -236,7 +236,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         var searchResult = await qdrantClient.SearchAsync("refs", questionEmbeddings.First(), vectorName: "Embedding");
 
         // Delete docker containers.
-        await VectorStore_Infra.DeleteContainerAsync(client, qdrantContainerId);
+        await VectorStoreInfra.DeleteContainerAsync(client, qdrantContainerId);
     }
 
     private async Task ConfiguredCreateExampleAsync(
@@ -289,8 +289,8 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         // Create docker containers.
         using var dockerClientConfiguration = new DockerClientConfiguration();
         var client = dockerClientConfiguration.CreateClient();
-        var qdrantContainerId = await VectorStore_Infra.SetupQdrantContainerAsync(client);
-        var redisContainerId = await VectorStore_Infra.SetupRedisContainerAsync(client);
+        var qdrantContainerId = await VectorStoreInfra.SetupQdrantContainerAsync(client);
+        var redisContainerId = await VectorStoreInfra.SetupRedisContainerAsync(client);
 
         // Create Embedding Service
         var embeddingService = new AzureOpenAITextEmbeddingGenerationService(
@@ -311,8 +311,8 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         await RunFactorySampleAsync(qdrantVectorStore, 5ul);
 
         // Delete docker containers.
-        await VectorStore_Infra.DeleteContainerAsync(client, qdrantContainerId);
-        await VectorStore_Infra.DeleteContainerAsync(client, redisContainerId);
+        await VectorStoreInfra.DeleteContainerAsync(client, qdrantContainerId);
+        await VectorStoreInfra.DeleteContainerAsync(client, redisContainerId);
     }
 
     private static async Task RunFactorySampleAsync<TKey>(IVectorStore vectorStore, TKey recordKey)
