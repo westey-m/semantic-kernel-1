@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -14,6 +15,7 @@ namespace Microsoft.SemanticKernel.Data;
 /// Decorator class for <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/> that allows the use of any <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/> with mapping to and from <see cref="MemoryRecord"/>.
 /// </summary>
 #pragma warning disable CA1711 // Identifiers should not have incorrect suffix
+[Experimental("SKEXP0001")]
 public class MemoryVectorStoreRecordCollection<TStorageKey, TStorageRecord> : IVectorStoreRecordCollection<string, MemoryRecord>
 #pragma warning restore CA1711 // Identifiers should not have incorrect suffix
     where TStorageRecord : class

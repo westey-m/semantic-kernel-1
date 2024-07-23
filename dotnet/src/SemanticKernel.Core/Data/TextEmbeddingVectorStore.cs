@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using Microsoft.SemanticKernel.Embeddings;
 
@@ -9,6 +10,7 @@ namespace Microsoft.SemanticKernel.Data;
 /// <summary>
 /// Decorator for a <see cref="IVectorStore"/> that generates embeddings for records on upsert.
 /// </summary>
+[Experimental("SKEXP0001")]
 public class TextEmbeddingVectorStore : IVectorStore
 {
     /// <summary>The decorated <see cref="IVectorStore"/>.</summary>
