@@ -75,22 +75,24 @@ internal sealed class RedisHashSetVectorStoreRecordMapper<TConsumerDataModel> : 
         var hashEntries = new List<HashEntry>();
         foreach (var property in this._dataPropertiesInfo)
         {
+            var storageName = this._storagePropertyNames[property.Name];
             var value = property.GetValue(dataModel);
-            hashEntries.Add(new HashEntry(property.Name, RedisValue.Unbox(value)));
+            hashEntries.Add(new HashEntry(storageName, RedisValue.Unbox(value)));
         }
 
         foreach (var property in this._vectorPropertiesInfo)
         {
+            var storageName = this._storagePropertyNames[property.Name];
             var value = property.GetValue(dataModel);
             if (value is not null)
             {
                 if (value is ReadOnlyMemory<float> rom)
                 {
-                    hashEntries.Add(new HashEntry(property.Name, ConvertVectorToBytes(rom)));
+                    hashEntries.Add(new HashEntry(storageName, ConvertVectorToBytes(rom)));
                 }
                 else if (value is ReadOnlyMemory<double> rod)
                 {
-                    hashEntries.Add(new HashEntry(property.Name, ConvertVectorToBytes(rod)));
+                    hashEntries.Add(new HashEntry(storageName, ConvertVectorToBytes(rod)));
                 }
             }
         }
@@ -110,7 +112,9 @@ internal sealed class RedisHashSetVectorStoreRecordMapper<TConsumerDataModel> : 
             var hashEntry = storageModel.HashEntries.FirstOrDefault(x => x.Name == storageName);
             if (hashEntry.Name.HasValue)
             {
-                jsonObject.Add(jsonName, JsonValue.Create(Convert.ChangeType(hashEntry.Value, property.PropertyType)));
+                var typeOrNullableType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+                var convertedValue = Convert.ChangeType(hashEntry.Value, typeOrNullableType);
+                jsonObject.Add(jsonName, JsonValue.Create(convertedValue));
             }
         }
 
