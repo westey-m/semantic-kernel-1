@@ -217,7 +217,13 @@ public sealed class RedisHashSetVectorStoreRecordCollection<TRecord> : IVectorSt
             var retrievedValues = await this.RunOperationAsync(
                 operationName,
                 () => this._database.HashGetAsync(maybePrefixedKey, fieldKeys)).ConfigureAwait(false);
-            retrievedHashEntries = fieldKeys.Zip(retrievedValues, (field, value) => new HashEntry(field, value)).ToArray();
+            retrievedHashEntries = fieldKeys.Zip(retrievedValues, (field, value) => new HashEntry(field, value)).Where(x => x.Value.HasValue).ToArray();
+        }
+
+        // Return null if we found nothing.
+        if (retrievedHashEntries == null || retrievedHashEntries.Length == 0)
+        {
+            return null;
         }
 
         // Convert to the caller's data model.
