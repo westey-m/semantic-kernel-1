@@ -13,7 +13,7 @@ using StackExchange.Redis;
 namespace Microsoft.SemanticKernel.Connectors.Redis;
 
 /// <summary>
-/// Class for mapping between a json hashset stored in redis, and the consumer data model.
+/// Class for mapping between a hashset stored in redis, and the consumer data model.
 /// </summary>
 /// <typeparam name="TConsumerDataModel">The consumer data model to map to or from.</typeparam>
 internal sealed class RedisHashSetVectorStoreRecordMapper<TConsumerDataModel> : IVectorStoreRecordMapper<TConsumerDataModel, (string Key, HashEntry[] HashEntries)>

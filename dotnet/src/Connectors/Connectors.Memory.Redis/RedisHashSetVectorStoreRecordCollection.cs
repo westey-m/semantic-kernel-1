@@ -16,7 +16,7 @@ using StackExchange.Redis;
 namespace Microsoft.SemanticKernel.Connectors.Redis;
 
 /// <summary>
-/// Service for storing and retrieving vector records, that uses Redis as the underlying storage.
+/// Service for storing and retrieving vector records, that uses Redis HashSets as the underlying storage.
 /// </summary>
 /// <typeparam name="TRecord">The data model to use for adding, updating and retrieving data from storage.</typeparam>
 #pragma warning disable CA1711 // Identifiers should not have incorrect suffix
@@ -65,7 +65,7 @@ public sealed class RedisHashSetVectorStoreRecordCollection<TRecord> : IVectorSt
     /// <summary>The Redis database to read/write records from.</summary>
     private readonly IDatabase _database;
 
-    /// <summary>The name of the collection that this <see cref="RedisVectorStoreRecordCollection{TRecord}"/> will access.</summary>
+    /// <summary>The name of the collection that this <see cref="RedisHashSetVectorStoreRecordCollection{TRecord}"/> will access.</summary>
     private readonly string _collectionName;
 
     /// <summary>Optional configuration options for this class.</summary>

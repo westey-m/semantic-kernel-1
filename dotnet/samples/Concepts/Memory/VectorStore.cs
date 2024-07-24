@@ -269,7 +269,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
     {
         public IVectorStoreRecordCollection<TKey, TRecord> CreateVectorStoreRecordCollection<TKey, TRecord>(IDatabase database, string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition) where TRecord : class
         {
-            var store = new RedisVectorStoreRecordCollection<TRecord>(database, name, new() { VectorStoreRecordDefinition = vectorStoreRecordDefinition, PrefixCollectionNameToKeyNames = true }) as IVectorStoreRecordCollection<TKey, TRecord>;
+            var store = new RedisJsonVectorStoreRecordCollection<TRecord>(database, name, new() { VectorStoreRecordDefinition = vectorStoreRecordDefinition, PrefixCollectionNameToKeyNames = true }) as IVectorStoreRecordCollection<TKey, TRecord>;
             return store!;
         }
     }

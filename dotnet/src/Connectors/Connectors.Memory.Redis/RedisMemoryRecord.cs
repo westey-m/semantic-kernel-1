@@ -7,7 +7,7 @@ namespace Microsoft.SemanticKernel.Connectors.Redis;
 
 /// <summary>
 /// Record type used for backward compatibility with <see cref="RedisMemoryStore"/>.
-/// This can be used with a <see cref="RedisVectorStoreRecordCollection{TRecord}"/> to read data that was written to a collection using a <see cref="RedisMemoryStore"/>.
+/// This can be used with a <see cref="RedisJsonVectorStoreRecordCollection{TRecord}"/> to read data that was written to a collection using a <see cref="RedisMemoryStore"/>.
 /// </summary>
 internal class RedisMemoryRecord
 {

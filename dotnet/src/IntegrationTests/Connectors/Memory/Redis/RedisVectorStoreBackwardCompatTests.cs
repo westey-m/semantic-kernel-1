@@ -12,7 +12,7 @@ using Xunit;
 namespace SemanticKernel.IntegrationTests.Connectors.Memory.Redis;
 
 /// <summary>
-/// Tests the backwards compatibility layer of <see cref="RedisVectorStoreRecordCollection{TRecord}"/> with the <see cref="RedisMemoryStore"/>.
+/// Tests the backwards compatibility layer of <see cref="RedisJsonVectorStoreRecordCollection{TRecord}"/> with the <see cref="RedisMemoryStore"/>.
 /// </summary>
 /// <param name="fixture">The test fixture.</param>
 [Collection("RedisVectorStoreCollection")]
