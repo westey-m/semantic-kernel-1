@@ -25,10 +25,12 @@ public sealed class VectorStoreRecordDataProperty : VectorStoreRecordProperty
     /// </summary>
     /// <param name="source">The source to clone</param>
     public VectorStoreRecordDataProperty(VectorStoreRecordDataProperty source)
-        : base(source.PropertyName)
+        : base(source)
     {
         this.HasEmbedding = source.HasEmbedding;
         this.EmbeddingPropertyName = source.EmbeddingPropertyName;
+        this.IsFilterable = source.IsFilterable;
+        this.PropertyType = source.PropertyType;
     }
 
     /// <summary>
