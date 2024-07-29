@@ -21,6 +21,7 @@ namespace Microsoft.SemanticKernel.Data;
 #pragma warning disable CA1711 // Identifiers should not have incorrect suffix
 public class TextEmbeddingVectorStoreRecordCollection<TKey, TRecord> : IVectorStoreRecordCollection<TKey, TRecord>
 #pragma warning restore CA1711 // Identifiers should not have incorrect suffix
+    where TKey : notnull
     where TRecord : class
 {
     /// <summary>The decorated <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/>.</summary>

@@ -18,6 +18,7 @@ namespace Microsoft.SemanticKernel.Data;
 [Experimental("SKEXP0001")]
 public class MemoryVectorStoreRecordCollection<TStorageKey, TStorageRecord> : IVectorStoreRecordCollection<string, MemoryRecord>
 #pragma warning restore CA1711 // Identifiers should not have incorrect suffix
+    where TStorageKey : notnull
     where TStorageRecord : class
 {
     /// <summary>The <see cref="IVectorStoreRecordCollection{TKey, TRecord}"/> that is decorated by this class.</summary>

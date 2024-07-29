@@ -36,7 +36,9 @@ public class TextEmbeddingVectorStore : IVectorStore
     }
 
     /// <inheritdoc />
-    public IVectorStoreRecordCollection<TKey, TRecord> GetCollection<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null) where TRecord : class
+    public IVectorStoreRecordCollection<TKey, TRecord> GetCollection<TKey, TRecord>(string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition = null)
+        where TKey : notnull
+        where TRecord : class
     {
         var collection = this._decoratedVectorStoreRecordCollection.GetCollection<TKey, TRecord>(name, vectorStoreRecordDefinition);
         var embeddingStore = new TextEmbeddingVectorStoreRecordCollection<TKey, TRecord>(collection, this._textEmbeddingGenerationService, new TextEmbeddingVectorStoreRecordCollectionOptions { VectorStoreRecordDefinition = vectorStoreRecordDefinition });

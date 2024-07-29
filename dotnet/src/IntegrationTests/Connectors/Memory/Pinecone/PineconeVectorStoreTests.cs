@@ -46,7 +46,9 @@ public class PineconeVectorStoreTests(PineconeVectorStoreFixture fixture) : ICla
         public IVectorStoreRecordCollection<TKey, TRecord> CreateVectorStoreRecordCollection<TKey, TRecord>(
             Sdk.PineconeClient pineconeClient,
             string name,
-            VectorStoreRecordDefinition? vectorStoreRecordDefinition) where TRecord : class
+            VectorStoreRecordDefinition? vectorStoreRecordDefinition)
+            where TRecord : class
+            where TKey : notnull
         {
             if (typeof(TKey) != typeof(string))
             {

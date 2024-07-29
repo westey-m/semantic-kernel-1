@@ -109,6 +109,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         IVectorStoreRecordCollection<TKey, Hotel<TKey>> vectorRecordStore,
         ITextEmbeddingGenerationService embeddingGenerationService,
         TKey recordKey)
+        where TKey : notnull
     {
         // Create collection.
         await vectorRecordStore.CreateCollectionAsync();
@@ -137,6 +138,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         IVectorStoreRecordCollection<TKey, Hotel<TKey>> vectorRecordStore,
         ITextEmbeddingGenerationService embeddingGenerationService,
         TKey recordKey)
+        where TKey : notnull
     {
         // Delete Record.
         await vectorRecordStore.DeleteAsync(recordKey);
@@ -267,7 +269,9 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
 
     private sealed class RedisVectorStoreFactory : IRedisVectorStoreRecordCollectionFactory
     {
-        public IVectorStoreRecordCollection<TKey, TRecord> CreateVectorStoreRecordCollection<TKey, TRecord>(IDatabase database, string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition) where TRecord : class
+        public IVectorStoreRecordCollection<TKey, TRecord> CreateVectorStoreRecordCollection<TKey, TRecord>(IDatabase database, string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition)
+            where TKey : notnull
+            where TRecord : class
         {
             var store = new RedisJsonVectorStoreRecordCollection<TRecord>(database, name, new() { VectorStoreRecordDefinition = vectorStoreRecordDefinition, PrefixCollectionNameToKeyNames = true }) as IVectorStoreRecordCollection<TKey, TRecord>;
             return store!;
@@ -276,7 +280,9 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
 
     private sealed class QdrantVectorStoreFactory : IQdrantVectorStoreRecordCollectionFactory
     {
-        public IVectorStoreRecordCollection<TKey, TRecord> CreateVectorStoreRecordCollection<TKey, TRecord>(QdrantClient qdrantClient, string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition) where TRecord : class
+        public IVectorStoreRecordCollection<TKey, TRecord> CreateVectorStoreRecordCollection<TKey, TRecord>(QdrantClient qdrantClient, string name, VectorStoreRecordDefinition? vectorStoreRecordDefinition)
+            where TKey : notnull
+            where TRecord : class
         {
             var store = new QdrantVectorStoreRecordCollection<TRecord>(qdrantClient, name, new() { VectorStoreRecordDefinition = vectorStoreRecordDefinition, HasNamedVectors = true }) as IVectorStoreRecordCollection<TKey, TRecord>;
             return store!;
@@ -316,6 +322,7 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
     }
 
     private static async Task RunFactorySampleAsync<TKey>(IVectorStore vectorStore, TKey recordKey)
+        where TKey : notnull
     {
         // Example 1: Create collection and upsert.
         var recordCollection = vectorStore.GetCollection<TKey, Hotel<TKey>>("hotels");
