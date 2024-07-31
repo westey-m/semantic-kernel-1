@@ -218,9 +218,9 @@ public class VectorStore(ITestOutputHelper output) : BaseTest(output)
         {
             Properties = new List<VectorStoreRecordProperty>
             {
-                new VectorStoreRecordKeyProperty("Key"),
-                new VectorStoreRecordDataProperty("Reference"),
-                new VectorStoreRecordVectorProperty("Embedding") { Dimensions = 1536 }
+                new VectorStoreRecordKeyProperty("Key", typeof(ulong)),
+                new VectorStoreRecordDataProperty("Reference", typeof(string)),
+                new VectorStoreRecordVectorProperty("Embedding", typeof(ReadOnlyMemory<float>)) { Dimensions = 1536 }
             }
         };
 

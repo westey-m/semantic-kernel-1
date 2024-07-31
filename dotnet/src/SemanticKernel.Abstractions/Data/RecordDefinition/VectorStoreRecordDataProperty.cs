@@ -15,8 +15,9 @@ public sealed class VectorStoreRecordDataProperty : VectorStoreRecordProperty
     /// Initializes a new instance of the <see cref="VectorStoreRecordDataProperty"/> class.
     /// </summary>
     /// <param name="propertyName">The name of the property.</param>
-    public VectorStoreRecordDataProperty(string propertyName)
-        : base(propertyName)
+    /// <param name="propertyType">The type of the property.</param>
+    public VectorStoreRecordDataProperty(string propertyName, Type propertyType)
+        : base(propertyName, propertyType)
     {
     }
 
@@ -30,7 +31,6 @@ public sealed class VectorStoreRecordDataProperty : VectorStoreRecordProperty
         this.HasEmbedding = source.HasEmbedding;
         this.EmbeddingPropertyName = source.EmbeddingPropertyName;
         this.IsFilterable = source.IsFilterable;
-        this.PropertyType = source.PropertyType;
     }
 
     /// <summary>
@@ -48,9 +48,4 @@ public sealed class VectorStoreRecordDataProperty : VectorStoreRecordProperty
     /// Gets or sets a value indicating whether this data property is filterable.
     /// </summary>
     public bool IsFilterable { get; init; }
-
-    /// <summary>
-    /// Gets or sets the type of the data property.
-    /// </summary>
-    public Type? PropertyType { get; init; }
 }

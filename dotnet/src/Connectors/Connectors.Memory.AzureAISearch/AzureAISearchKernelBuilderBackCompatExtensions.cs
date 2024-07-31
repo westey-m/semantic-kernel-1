@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System;
 using Azure.Search.Documents.Indexes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel.Data;
@@ -18,13 +19,13 @@ public static class AzureAISearchKernelBuilderBackCompatExtensions
     {
         Properties =
             [
-                new VectorStoreRecordKeyProperty("Id"),
-                new VectorStoreRecordDataProperty("Text"),
-                new VectorStoreRecordDataProperty("Description"),
-                new VectorStoreRecordDataProperty("AdditionalMetadata"),
-                new VectorStoreRecordDataProperty("ExternalSourceName"),
-                new VectorStoreRecordDataProperty("IsReference"),
-                new VectorStoreRecordVectorProperty("Embedding")
+                new VectorStoreRecordKeyProperty("Id", typeof(string)),
+                new VectorStoreRecordDataProperty("Text", typeof(string)),
+                new VectorStoreRecordDataProperty("Description", typeof(string)),
+                new VectorStoreRecordDataProperty("AdditionalMetadata", typeof(string)),
+                new VectorStoreRecordDataProperty("ExternalSourceName", typeof(string)),
+                new VectorStoreRecordDataProperty("IsReference", typeof(bool)),
+                new VectorStoreRecordVectorProperty("Embedding", typeof(ReadOnlyMemory<float>))
             ]
     };
 

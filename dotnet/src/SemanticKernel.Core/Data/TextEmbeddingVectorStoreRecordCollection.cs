@@ -54,17 +54,10 @@ public class TextEmbeddingVectorStoreRecordCollection<TKey, TRecord> : IVectorSt
         this._decoratedVectorStoreRecordCollection = decoratedVectorStoreRecordCollection;
         this._textEmbeddingGenerationService = textEmbeddingGenerationService;
         this._options = options ?? new TextEmbeddingVectorStoreRecordCollectionOptions();
+        var vectorStoreRecordDefinition = this._options.VectorStoreRecordDefinition ?? VectorStoreRecordPropertyReader.CreateVectorStoreRecordDefinitionFromType(typeof(TRecord), true);
 
         // Enumerate public properties using configuration or attributes.
-        (PropertyInfo keyProperty, List<PropertyInfo> dataProperties, List<PropertyInfo> vectorProperties) properties;
-        if (this._options.VectorStoreRecordDefinition is not null)
-        {
-            properties = VectorStoreRecordPropertyReader.FindProperties(typeof(TRecord), this._options.VectorStoreRecordDefinition, supportsMultipleVectors: true);
-        }
-        else
-        {
-            properties = VectorStoreRecordPropertyReader.FindProperties(typeof(TRecord), supportsMultipleVectors: true);
-        }
+        var properties = VectorStoreRecordPropertyReader.FindProperties(typeof(TRecord), vectorStoreRecordDefinition, supportsMultipleVectors: true);
 
         // Find all the data properties to generate embeddings for.
         var vectorPropertiesDictionary = properties.vectorProperties.ToDictionary(p => p.Name);
