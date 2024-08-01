@@ -264,6 +264,7 @@ internal static class VectorStoreRecordPropertyReader
                     HasEmbedding = dataAttribute.HasEmbedding,
                     EmbeddingPropertyName = dataAttribute.EmbeddingPropertyName,
                     IsFilterable = dataAttribute.IsFilterable,
+                    IsFullTextSearchable = dataAttribute.IsFullTextSearchable,
                     StoragePropertyName = dataAttribute.StoragePropertyName
                 });
             }

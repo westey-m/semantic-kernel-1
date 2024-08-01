@@ -206,6 +206,9 @@ public class VectorStoreRecordPropertyReaderTests
         Assert.True(data1.IsFilterable);
         Assert.False(data2.IsFilterable);
 
+        Assert.True(data1.IsFullTextSearchable);
+        Assert.False(data2.IsFullTextSearchable);
+
         Assert.True(data1.HasEmbedding);
         Assert.False(data2.HasEmbedding);
 
@@ -406,7 +409,7 @@ public class VectorStoreRecordPropertyReaderTests
         [VectorStoreRecordKey]
         public string Key { get; set; } = string.Empty;
 
-        [VectorStoreRecordData(HasEmbedding = true, EmbeddingPropertyName = "Vector1", IsFilterable = true)]
+        [VectorStoreRecordData(HasEmbedding = true, EmbeddingPropertyName = "Vector1", IsFilterable = true, IsFullTextSearchable = true)]
         public string Data1 { get; set; } = string.Empty;
 
         [VectorStoreRecordData]
@@ -427,7 +430,7 @@ public class VectorStoreRecordPropertyReaderTests
         Properties =
         [
             new VectorStoreRecordKeyProperty("Key", typeof(string)),
-            new VectorStoreRecordDataProperty("Data1", typeof(string)) { HasEmbedding = true, EmbeddingPropertyName = "Vector1", IsFilterable = true },
+            new VectorStoreRecordDataProperty("Data1", typeof(string)) { HasEmbedding = true, EmbeddingPropertyName = "Vector1", IsFilterable = true, IsFullTextSearchable = true },
             new VectorStoreRecordDataProperty("Data2", typeof(string)) { StoragePropertyName = "data_2" },
             new VectorStoreRecordVectorProperty("Vector1", typeof(ReadOnlyMemory<float>)) { Dimensions = 4, IndexKind = IndexKind.Flat, DistanceFunction = DistanceFunction.DotProductSimilarity },
             new VectorStoreRecordVectorProperty("Vector2", typeof(ReadOnlyMemory<float>))
