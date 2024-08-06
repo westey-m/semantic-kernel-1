@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Microsoft.SemanticKernel.Data;
 
 /// <summary>
-/// Optional options for vector search.
+/// Options for vector search.
 /// </summary>
 [Experimental("SKEXP0001")]
 public class VectorSearchOptions
