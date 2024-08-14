@@ -40,7 +40,7 @@ public sealed class BasicVectorSearchFilter
     /// <returns><see cref="BasicVectorSearchFilter"/> instance to allow fluent configuration.</returns>
     public BasicVectorSearchFilter TagListContains(string field, object value)
     {
-        this._filterClauses.Add(new EqualityFilterClause(field, value));
+        this._filterClauses.Add(new TagListContainsFilterClause(field, value));
         return this;
     }
 }
