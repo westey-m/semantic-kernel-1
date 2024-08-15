@@ -15,6 +15,18 @@ namespace Microsoft.SemanticKernel.Data;
 public interface IVectorSearch<TRecord>
     where TRecord : class
 {
+    //// Option 1 Simple
+
+    /// <summary>
+    /// Search the vector store for records that match the given embedding and filter.
+    /// </summary>
+    /// <param name="vectorQuery">The vector to search with.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    /// <returns>The records found by the vector search, including their result scores.</returns>
+    IAsyncEnumerable<VectorSearchResult<TRecord>> SearchAsync(BaseVectorSearchQuery vectorQuery, CancellationToken cancellationToken = default);
+
+    //// Option 2 Simple
+
     /// <summary>
     /// Search the vector store for records that match the given embedding and filter.
     /// </summary>
@@ -23,6 +35,8 @@ public interface IVectorSearch<TRecord>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>The records found by the vector search, including their result scores.</returns>
     IAsyncEnumerable<VectorSearchResult<TRecord>> SearchAsync<TVectorElement>(ReadOnlyMemory<TVectorElement> vector, VectorSearchOptions? options = default, CancellationToken cancellationToken = default);
+
+    //// Option 2 Hybrid
 
     /// <summary>
     /// Search the vector store for records that match the given embedding and filter.
@@ -36,5 +50,5 @@ public interface IVectorSearch<TRecord>
     /// <param name="options">Optional options to configure the search.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>The records found by the vector search, including their result scores.</returns>
-    IAsyncEnumerable<VectorSearchResult<TRecord>> HybridSearchAsync<TVectorElement, THybridType>(ReadOnlyMemory<TVectorElement> vector, THybridType hybridSearchObject, string hybridSearchFieldName, VectorSearchOptions? options = default, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<VectorSearchResult<TRecord>> HybridSearchAsync<TVectorElement, THybridType>(ReadOnlyMemory<TVectorElement> vector, THybridType hybridSearchObject, string hybridSearchFieldName, HybridVectorSearchOptions? options = default, CancellationToken cancellationToken = default);
 }

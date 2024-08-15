@@ -9,9 +9,9 @@ namespace Microsoft.SemanticKernel.Data;
 /// Contains query information to use when doing a hybrid search on a vector store.
 /// </summary>
 [Experimental("SKEXP0001")]
-public class HybridVectorSearchQuery<TVectorElement, TQueryData> : HybridVectorSearchQuery<TVectorElement>
+public class HybridVectorSearchQuery : BaseVectorSearchQuery
 {
-    internal HybridVectorSearchQuery(ReadOnlyMemory<TVectorElement>? vector, TQueryData queryData, HybridVectorSearchOptions? searchOptions)
+    internal HybridVectorSearchQuery(object? vector, object? queryData, HybridVectorSearchOptions? searchOptions)
         : base(vector, queryData, searchOptions)
     {
         if (queryData == null)
@@ -19,11 +19,11 @@ public class HybridVectorSearchQuery<TVectorElement, TQueryData> : HybridVectorS
             throw new ArgumentException($"${nameof(queryData)} must be provided.");
         }
 
-        this.QueryData = queryData;
+        this.SearchOptions = searchOptions;
     }
 
     /// <summary>
-    /// The data that needs to be searched for.
+    /// Gets the options to use when searching the vector store.
     /// </summary>
-    public new TQueryData QueryData { get; init; }
+    public new HybridVectorSearchOptions? SearchOptions { get; }
 }

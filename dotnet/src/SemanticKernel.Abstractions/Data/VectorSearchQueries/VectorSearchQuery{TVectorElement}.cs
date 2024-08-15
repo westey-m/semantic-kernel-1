@@ -6,14 +6,14 @@ using System.Diagnostics.CodeAnalysis;
 namespace Microsoft.SemanticKernel.Data;
 
 /// <summary>
-/// Contains a vector to use when searching a vector store.
+/// Contains query information to use when searching a vector store.
 /// </summary>
 /// <typeparam name="TVectorElement">The type of the vector elements.</typeparam>
 [Experimental("SKEXP0001")]
 public class VectorSearchQuery<TVectorElement> : VectorSearchQuery
 {
-    internal VectorSearchQuery(ReadOnlyMemory<TVectorElement>? vector, object? queryData, VectorSearchOptions? vectorSearchOptions)
-        : base(vector, queryData, vectorSearchOptions)
+    internal VectorSearchQuery(ReadOnlyMemory<TVectorElement>? vector, object? queryData, VectorSearchOptions? searchOptions)
+        : base(vector, queryData, searchOptions)
     {
         this.Vector = vector!.Value;
     }
