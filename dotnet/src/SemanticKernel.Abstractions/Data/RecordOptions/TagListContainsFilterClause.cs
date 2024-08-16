@@ -1,5 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace Microsoft.SemanticKernel.Data;
 
 /// <summary>
@@ -10,6 +12,7 @@ namespace Microsoft.SemanticKernel.Data;
 /// </remarks>
 /// <param name="fieldName">The name of the field with the list of values.</param>
 /// <param name="value">The value that the list should contain.</param>
+[Experimental("SKEXP0001")]
 public sealed class TagListContainsFilterClause(string fieldName, object value) : FilterClause(FilterClauseType.TagListContains)
 {
     /// <summary>

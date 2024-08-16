@@ -1,10 +1,13 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace Microsoft.SemanticKernel.Data;
 
 /// <summary>
 /// Enum representing the type of filter clause.
 /// </summary>
+[Experimental("SKEXP0001")]
 public enum FilterClauseType
 {
     /// <summary>

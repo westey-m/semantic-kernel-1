@@ -1,10 +1,13 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace Microsoft.SemanticKernel.Data;
 
 /// <summary>
 /// Base class for filter clauses.
 /// </summary>
+[Experimental("SKEXP0001")]
 public abstract class FilterClause
 {
     /// <summary>
