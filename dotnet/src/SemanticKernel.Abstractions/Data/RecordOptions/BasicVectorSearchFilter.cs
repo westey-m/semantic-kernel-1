@@ -38,7 +38,7 @@ public sealed class BasicVectorSearchFilter
     /// <param name="field">Name of the field consisting of a list of values.</param>
     /// <param name="value">Value that the list should contain.</param>
     /// <returns><see cref="BasicVectorSearchFilter"/> instance to allow fluent configuration.</returns>
-    public BasicVectorSearchFilter TagListContains(string field, object value)
+    public BasicVectorSearchFilter TagListContains(string field, string value)
     {
         this._filterClauses.Add(new TagListContainsFilterClause(field, value));
         return this;

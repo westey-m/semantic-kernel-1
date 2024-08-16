@@ -13,7 +13,7 @@ namespace Microsoft.SemanticKernel.Data;
 /// <param name="fieldName">The name of the field with the list of values.</param>
 /// <param name="value">The value that the list should contain.</param>
 [Experimental("SKEXP0001")]
-public sealed class TagListContainsFilterClause(string fieldName, object value) : FilterClause(FilterClauseType.TagListContains)
+public sealed class TagListContainsFilterClause(string fieldName, string value) : FilterClause(FilterClauseType.TagListContains)
 {
     /// <summary>
     /// The name of the field with the list of values.
@@ -23,5 +23,5 @@ public sealed class TagListContainsFilterClause(string fieldName, object value) 
     /// <summary>
     /// The value that the list should contain.
     /// </summary>
-    public object Value { get; private set; } = value;
+    public string Value { get; private set; } = value;
 }
