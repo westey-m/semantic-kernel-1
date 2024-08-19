@@ -9,7 +9,7 @@ namespace Microsoft.SemanticKernel.Data;
 /// Contains query information to use when searching a vector store using a vector.
 /// </summary>
 [Experimental("SKEXP0001")]
-public class VectorizedSearchQuery<TVector> : VectorSearchQuery
+public sealed class VectorizedSearchQuery<TVector> : VectorSearchQuery
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="VectorizedSearchQuery{TVector}"/> class.

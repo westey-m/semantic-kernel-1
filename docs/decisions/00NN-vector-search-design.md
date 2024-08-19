@@ -15,8 +15,10 @@ informed:
 1. Support searching by Vector.
 1. Support Vectors with different types of elements and allow extensibility to support new types of vector in future (e.g. sparse).
 1. Support searching by Text. This is required to support the scenario where the service does the embedding generation or the scenario where the embedding generation is done in the pipeline.
-1. Allow extensibility to seach by other modalities, e.g. text.
+1. Allow extensibility to search by other modalities, e.g. image.
 1. Allow extensibility to do hybrid search.
+1. Allow basic filtering with possibility to extend in future.
+1. Provide extension methods to simplify search experience.
 
 ## Interface
 
@@ -45,6 +47,8 @@ abstract class VectorSearchQuery(
 {
     public static VectorizedSearchQuery<TVector> CreateQuery<TVector>(TVector vector, VectorSearchOptions? options = default) => new(vector, options);
     public static VectorizableTextSearchQuery CreateQuery(string text, VectorSearchOptions? options = default) => new(text, options);
+
+    // Showing future extensibility possiblities.
     public static HybridTextVectorizedSearchQuery<TVector> CreateHybridQuery<TVector>(TVector vector, string text, HybridVectorSearchOptions? options = default) => new(vector, text, options);
     public static HybridVectorizableTextSearchQuery CreateHybridQuery(string text, HybridVectorSearchOptions? options = default) => new(text, options);
 }
@@ -118,21 +122,27 @@ public async Task VectorSearchAsync(IVectorSearch<Glossary> vectorSearch)
 
     // Vector search.
     var searchResults = vectorSearch.SearchAsync(VectorSearchQuery.CreateQuery(searchEmbedding));
+    searchResults = vectorSearch.SearchAsync(searchEmbedding); // Extension method.
 
     // Vector search with specific vector field.
-    searchResults = vectorSearch.SearchAsync(VectorSearchQuery.CreateQuery(searchEmbedding), new() { VectorFieldName = nameof(Glossary.DefinitionEmbedding) }));
+    searchResults = vectorSearch.SearchAsync(VectorSearchQuery.CreateQuery(searchEmbedding, new() { VectorFieldName = nameof(Glossary.DefinitionEmbedding) }));
+    searchResults = vectorSearch.SearchAsync(searchEmbedding, new() { VectorFieldName = nameof(Glossary.DefinitionEmbedding) }); // Extension method.
 
     // Text vector search.
     searchResults = vectorSearch.SearchAsync(VectorSearchQuery.CreateQuery("What does Semantic Kernel mean?"));
+    searchResults = vectorSearch.SearchAsync("What does Semantic Kernel mean?"); // Extension method.
 
     // Text vector search with specific vector field.
     searchResults = vectorSearch.SearchAsync(VectorSearchQuery.CreateQuery("What does Semantic Kernel mean?", new() { VectorFieldName = nameof(Glossary.DefinitionEmbedding) }));
+    searchResults = vectorSearch.SearchAsync("What does Semantic Kernel mean?", new() { VectorFieldName = nameof(Glossary.DefinitionEmbedding) }); // Extension method.
 
     // Hybrid vector search.
     searchResults = vectorSearch.SearchAsync(VectorSearchQuery.CreateHybridQuery(searchEmbedding, "What does Semantic Kernel mean?", new() { HybridFieldName = nameof(Glossary.Definition) }));
+    searchResults = vectorSearch.HybridVectorizedTextSearchAsync(searchEmbedding, "What does Semantic Kernel mean?", new() { HybridFieldName = nameof(Glossary.Definition) }); // Extension method.
 
     // Hybrid text vector search with field names specified for both vector and keyword search.
     searchResults = vectorSearch.SearchAsync(VectorSearchQuery.CreateHybridQuery("What does Semantic Kernel mean?", new() { VectorFieldName = nameof(Glossary.DefinitionEmbedding), HybridFieldName = nameof(Glossary.Definition) }));
+    searchResults = vectorSearch.HybridVectorizableTextSearchAsync("What does Semantic Kernel mean?", new() { VectorFieldName = nameof(Glossary.DefinitionEmbedding), HybridFieldName = nameof(Glossary.Definition) }); // Extension method.
 
     // In future we can also support images or other modalities, e.g.
     IVectorSearch<Images> imageVectorSearch = ...
@@ -157,8 +167,11 @@ public async Task VectorSearchAsync(IVectorSearch<Glossary> vectorSearch)
 
 See the [Interface](#interface) section above for a description of this option.
 
-Can support multiple query types, each with different options.
-Easy to add more query types in future without it being a breaking change.
+The benefit is that it can support multiple query types, each with different options.
+It's easy to add more query types in future without it being a breaking change.
+
+The drawback of this option is that any query type that isn't supported by a connector
+implementation will cause an exception to be thrown.
 
 ### Option 2: Vector only
 
@@ -198,4 +211,4 @@ class AzureAISearchVectorStoreRecordCollection<TRecord> : IVectorSearch<TRecord>
 ## Decision Outcome
 
 Chosen option: 1: Search Object, because
-It allows more future extensibility without breaking changes and makes it easier to implement the current requirements.
+it allows more future extensibility without breaking changes and makes it easier to implement the current requirements.

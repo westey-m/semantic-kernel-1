@@ -10,18 +10,27 @@ namespace Microsoft.SemanticKernel.Data;
 /// <remarks>
 /// Constructs an instance of <see cref="EqualityFilterClause"/>
 /// </remarks>
-/// <param name="fieldName">Field name.</param>
-/// <param name="value">Field value.</param>
 [Experimental("SKEXP0001")]
-public sealed class EqualityFilterClause(string fieldName, object value) : FilterClause(FilterClauseType.Equality)
+public sealed class EqualityFilterClause : FilterClause
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EqualityFilterClause"/> class.
+    /// </summary>
+    /// <param name="fieldName">Field name.</param>
+    /// <param name="value">Field value.</param>
+    internal EqualityFilterClause(string fieldName, object value) : base(FilterClauseType.Equality)
+    {
+        this.FieldName = fieldName;
+        this.Value = value;
+    }
+
     /// <summary>
     /// Fieled name to match.
     /// </summary>
-    public string FieldName { get; private set; } = fieldName;
+    public string FieldName { get; private set; }
 
     /// <summary>
     /// Field value to match.
     /// </summary>
-    public object Value { get; private set; } = value;
+    public object Value { get; private set; }
 }

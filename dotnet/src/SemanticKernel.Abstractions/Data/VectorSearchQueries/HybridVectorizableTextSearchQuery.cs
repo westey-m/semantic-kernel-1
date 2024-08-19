@@ -11,7 +11,7 @@ namespace Microsoft.SemanticKernel.Data;
 /// in the client pipeline or on the server, if the service supports this functionality.
 /// </summary>
 [Experimental("SKEXP0001")]
-public class HybridVectorizableTextSearchQuery : VectorSearchQuery
+public sealed class HybridVectorizableTextSearchQuery : VectorSearchQuery
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="HybridVectorizableTextSearchQuery"/> class.

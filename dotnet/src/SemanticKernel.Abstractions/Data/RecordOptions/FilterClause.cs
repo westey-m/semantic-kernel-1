@@ -19,7 +19,7 @@ public abstract class FilterClause
     /// Initializes a new instance of the <see cref="FilterClause"/> class.
     /// </summary>
     /// <param name="type">The type of filter clause.</param>
-    protected FilterClause(FilterClauseType type)
+    internal FilterClause(FilterClauseType type)
     {
         this.Type = type;
     }

@@ -12,6 +12,11 @@ namespace Microsoft.SemanticKernel.Data;
 [Experimental("SKEXP0001")]
 public sealed class BasicVectorSearchFilter
 {
+    /// <summary>
+    /// Gets the default search filter.
+    /// </summary>
+    public static BasicVectorSearchFilter Default { get; } = new BasicVectorSearchFilter();
+
     /// <summary>The filter clauses to and together.</summary>
     private readonly List<FilterClause> _filterClauses = [];
 

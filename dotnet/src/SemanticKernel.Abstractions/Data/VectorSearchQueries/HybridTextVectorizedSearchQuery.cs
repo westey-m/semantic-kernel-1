@@ -10,7 +10,7 @@ namespace Microsoft.SemanticKernel.Data;
 /// vector store using a vector and text.
 /// </summary>
 [Experimental("SKEXP0001")]
-public class HybridTextVectorizedSearchQuery<TVector> : VectorSearchQuery
+public sealed class HybridTextVectorizedSearchQuery<TVector> : VectorSearchQuery
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="HybridTextVectorizedSearchQuery{TVector}"/> class.

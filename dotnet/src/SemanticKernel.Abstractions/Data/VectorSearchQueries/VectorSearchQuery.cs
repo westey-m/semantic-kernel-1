@@ -46,26 +46,26 @@ public abstract class VectorSearchQuery
     /// <summary>
     /// Creates a new query to search a vector store using a text string that will be vectorized downstream.
     /// </summary>
-    /// <param name="text">The text to search the store with.</param>
+    /// <param name="searchText">The text to search the store with.</param>
     /// <param name="options">The options that control the behavior of the search.</param>
     /// <returns>The query object.</returns>
-    public static VectorizableTextSearchQuery CreateQuery(string text, VectorSearchOptions? options = default) => new(text, options);
+    public static VectorizableTextSearchQuery CreateQuery(string searchText, VectorSearchOptions? options = default) => new(searchText, options);
 
     /// <summary>
     /// Creates a new query to do a hybrid search in a vector store using a vector and text.
     /// </summary>
     /// <typeparam name="TVector">The type of the vector.</typeparam>
     /// <param name="vector">The vector to search the store with.</param>
-    /// <param name="text">The text to use for the keyword search.</param>
+    /// <param name="searchText">The text to use for the keyword search.</param>
     /// <param name="options">The options that control the behavior of the search.</param>
     /// <returns>The query object.</returns>
-    public static HybridTextVectorizedSearchQuery<TVector> CreateHybridQuery<TVector>(TVector vector, string text, HybridVectorSearchOptions? options = default) => new(vector, text, options);
+    public static HybridTextVectorizedSearchQuery<TVector> CreateHybridQuery<TVector>(TVector vector, string searchText, HybridVectorSearchOptions? options = default) => new(vector, searchText, options);
 
     /// <summary>
     /// Creates a new query to do a hybrid search in a vector store using a text string that will be vectorized downstream.
     /// </summary>
-    /// <param name="text">The text to use for both the vector search and the keyword search.</param>
+    /// <param name="searchText">The text to use for both the vector search and the keyword search.</param>
     /// <param name="options">The options that control the behavior of the search.</param>
     /// <returns>The query object.</returns>
-    public static HybridVectorizableTextSearchQuery CreateHybridQuery(string text, HybridVectorSearchOptions? options = default) => new(text, options);
+    public static HybridVectorizableTextSearchQuery CreateHybridQuery(string searchText, HybridVectorSearchOptions? options = default) => new(searchText, options);
 }
