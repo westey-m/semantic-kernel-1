@@ -351,6 +351,40 @@ public sealed class QdrantVectorStoreRecordCollectionTests(ITestOutputHelper out
         await Assert.ThrowsAsync<VectorStoreRecordMappingException>(async () => await sut.GetAsync(11, new GetRecordOptions { IncludeVectors = true }));
     }
 
+    [Theory]
+    [InlineData(true, "singleVectorHotels", false, "equality")]
+    [InlineData(false, "singleVectorHotels", false, "equality")]
+    [InlineData(true, "namedVectorsHotels", true, "equality")]
+    [InlineData(false, "namedVectorsHotels", true, "equality")]
+    [InlineData(true, "singleVectorHotels", false, "tagContains")]
+    [InlineData(false, "singleVectorHotels", false, "tagContains")]
+    [InlineData(true, "namedVectorsHotels", true, "tagContains")]
+    [InlineData(false, "namedVectorsHotels", true, "tagContains")]
+    public async Task ItCanSearchWithFilterAsync(bool useRecordDefinition, string collectionName, bool hasNamedVectors, string filterType)
+    {
+        // Arrange.
+        var options = new QdrantVectorStoreRecordCollectionOptions<HotelInfo>
+        {
+            HasNamedVectors = hasNamedVectors,
+            VectorStoreRecordDefinition = useRecordDefinition ? fixture.HotelVectorStoreRecordDefinition : null
+        };
+        var sut = new QdrantVectorStoreRecordCollection<HotelInfo>(fixture.QdrantClient, collectionName, options);
+
+        // Act.
+        var filter = filterType == "equality" ? new BasicVectorSearchFilter().Equality("HotelName", "My Hotel 12") : new BasicVectorSearchFilter().TagListContains("Tags", "t1");
+        var searchResults = sut.SearchAsync(
+            new ReadOnlyMemory<float>([30f, 31f, 32f, 33f]),
+            new()
+            {
+                BasicVectorSearchFilter = filter
+            });
+
+        // Assert.
+        Assert.NotNull(searchResults);
+        var searchResultsList = await searchResults.ToListAsync();
+        Assert.Single(searchResultsList);
+    }
+
     private HotelInfo CreateTestHotel(uint hotelId)
     {
         return new HotelInfo

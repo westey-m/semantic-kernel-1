@@ -31,9 +31,22 @@ public sealed class VectorStoreRecordDataProperty : VectorStoreRecordProperty
     public VectorStoreRecordDataProperty(VectorStoreRecordDataProperty source)
         : base(source)
     {
+        this.HasEmbedding = source.HasEmbedding;
+        this.EmbeddingPropertyName = source.EmbeddingPropertyName;
         this.IsFilterable = source.IsFilterable;
         this.IsFullTextSearchable = source.IsFullTextSearchable;
     }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this data property has an associated embedding property.
+    /// </summary>
+    /// <remarks>Defaults to <see langword="false" /></remarks>
+    public bool HasEmbedding { get; init; }
+
+    /// <summary>
+    /// Gets or sets the name of the property that contains the embedding for this data property.
+    /// </summary>
+    public string? EmbeddingPropertyName { get; init; }
 
     /// <summary>
     /// Gets or sets a value indicating whether this data property is filterable.
