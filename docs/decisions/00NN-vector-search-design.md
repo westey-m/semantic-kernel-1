@@ -53,32 +53,6 @@ abstract class VectorSearchQuery(
     public static HybridVectorizableTextSearchQuery CreateHybridQuery(string text, HybridVectorSearchOptions? options = default) => new(text, options);
 }
 
-// Extension class that allows easier use of search without needing to call createquery, e.g. SearchAsync(VectorSearchQuery.CreateQuery(...))
-public static class VectorSearchExtensions
-{
-    public static IAsyncEnumerable<VectorSearchResult<TRecord>> SearchAsync<TRecord, TVector>(
-        this IVectorSearch<TRecord> search,
-        TVector vector,
-        VectorSearchOptions? options = default,
-        CancellationToken cancellationToken = default)
-        where TRecord : class
-    {
-        return search.SearchAsync(new VectorizedSearchQuery<TVector>(vector, options), cancellationToken);
-    }
-
-    public static IAsyncEnumerable<VectorSearchResult<TRecord>> SearchAsync<TRecord>(
-        this IVectorSearch<TRecord> search,
-        string searchText,
-        VectorSearchOptions? options = default,
-        CancellationToken cancellationToken = default)
-        where TRecord : class
-    {
-        return search.SearchAsync(new VectorizableTextSearchQuery(searchText, options), cancellationToken);
-    }
-
-    // etc...
-}
-
 // Vector search using vector.
 class VectorizedSearchQuery<TVector>(
     TVector vector,
@@ -122,6 +96,36 @@ public sealed class HybridVectorSearchOptions
     public bool IncludeVectors { get; init; } = false;
 
     public string? HybridFieldName { get; init; }
+}
+```
+
+To simplify calling search, without needing to call CreateQuery we can use extension methods.
+e.g. Instead of `SearchAsync(VectorSearchQuery.CreateQuery(vector))` you can call `SearchAsync(vector)`
+
+```csharp
+public static class VectorSearchExtensions
+{
+    public static IAsyncEnumerable<VectorSearchResult<TRecord>> SearchAsync<TRecord, TVector>(
+        this IVectorSearch<TRecord> search,
+        TVector vector,
+        VectorSearchOptions? options = default,
+        CancellationToken cancellationToken = default)
+        where TRecord : class
+    {
+        return search.SearchAsync(new VectorizedSearchQuery<TVector>(vector, options), cancellationToken);
+    }
+
+    public static IAsyncEnumerable<VectorSearchResult<TRecord>> SearchAsync<TRecord>(
+        this IVectorSearch<TRecord> search,
+        string searchText,
+        VectorSearchOptions? options = default,
+        CancellationToken cancellationToken = default)
+        where TRecord : class
+    {
+        return search.SearchAsync(new VectorizableTextSearchQuery(searchText, options), cancellationToken);
+    }
+
+    // etc...
 }
 ```
 
@@ -239,16 +243,18 @@ class AzureAISearchVectorStoreRecordCollection<TRecord> : IVectorSearch<TRecord>
 One of the main requirements is to allow future extensibility with additional query types.
 One way to achieve this is to use an abstract base class that can auto implement new methods
 that throw with NotSupported unless overridden by each implementation. This behavior would
-be similar to Option 1.
+be similar to Option 1. With Option 1 though, the same bahvior is achieved via extension methods.
+The set of methods end up being the same with Option 1 and Option 3, except that Option 1 also has
+a Search method that takes `VectorSearchQuery` as input.
 
 `IVectorSearch` is a separate interface to `IVectorStoreRecordCollection`, but the intention is
 for `IVectorStoreRecordCollection` to inherit from `IVectorSearch`.
 
 This means that some (most) implementations of `IVectorSearch` will be part of `IVectorStoreRecordCollection` implementations.
-We are also aware of cases where we need to support standalone `IVectorSearch` implementations where the store supports search
+We anticipate cases where we need to support standalone `IVectorSearch` implementations where the store supports search
 but isn't necessarily writable.
 
-Therefore a hierarchy of abstract base classes may make sense.
+Therefore a hierarchy of abstract base classes would be required.
 
 ```csharp
 abstract class BaseVectorSearch

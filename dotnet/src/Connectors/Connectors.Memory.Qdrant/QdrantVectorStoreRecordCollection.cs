@@ -483,7 +483,13 @@ public sealed class QdrantVectorStoreRecordCollection<TRecord> : IVectorStoreRec
             // Map to data model and return results.
             foreach (var point in points)
             {
-                yield return QdrantVectorStoreCollectionSearchMapping.MapScoredPointToVectorSearchResult(point, this._mapper, internalOptions.IncludeVectors, DatabaseName, this._collectionName, "Search");
+                yield return QdrantVectorStoreCollectionSearchMapping.MapScoredPointToVectorSearchResult(
+                    point,
+                    this._mapper,
+                    internalOptions.IncludeVectors,
+                    DatabaseName,
+                    this._collectionName,
+                    "Query");
             }
 
             yield break;

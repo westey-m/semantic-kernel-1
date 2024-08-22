@@ -18,7 +18,7 @@ internal static class QdrantVectorStoreCollectionSearchMapping
     /// <param name="basicVectorSearchFilter">The <see cref="BasicVectorSearchFilter"/> to build a Qdrant <see cref="Filter"/> from.</param>
     /// <param name="storagePropertyNames">A mapping of data model property names to the names under which they are stored.</param>
     /// <returns>The Qdrant <see cref="Filter"/>.</returns>
-    /// <exception cref="ArgumentException"></exception>
+    /// <exception cref="InvalidOperationException">Thrown when the provided filter contains unsupported types, values or unknown properties.</exception>
     public static Filter BuildFilter(BasicVectorSearchFilter? basicVectorSearchFilter, Dictionary<string, string> storagePropertyNames)
     {
         var filter = new Filter();
@@ -48,7 +48,7 @@ internal static class QdrantVectorStoreCollectionSearchMapping
             }
             else
             {
-                throw new ArgumentException($"Unsupported filter clause type '{filterClause.GetType().Name}'.");
+                throw new InvalidOperationException($"Unsupported filter clause type '{filterClause.GetType().Name}'.");
             }
 
             // Map each type of filter value to the appropriate Qdrant match type.
