@@ -35,6 +35,7 @@ internal static class RedisVectorStoreCollectionSearchMapping
             .AddParam("embedding", vectorBytes)
             .SetSortBy("vector_score")
             .Limit(internalOptions.Offset, internalOptions.Limit)
+            .SetWithScores(true)
             .Dialect(2);
 
         if (selectFields != null)
