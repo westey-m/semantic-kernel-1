@@ -455,7 +455,7 @@ public sealed class QdrantVectorStoreRecordCollection<TRecord> : IVectorStoreRec
             string? vectorName = null;
             if (this._options.HasNamedVectors)
             {
-                vectorName = internalOptions.VectorFieldName ?? this._firstVectorPropertyName;
+                vectorName = this.ResolveVectorFieldName(internalOptions.VectorFieldName);
             }
 
             // Specify whether to include vectors in the search results.
@@ -490,6 +490,31 @@ public sealed class QdrantVectorStoreRecordCollection<TRecord> : IVectorStoreRec
         }
 
         throw new NotSupportedException($"A {nameof(VectorSearchQuery)} of type {vectorQuery.GetType().Name} is not supported by the Qdrant connector.");
+    }
+
+    /// <summary>
+    /// Resolve the vector field name to use for a search by using the storage name for the field name from options
+    /// if available, and falling back to the first vector field name if not.
+    /// </summary>
+    /// <param name="optionsVectorFieldName">The vector field name provided via options.</param>
+    /// <returns>The resolved vector field name.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the provided field name is not a valid field name.</exception>
+    private string ResolveVectorFieldName(string? optionsVectorFieldName)
+    {
+        string? vectorFieldName;
+        if (optionsVectorFieldName is not null)
+        {
+            if (!this._storagePropertyNames.TryGetValue(optionsVectorFieldName, out vectorFieldName))
+            {
+                throw new InvalidOperationException($"The collection does not have a vector field named '{optionsVectorFieldName}'.");
+            }
+        }
+        else
+        {
+            vectorFieldName = this._firstVectorPropertyName;
+        }
+
+        return vectorFieldName!;
     }
 
     /// <summary>
