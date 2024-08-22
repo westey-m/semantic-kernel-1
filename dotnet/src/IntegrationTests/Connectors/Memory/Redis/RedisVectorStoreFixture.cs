@@ -88,7 +88,7 @@ public class RedisVectorStoreFixture : IAsyncLifetime
         ConnectionMultiplexer redis = ConnectionMultiplexer.Connect("localhost:6379,connectTimeout=60000,connectRetry=5");
         this.Database = redis.GetDatabase();
 
-        // Create a schema for the vector store.
+        // Create a JSON index.
         var jsonSchema = new Schema();
         jsonSchema.AddTagField(new FieldName("$.HotelName", "HotelName"));
         jsonSchema.AddNumericField(new FieldName("$.HotelCode", "HotelCode"));
