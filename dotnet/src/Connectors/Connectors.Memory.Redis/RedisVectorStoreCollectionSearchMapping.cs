@@ -29,7 +29,7 @@ internal static class RedisVectorStoreCollectionSearchMapping
         var vectorPropertyName = ResolveVectorFieldName(internalOptions.VectorFieldName, storagePropertyNames, firstVectorPropertyName);
 
         // Build search query.
-        var filter = RedisVectorStoreCollectionSearchMapping.BuildFilter(internalOptions.BasicVectorSearchFilter, storagePropertyNames);
+        var filter = RedisVectorStoreCollectionSearchMapping.BuildFilter(internalOptions.VectorSearchFilter, storagePropertyNames);
         var vectorBytes = MemoryMarshal.AsBytes(floatVectorQuery.Vector.Span).ToArray();
         var query = new Query($"{filter}=>[KNN {internalOptions.Limit} @{vectorPropertyName} $embedding AS vector_score]")
             .AddParam("embedding", vectorBytes)
@@ -47,13 +47,13 @@ internal static class RedisVectorStoreCollectionSearchMapping
     }
 
     /// <summary>
-    /// Build a redis filter string from the provided <see cref="BasicVectorSearchFilter"/>.
+    /// Build a redis filter string from the provided <see cref="VectorSearchFilter"/>.
     /// </summary>
-    /// <param name="basicVectorSearchFilter">The <see cref="BasicVectorSearchFilter"/> to build the Redis filter string from.</param>
+    /// <param name="basicVectorSearchFilter">The <see cref="VectorSearchFilter"/> to build the Redis filter string from.</param>
     /// <param name="storagePropertyNames">A mapping of data model property names to the names under which they are stored.</param>
     /// <returns>The Redis filter string.</returns>
     /// <exception cref="InvalidOperationException">Thrown when a provided filter value is not supported.</exception>
-    public static string BuildFilter(BasicVectorSearchFilter? basicVectorSearchFilter, Dictionary<string, string> storagePropertyNames)
+    public static string BuildFilter(VectorSearchFilter? basicVectorSearchFilter, Dictionary<string, string> storagePropertyNames)
     {
         if (basicVectorSearchFilter == null)
         {

@@ -61,7 +61,7 @@ public sealed class QdrantVectorStoreRecordCollectionTests(ITestOutputHelper out
         await sut.CreateCollectionAsync();
         var upsertResult = await sut.UpsertAsync(record);
         var getResult = await sut.GetAsync(30, new GetRecordOptions { IncludeVectors = true });
-        var searchResult = await sut.SearchAsync(VectorSearchQuery.CreateQuery(new ReadOnlyMemory<float>(new[] { 30f, 31f, 32f, 33f }), new VectorSearchOptions { BasicVectorSearchFilter = new BasicVectorSearchFilter().Equality("HotelCode", 30) })).ToListAsync();
+        var searchResult = await sut.SearchAsync(VectorSearchQuery.CreateQuery(new ReadOnlyMemory<float>(new[] { 30f, 31f, 32f, 33f }), new VectorSearchOptions { VectorSearchFilter = new VectorSearchFilter().Equality("HotelCode", 30) })).ToListAsync();
 
         // Assert
         var collectionExistResult = await sut.CollectionExistsAsync();
@@ -382,13 +382,13 @@ public sealed class QdrantVectorStoreRecordCollectionTests(ITestOutputHelper out
         var sut = new QdrantVectorStoreRecordCollection<HotelInfo>(fixture.QdrantClient, collectionName, options);
 
         // Act.
-        var filter = filterType == "equality" ? new BasicVectorSearchFilter().Equality("HotelName", "My Hotel 11") : new BasicVectorSearchFilter().TagListContains("Tags", "t1");
+        var filter = filterType == "equality" ? new VectorSearchFilter().Equality("HotelName", "My Hotel 11") : new VectorSearchFilter().TagListContains("Tags", "t1");
         var searchResults = sut.SearchAsync(
             VectorSearchQuery.CreateQuery(
                 new ReadOnlyMemory<float>([30f, 31f, 32f, 33f]),
                 new()
                 {
-                    BasicVectorSearchFilter = filter
+                    VectorSearchFilter = filter
                 }));
 
         // Assert.

@@ -61,7 +61,7 @@ public sealed class AzureAISearchVectorStoreRecordCollectionTests(ITestOutputHel
         var upsertResult = await sut.UpsertAsync(hotel);
         var getResult = await sut.GetAsync("Upsert-1");
         var embedding = new ReadOnlyMemory<float>(AzureAISearchVectorStoreFixture.CreateTestEmbedding());
-        var searchResult = await sut.SearchAsync(VectorSearchQuery.CreateQuery(embedding, new VectorSearchOptions { IncludeVectors = true, BasicVectorSearchFilter = new BasicVectorSearchFilter().Equality("HotelName", "MyHotel Upsert-1") })).ToListAsync();
+        var searchResult = await sut.SearchAsync(VectorSearchQuery.CreateQuery(embedding, new VectorSearchOptions { IncludeVectors = true, VectorSearchFilter = new VectorSearchFilter().Equality("HotelName", "MyHotel Upsert-1") })).ToListAsync();
 
         // Assert
         var collectionExistResult = await sut.CollectionExistsAsync();
@@ -330,7 +330,7 @@ public sealed class AzureAISearchVectorStoreRecordCollectionTests(ITestOutputHel
         var sut = new AzureAISearchVectorStoreRecordCollection<Hotel>(fixture.SearchIndexClient, fixture.TestIndexName);
 
         // Act.
-        var filter = option == "equality" ? new BasicVectorSearchFilter().Equality("HotelName", "Hotel 3") : new BasicVectorSearchFilter().TagListContains("Tags", "bar");
+        var filter = option == "equality" ? new VectorSearchFilter().Equality("HotelName", "Hotel 3") : new VectorSearchFilter().TagListContains("Tags", "bar");
         var searchResults = sut.SearchAsync(
             VectorSearchQuery.CreateQuery(
                 new ReadOnlyMemory<float>(AzureAISearchVectorStoreFixture.CreateTestEmbedding()),
@@ -338,7 +338,7 @@ public sealed class AzureAISearchVectorStoreRecordCollectionTests(ITestOutputHel
                 {
                     IncludeVectors = includeVectors,
                     VectorFieldName = "DescriptionEmbedding",
-                    BasicVectorSearchFilter = filter,
+                    VectorSearchFilter = filter,
                 }));
 
         // Assert.
@@ -371,14 +371,14 @@ public sealed class AzureAISearchVectorStoreRecordCollectionTests(ITestOutputHel
         var sut = new AzureAISearchVectorStoreRecordCollection<Hotel>(fixture.SearchIndexClient, fixture.TestIndexName);
 
         // Act.
-        var filter = new BasicVectorSearchFilter().Equality("HotelName", "Hotel 3");
+        var filter = new VectorSearchFilter().Equality("HotelName", "Hotel 3");
         var searchResults = sut.SearchAsync(
             VectorSearchQuery.CreateQuery(
                 "A hotel with great views.",
                 new()
                 {
                     VectorFieldName = "DescriptionEmbedding",
-                    BasicVectorSearchFilter = filter,
+                    VectorSearchFilter = filter,
                 }));
 
         // Assert.

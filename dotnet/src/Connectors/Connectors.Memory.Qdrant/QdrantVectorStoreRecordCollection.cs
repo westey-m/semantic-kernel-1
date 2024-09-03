@@ -449,7 +449,7 @@ public sealed class QdrantVectorStoreRecordCollection<TRecord> : IVectorStoreRec
             var internalOptions = floatVectorQuery.SearchOptions ?? Data.VectorSearchOptions.Default;
 
             // Build filter object.
-            var filter = QdrantVectorStoreCollectionSearchMapping.BuildFilter(internalOptions.BasicVectorSearchFilter, this._storagePropertyNames);
+            var filter = QdrantVectorStoreCollectionSearchMapping.BuildFilter(internalOptions.VectorSearchFilter, this._storagePropertyNames);
 
             // Specify the vector name if named vectors are used.
             string? vectorName = null;
@@ -495,7 +495,7 @@ public sealed class QdrantVectorStoreRecordCollection<TRecord> : IVectorStoreRec
             yield break;
         }
 
-        throw new NotSupportedException($"A {nameof(VectorSearchQuery)} of type {vectorQuery.GetType().Name} is not supported by the Qdrant connector.");
+        throw new NotSupportedException($"A {nameof(VectorSearchQuery)} of type {vectorQuery.QueryType} is not supported by the Qdrant connector.");
     }
 
     /// <summary>

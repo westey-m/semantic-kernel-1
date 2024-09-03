@@ -35,25 +35,25 @@ public class VectorSearch_Options
         searchResults = vectorSearch.HybridVectorizableTextSearchAsync("What does Semantic Kernel mean?", new() { VectorFieldName = nameof(Glossary.DefinitionEmbedding), HybridFieldName = nameof(Glossary.Definition) }); // Extension method.
 
         // Vector search with options.
-        var filter = new BasicVectorSearchFilter().Equality(nameof(Glossary.Category), "Core Definitions");
+        var filter = new VectorSearchFilter().Equality(nameof(Glossary.Category), "Core Definitions");
         searchResults = vectorSearch.SearchAsync(
             VectorSearchQuery.CreateQuery(
                 searchEmbedding,
                 new()
                 {
-                    BasicVectorSearchFilter = filter,
+                    VectorSearchFilter = filter,
                     VectorFieldName = nameof(Glossary.DefinitionEmbedding)
                 }));
 
         // Hybrid vector search with options.
-        filter = new BasicVectorSearchFilter().Equality(nameof(Glossary.Category), "Core Definitions");
+        filter = new VectorSearchFilter().Equality(nameof(Glossary.Category), "Core Definitions");
         searchResults = vectorSearch.SearchAsync(
             VectorSearchQuery.CreateHybridQuery(
                 searchEmbedding,
                 "What does Semantic Kernel mean?",
                 new()
                 {
-                    BasicVectorSearchFilter = filter,
+                    VectorSearchFilter = filter,
                     HybridFieldName = nameof(Glossary.Definition),
                     VectorFieldName = nameof(Glossary.DefinitionEmbedding)
                 }));

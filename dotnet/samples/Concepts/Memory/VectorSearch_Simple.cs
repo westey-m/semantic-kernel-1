@@ -72,8 +72,8 @@ public class VectorSearch_Simple(ITestOutputHelper output, VectorStoreQdrantCont
         // Search the collection using a vector search with pre-filtering.
         searchString = "What is Retrieval Augmented Generation";
         searchVector = await textEmbeddingGenerationService.GenerateEmbeddingAsync(searchString);
-        var filter = new BasicVectorSearchFilter().Equality(nameof(Glossary.Category), "External Definitions");
-        searchResult = await vectorSearch!.SearchAsync(searchVector, new() { Limit = 3, BasicVectorSearchFilter = filter }).ToListAsync();
+        var filter = new VectorSearchFilter().Equality(nameof(Glossary.Category), "External Definitions");
+        searchResult = await vectorSearch!.SearchAsync(searchVector, new() { Limit = 3, VectorSearchFilter = filter }).ToListAsync();
 
         Console.WriteLine("Search string: " + searchString);
         Console.WriteLine("Number of results: " + searchResult.Count);

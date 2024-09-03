@@ -412,7 +412,7 @@ public sealed class RedisJsonVectorStoreRecordCollection<TRecord> : IVectorStore
             yield break;
         }
 
-        throw new NotSupportedException($"A {nameof(VectorSearchQuery)} of type {vectorQuery.GetType().Name} is not supported by the Redis JSON connector.");
+        throw new NotSupportedException($"A {nameof(VectorSearchQuery)} of type {vectorQuery.QueryType} is not supported by the Redis JSON connector.");
     }
 
     /// <summary>

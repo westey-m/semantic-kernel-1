@@ -13,13 +13,13 @@ namespace Microsoft.SemanticKernel.Connectors.AzureAISearch;
 internal static class AzureAISearchVectorStoreCollectionSearchMapping
 {
     /// <summary>
-    /// Build an OData filter string from the provided <see cref="BasicVectorSearchFilter"/>.
+    /// Build an OData filter string from the provided <see cref="VectorSearchFilter"/>.
     /// </summary>
-    /// <param name="basicVectorSearchFilter">The <see cref="BasicVectorSearchFilter"/> to build an OData filter string from.</param>
+    /// <param name="basicVectorSearchFilter">The <see cref="VectorSearchFilter"/> to build an OData filter string from.</param>
     /// <param name="storagePropertyNames">A mapping of data model property names to the names under which they are stored.</param>
     /// <returns>The OData filter string.</returns>
     /// <exception cref="InvalidOperationException">Thrown when a provided filter value is not supported.</exception>
-    public static string BuildFilterString(BasicVectorSearchFilter? basicVectorSearchFilter, Dictionary<string, string> storagePropertyNames)
+    public static string BuildFilterString(VectorSearchFilter? basicVectorSearchFilter, Dictionary<string, string> storagePropertyNames)
     {
         var filterString = string.Empty;
         if (basicVectorSearchFilter?.FilterClauses is not null)

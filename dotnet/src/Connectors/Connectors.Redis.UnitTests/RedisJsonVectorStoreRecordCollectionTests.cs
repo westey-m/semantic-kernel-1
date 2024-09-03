@@ -455,7 +455,7 @@ public class RedisJsonVectorStoreRecordCollectionTests
         });
         var sut = this.CreateRecordCollection(useDefinition);
 
-        var filter = new BasicVectorSearchFilter().Equality(nameof(MultiPropsModel.Data1), "data 1");
+        var filter = new VectorSearchFilter().Equality(nameof(MultiPropsModel.Data1), "data 1");
 
         // Act.
         var actual = await sut!.SearchAsync(VectorSearchQuery.CreateQuery(
@@ -463,7 +463,7 @@ public class RedisJsonVectorStoreRecordCollectionTests
             new()
             {
                 IncludeVectors = true,
-                BasicVectorSearchFilter = filter,
+                VectorSearchFilter = filter,
                 Limit = 5,
                 Offset = 2
             })).ToListAsync();

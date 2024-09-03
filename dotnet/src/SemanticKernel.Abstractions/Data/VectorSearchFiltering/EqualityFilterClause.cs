@@ -7,9 +7,6 @@ namespace Microsoft.SemanticKernel.Data;
 /// <summary>
 /// FilterClause which filters using equality of a field value.
 /// </summary>
-/// <remarks>
-/// Constructs an instance of <see cref="EqualityFilterClause"/>
-/// </remarks>
 [Experimental("SKEXP0001")]
 public sealed class EqualityFilterClause : FilterClause
 {

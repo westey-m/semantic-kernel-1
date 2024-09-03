@@ -341,7 +341,7 @@ public sealed class AzureAISearchVectorStoreRecordCollection<TRecord> : IVectorS
             string? vectorFieldName = this.ResolveVectorFieldName(internalOptions.VectorFieldName);
 
             // Configure search settings.
-            filterString = AzureAISearchVectorStoreCollectionSearchMapping.BuildFilterString(internalOptions.BasicVectorSearchFilter, this._storagePropertyNames);
+            filterString = AzureAISearchVectorStoreCollectionSearchMapping.BuildFilterString(internalOptions.VectorSearchFilter, this._storagePropertyNames);
             vectorQueries.Add(new VectorizedQuery(floatVectorQuery.Vector) { KNearestNeighborsCount = internalOptions.Limit, Fields = { vectorFieldName } });
             limit = internalOptions.Limit;
             offset = internalOptions.Offset;
@@ -354,7 +354,7 @@ public sealed class AzureAISearchVectorStoreRecordCollection<TRecord> : IVectorS
             string? vectorFieldName = this.ResolveVectorFieldName(internalOptions.VectorFieldName);
 
             // Configure search settings.
-            filterString = AzureAISearchVectorStoreCollectionSearchMapping.BuildFilterString(internalOptions.BasicVectorSearchFilter, this._storagePropertyNames);
+            filterString = AzureAISearchVectorStoreCollectionSearchMapping.BuildFilterString(internalOptions.VectorSearchFilter, this._storagePropertyNames);
             vectorQueries.Add(new VectorizableTextQuery(vectorizableTextQuery.QueryText) { KNearestNeighborsCount = internalOptions.Limit, Fields = { vectorFieldName } });
             limit = internalOptions.Limit;
             offset = internalOptions.Offset;
@@ -362,7 +362,7 @@ public sealed class AzureAISearchVectorStoreRecordCollection<TRecord> : IVectorS
         }
         else
         {
-            throw new NotSupportedException($"A {nameof(VectorSearchQuery)} of type {vectorQuery.GetType().Name} is not supported by the Azure AI Search connector.");
+            throw new NotSupportedException($"A {nameof(VectorSearchQuery)} of type {vectorQuery.QueryType} is not supported by the Azure AI Search connector.");
         }
 
         // Build search options.

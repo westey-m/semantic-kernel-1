@@ -13,13 +13,13 @@ namespace Microsoft.SemanticKernel.Connectors.Qdrant;
 internal static class QdrantVectorStoreCollectionSearchMapping
 {
     /// <summary>
-    /// Build a Qdrant <see cref="Filter"/> from the provided <see cref="BasicVectorSearchFilter"/>.
+    /// Build a Qdrant <see cref="Filter"/> from the provided <see cref="VectorSearchFilter"/>.
     /// </summary>
-    /// <param name="basicVectorSearchFilter">The <see cref="BasicVectorSearchFilter"/> to build a Qdrant <see cref="Filter"/> from.</param>
+    /// <param name="basicVectorSearchFilter">The <see cref="VectorSearchFilter"/> to build a Qdrant <see cref="Filter"/> from.</param>
     /// <param name="storagePropertyNames">A mapping of data model property names to the names under which they are stored.</param>
     /// <returns>The Qdrant <see cref="Filter"/>.</returns>
     /// <exception cref="InvalidOperationException">Thrown when the provided filter contains unsupported types, values or unknown properties.</exception>
-    public static Filter BuildFilter(BasicVectorSearchFilter? basicVectorSearchFilter, Dictionary<string, string> storagePropertyNames)
+    public static Filter BuildFilter(VectorSearchFilter? basicVectorSearchFilter, Dictionary<string, string> storagePropertyNames)
     {
         var filter = new Filter();
 
@@ -74,14 +74,14 @@ internal static class QdrantVectorStoreCollectionSearchMapping
     }
 
     /// <summary>
-    /// Build a Qdrant <see cref="Filter"/> from the provided <see cref="BasicVectorSearchFilter"/> with an additional full text search condition.
+    /// Build a Qdrant <see cref="Filter"/> from the provided <see cref="VectorSearchFilter"/> with an additional full text search condition.
     /// </summary>
-    /// <param name="basicVectorSearchFilter">The <see cref="BasicVectorSearchFilter"/> to build a Qdrant <see cref="Filter"/> from.</param>
+    /// <param name="basicVectorSearchFilter">The <see cref="VectorSearchFilter"/> to build a Qdrant <see cref="Filter"/> from.</param>
     /// <param name="fullTextSearchSearchFieldName">The name of the field to do the full text search on.</param>
     /// <param name="fullTextSearchString">The string to do the full text search with.</param>
     /// <param name="storagePropertyNames">A mapping of data model property names to the names under which they are stored.</param>
     /// <returns>The Qdrant <see cref="Filter"/>.</returns>
-    public static Filter BuildFullTextSearchFilter(BasicVectorSearchFilter? basicVectorSearchFilter, string fullTextSearchSearchFieldName, string fullTextSearchString, Dictionary<string, string> storagePropertyNames)
+    public static Filter BuildFullTextSearchFilter(VectorSearchFilter? basicVectorSearchFilter, string fullTextSearchSearchFieldName, string fullTextSearchString, Dictionary<string, string> storagePropertyNames)
     {
         var filter = BuildFilter(basicVectorSearchFilter, storagePropertyNames);
         filter.Must.Add(new Condition

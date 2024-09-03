@@ -89,12 +89,12 @@ public class RedisVectorStoreCollectionSearchMappingTests
         // Arrange.
         var basicVectorSearchFilter = filterType switch
         {
-            "stringEquality" => new BasicVectorSearchFilter().Equality("Data1", "my value"),
-            "intEquality" => new BasicVectorSearchFilter().Equality("Data1", 3),
-            "longEquality" => new BasicVectorSearchFilter().Equality("Data1", 3L),
-            "floatEquality" => new BasicVectorSearchFilter().Equality("Data1", 3.3f),
-            "doubleEquality" => new BasicVectorSearchFilter().Equality("Data1", 3.3),
-            "tagContains" => new BasicVectorSearchFilter().TagListContains("Data1", "my value"),
+            "stringEquality" => new VectorSearchFilter().Equality("Data1", "my value"),
+            "intEquality" => new VectorSearchFilter().Equality("Data1", 3),
+            "longEquality" => new VectorSearchFilter().Equality("Data1", 3L),
+            "floatEquality" => new VectorSearchFilter().Equality("Data1", 3.3f),
+            "doubleEquality" => new VectorSearchFilter().Equality("Data1", 3.3),
+            "tagContains" => new VectorSearchFilter().TagListContains("Data1", "my value"),
             _ => throw new InvalidOperationException(),
         };
 
@@ -130,7 +130,7 @@ public class RedisVectorStoreCollectionSearchMappingTests
     public void BuildFilterThrowsForInvalidValueType()
     {
         // Arrange.
-        var basicVectorSearchFilter = new BasicVectorSearchFilter().Equality("Data1", true);
+        var basicVectorSearchFilter = new VectorSearchFilter().Equality("Data1", true);
         var storagePropertyNames = new Dictionary<string, string>()
         {
             { "Data1", "storage_Data1" },
@@ -147,7 +147,7 @@ public class RedisVectorStoreCollectionSearchMappingTests
     public void BuildFilterThrowsForUnknownFieldName()
     {
         // Arrange.
-        var basicVectorSearchFilter = new BasicVectorSearchFilter().Equality("UnknownData", "value");
+        var basicVectorSearchFilter = new VectorSearchFilter().Equality("UnknownData", "value");
         var storagePropertyNames = new Dictionary<string, string>()
         {
             { "Data1", "storage_Data1" },

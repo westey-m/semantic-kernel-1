@@ -32,7 +32,7 @@ public class QdrantVectorStoreCollectionSearchMappingTests
             "long" => 1L,
             _ => throw new InvalidOperationException()
         };
-        var filter = new BasicVectorSearchFilter().Equality("FieldName", expected);
+        var filter = new VectorSearchFilter().Equality("FieldName", expected);
 
         // Act.
         var actual = QdrantVectorStoreCollectionSearchMapping.BuildFilter(filter, new Dictionary<string, string>() { { "FieldName", "storage_FieldName" } });
@@ -66,7 +66,7 @@ public class QdrantVectorStoreCollectionSearchMappingTests
     public void BuildFilterMapsTagContainsClause()
     {
         // Arrange.
-        var filter = new BasicVectorSearchFilter().TagListContains("FieldName", "Value");
+        var filter = new VectorSearchFilter().TagListContains("FieldName", "Value");
 
         // Act.
         var actual = QdrantVectorStoreCollectionSearchMapping.BuildFilter(filter, new Dictionary<string, string>() { { "FieldName", "storage_FieldName" } });
@@ -81,7 +81,7 @@ public class QdrantVectorStoreCollectionSearchMappingTests
     public void BuildFilterThrowsForUnknownFieldName()
     {
         // Arrange.
-        var filter = new BasicVectorSearchFilter().Equality("FieldName", "Value");
+        var filter = new VectorSearchFilter().Equality("FieldName", "Value");
 
         // Act and Assert.
         Assert.Throws<InvalidOperationException>(() => QdrantVectorStoreCollectionSearchMapping.BuildFilter(filter, new Dictionary<string, string>()));
