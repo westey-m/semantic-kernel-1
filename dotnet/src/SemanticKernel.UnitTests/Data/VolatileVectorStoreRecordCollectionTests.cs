@@ -265,13 +265,100 @@ public class VolatileVectorStoreRecordCollectionTests
         Assert.Equal($"data {testKey1}", (collection[testKey1] as SinglePropsModel<TKey>)!.Data);
     }
 
-    private static SinglePropsModel<TKey> CreateModel<TKey>(TKey key, bool withVectors)
+    [Theory]
+    [InlineData(true, TestRecordKey1, TestRecordKey2)]
+    [InlineData(true, TestRecordIntKey1, TestRecordIntKey2)]
+    [InlineData(false, TestRecordKey1, TestRecordKey2)]
+    [InlineData(false, TestRecordIntKey1, TestRecordIntKey2)]
+    public async Task CanSearchWithVectorAndFilterAsync<TKey>(bool useDefinition, TKey testKey1, TKey testKey2)
+        where TKey : notnull
+    {
+        // Arrange
+        var record1 = CreateModel(testKey1, withVectors: true, new float[] { 1, 1, 1, 1 });
+        var record2 = CreateModel(testKey2, withVectors: true, new float[] { -1, -1, -1, -1 });
+
+        var collection = new ConcurrentDictionary<object, object>();
+        collection.TryAdd(testKey1, record1);
+        collection.TryAdd(testKey2, record2);
+
+        this._collectionStore.TryAdd(TestCollectionName, collection);
+
+        var sut = this.CreateRecordCollection<TKey>(useDefinition);
+
+        // Act
+        var actual = await sut.SearchAsync(
+            VectorSearchQuery.CreateQuery(new ReadOnlyMemory<float>(new float[] { 1, 1, 1, 1 }), new VectorSearchOptions { IncludeVectors = true }),
+            this._testCancellationToken).ToListAsync();
+
+        // Assert
+        Assert.NotNull(actual);
+        Assert.Equal(2, actual.Count);
+        Assert.Equal(testKey1, actual[0].Record.Key);
+        Assert.Equal($"data {testKey1}", actual[0].Record.Data);
+        Assert.Equal(1, actual[0].Score);
+        Assert.Equal(testKey2, actual[1].Record.Key);
+        Assert.Equal($"data {testKey2}", actual[1].Record.Data);
+        Assert.Equal(-1, actual[1].Score);
+    }
+
+    [Theory]
+    [InlineData(DistanceFunction.CosineSimilarity, 1, -1)]
+    [InlineData(DistanceFunction.CosineDistance, 1, -1)]
+    [InlineData(DistanceFunction.DotProductSimilarity, 4, -4)]
+    [InlineData(DistanceFunction.EuclideanDistance, 0, 4)]
+    public async Task CanSearchWithDifferentDistanceFunctionsAsync(string distanceFunction, double expectedScoreResult1, double expectedScoreResult2)
+    {
+        // Arrange
+        var record1 = CreateModel(TestRecordKey1, withVectors: true, new float[] { 1, 1, 1, 1 });
+        var record2 = CreateModel(TestRecordKey2, withVectors: true, new float[] { -1, -1, -1, -1 });
+
+        var collection = new ConcurrentDictionary<object, object>();
+        collection.TryAdd(TestRecordKey1, record1);
+        collection.TryAdd(TestRecordKey2, record2);
+
+        this._collectionStore.TryAdd(TestCollectionName, collection);
+
+        VectorStoreRecordDefinition singlePropsDefinition = new()
+        {
+            Properties =
+            [
+                new VectorStoreRecordKeyProperty("Key", typeof(string)),
+                new VectorStoreRecordDataProperty("Data", typeof(string)),
+                new VectorStoreRecordVectorProperty("Vector", typeof(ReadOnlyMemory<float>)) { DistanceFunction = distanceFunction }
+            ]
+        };
+
+        var sut = new VolatileVectorStoreRecordCollection<string, SinglePropsModel<string>>(
+            this._collectionStore,
+            TestCollectionName,
+            new()
+            {
+                VectorStoreRecordDefinition = singlePropsDefinition
+            });
+
+        // Act
+        var actual = await sut.SearchAsync(
+            VectorSearchQuery.CreateQuery(new ReadOnlyMemory<float>(new float[] { 1, 1, 1, 1 }), new VectorSearchOptions { IncludeVectors = true }),
+            this._testCancellationToken).ToListAsync();
+
+        // Assert
+        Assert.NotNull(actual);
+        Assert.Equal(2, actual.Count);
+        Assert.Equal(TestRecordKey1, actual[0].Record.Key);
+        Assert.Equal($"data {TestRecordKey1}", actual[0].Record.Data);
+        Assert.Equal(expectedScoreResult1, actual[0].Score);
+        Assert.Equal(TestRecordKey2, actual[1].Record.Key);
+        Assert.Equal($"data {TestRecordKey2}", actual[1].Record.Data);
+        Assert.Equal(expectedScoreResult2, actual[1].Score);
+    }
+
+    private static SinglePropsModel<TKey> CreateModel<TKey>(TKey key, bool withVectors, float[]? vector = null)
     {
         return new SinglePropsModel<TKey>
         {
             Key = key,
             Data = "data " + key,
-            Vector = withVectors ? new float[] { 1, 2, 3, 4 } : null,
+            Vector = vector ?? (withVectors ? new float[] { 1, 2, 3, 4 } : null),
             NotAnnotated = null,
         };
     }

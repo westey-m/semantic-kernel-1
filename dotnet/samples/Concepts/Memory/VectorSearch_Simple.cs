@@ -60,6 +60,7 @@ public class VectorSearch_Simple(ITestOutputHelper output, VectorStoreQdrantCont
 
         Console.WriteLine("Search string: " + searchString);
         Console.WriteLine("Result: " + searchResult.First().Record.Definition);
+        Console.WriteLine();
 
         // Search the collection using a vector search.
         searchString = "What is Retrieval Augmented Generation";
@@ -68,6 +69,7 @@ public class VectorSearch_Simple(ITestOutputHelper output, VectorStoreQdrantCont
 
         Console.WriteLine("Search string: " + searchString);
         Console.WriteLine("Result: " + searchResult.First().Record.Definition);
+        Console.WriteLine();
 
         // Search the collection using a vector search with pre-filtering.
         searchString = "What is Retrieval Augmented Generation";
