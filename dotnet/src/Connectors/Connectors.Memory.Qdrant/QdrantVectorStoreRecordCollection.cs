@@ -98,7 +98,10 @@ public sealed class QdrantVectorStoreRecordCollection<TRecord> : IVectorStoreRec
 
         // Build a map of property names to storage names.
         this._storagePropertyNames = VectorStoreRecordPropertyReader.BuildPropertyNameToStorageNameMap(properties);
-        this._firstVectorPropertyName = this._storagePropertyNames[properties.VectorProperties.First().DataModelPropertyName];
+        if (properties.VectorProperties.Count > 0)
+        {
+            this._firstVectorPropertyName = this._storagePropertyNames[properties.VectorProperties.First().DataModelPropertyName];
+        }
 
         // Assign Mapper.
         if (this._options.PointStructCustomMapper is not null)
