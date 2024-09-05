@@ -226,16 +226,20 @@ public sealed class VolatileVectorStoreRecordCollection<TKey, TRecord> : IVector
 
             var vectorProperty = this._vectorProperties[vectorPropertyInfo.Name];
 
-            // Compare each vector in the dictionary with the provided vector in parallel batches.
-            var results = await ExecuteInParallelAsync<KeyValuePair<object, object>, (object record, float score)?>(
-                this.GetCollectionDictionary(),
-                (dictionaryEntry) =>
+            // Filter records using the provided filter before doing the vector comparison.
+            var filteredRecords = VolatileVectorStoreCollectionSearchMapping.FilterRecords(internalOptions.VectorSearchFilter, this.GetCollectionDictionary().Values);
+
+            // Compare each vector in the filtered results with the provided vector in parallel batches.
+            var results = await ExecuteInParallelAsync<object, (object record, float score)?>(
+                filteredRecords,
+                (record) =>
                 {
-                    var vector = (ReadOnlyMemory<float>?)this._firstVectorPropertyInfo.GetValue(dictionaryEntry.Value);
+                    var vector = (ReadOnlyMemory<float>?)this._firstVectorPropertyInfo.GetValue(record);
                     if (vector is not null)
                     {
-                        var similarity = CompareVectors(floatVectorQuery.Vector.Span, vector.Value.Span, vectorProperty.DistanceFunction);
-                        return (dictionaryEntry.Value, similarity);
+                        var score = VolatileVectorStoreCollectionSearchMapping.CompareVectors(floatVectorQuery.Vector.Span, vector.Value.Span, vectorProperty.DistanceFunction);
+                        var convertedscore = VolatileVectorStoreCollectionSearchMapping.ConvertScore(score, vectorProperty.DistanceFunction);
+                        return (record, convertedscore);
                     }
 
                     return null;
@@ -245,7 +249,7 @@ public sealed class VolatileVectorStoreRecordCollection<TKey, TRecord> : IVector
 
             // Get the non-null results, sort them appropriately for the selected distance function and return the requested page.
             var nonNullResults = results.Where(x => x.HasValue).Select(x => x!.Value);
-            var sortedScoredResults = ShouldSortDescending(vectorProperty.DistanceFunction) ?
+            var sortedScoredResults = VolatileVectorStoreCollectionSearchMapping.ShouldSortDescending(vectorProperty.DistanceFunction) ?
                 nonNullResults.OrderByDescending(x => x.score) :
                 nonNullResults.OrderBy(x => x.score);
 
@@ -272,79 +276,6 @@ public sealed class VolatileVectorStoreRecordCollection<TKey, TRecord> : IVector
         }
 
         return collectionDictionary;
-    }
-
-    /// <summary>
-    /// Compare the two vectors using the specified distance function.
-    /// </summary>
-    /// <param name="x">The first vector to compare.</param>
-    /// <param name="y">The second vector to compare.</param>
-    /// <param name="distanceFunction">The distance function to use for comparison.</param>
-    /// <returns>The score of the comparison.</returns>
-    /// <exception cref="NotSupportedException">Thrown when the distance function is not supported.</exception>
-    private static float CompareVectors(ReadOnlySpan<float> x, ReadOnlySpan<float> y, string? distanceFunction)
-    {
-        switch (distanceFunction)
-        {
-            case null:
-            case DistanceFunction.CosineSimilarity:
-            case DistanceFunction.CosineDistance:
-                return TensorPrimitives.CosineSimilarity(x, y);
-            case DistanceFunction.DotProductSimilarity:
-                return TensorPrimitives.Dot(x, y);
-            case DistanceFunction.EuclideanDistance:
-                return TensorPrimitives.Distance(x, y);
-            default:
-                throw new NotSupportedException($"The distance function '{distanceFunction}' is not supported by the Volatile connector.");
-        }
-    }
-
-    /// <summary>
-    /// Indicates whether result ordering should be descending or ascending, to get most similar results at the top, based on the distance function.
-    /// </summary>
-    /// <param name="distanceFunction">The distance function to use for comparison.</param>
-    /// <returns>Whether to order descending or ascending.</returns>
-    /// <exception cref="NotSupportedException">Thrown when the distance function is not supported.</exception>
-    private static bool ShouldSortDescending(string? distanceFunction)
-    {
-        switch (distanceFunction)
-        {
-            case null:
-            case DistanceFunction.CosineSimilarity:
-            case DistanceFunction.CosineDistance:
-            case DistanceFunction.DotProductSimilarity:
-                return true;
-            case DistanceFunction.EuclideanDistance:
-                return false;
-            default:
-                throw new NotSupportedException($"The distance function '{distanceFunction}' is not supported by the Volatile connector.");
-        }
-    }
-
-    /// <summary>
-    /// Converts the provided score into the correct result depending on the distance function.
-    /// The main purpose here is to convert from cosine similarity to cosine distance if cosine distance is requested,
-    /// since the two are inversely related and the <see cref="TensorPrimitives"/> only supports cosine similarity so
-    /// we are using cosine similarity for both similarity and distance.
-    /// </summary>
-    /// <param name="score">The score to convert.</param>
-    /// <param name="distanceFunction">The distance function to use for comparison.</param>
-    /// <returns>Whether to order descending or ascending.</returns>
-    /// <exception cref="NotSupportedException">Thrown when the distance function is not supported.</exception>
-    private static double ConvertScore(double score, string? distanceFunction)
-    {
-        switch (distanceFunction)
-        {
-            case DistanceFunction.CosineDistance:
-                return 1 - score;
-            case null:
-            case DistanceFunction.CosineSimilarity:
-            case DistanceFunction.DotProductSimilarity:
-            case DistanceFunction.EuclideanDistance:
-                return score;
-            default:
-                throw new NotSupportedException($"The distance function '{distanceFunction}' is not supported by the Volatile connector.");
-        }
     }
 
     /// <summary>
