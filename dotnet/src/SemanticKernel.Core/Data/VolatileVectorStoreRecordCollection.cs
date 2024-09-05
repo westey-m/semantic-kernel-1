@@ -5,7 +5,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Numerics.Tensors;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -34,6 +33,9 @@ public sealed class VolatileVectorStoreRecordCollection<TKey, TRecord> : IVector
 
     /// <summary>Internal storage for the record collection.</summary>
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<object, object>> _internalCollection;
+
+    /// <summary>The data type of each collection, to enforce a single type per collection.</summary>
+    private readonly ConcurrentDictionary<string, Type> _internalCollectionTypes;
 
     /// <summary>Optional configuration options for this class.</summary>
     private readonly VolatileVectorStoreRecordCollectionOptions _options;
@@ -66,6 +68,7 @@ public sealed class VolatileVectorStoreRecordCollection<TKey, TRecord> : IVector
         // Assign.
         this._collectionName = collectionName;
         this._internalCollection = new();
+        this._internalCollectionTypes = new();
         this._options = options ?? new VolatileVectorStoreRecordCollectionOptions();
         var vectorStoreRecordDefinition = this._options.VectorStoreRecordDefinition ?? VectorStoreRecordPropertyReader.CreateVectorStoreRecordDefinitionFromType(typeof(TRecord), true);
 
@@ -89,13 +92,19 @@ public sealed class VolatileVectorStoreRecordCollection<TKey, TRecord> : IVector
     /// <summary>
     /// Initializes a new instance of the <see cref="VolatileVectorStoreRecordCollection{TKey,TRecord}"/> class.
     /// </summary>
-    /// <param name="internalCollection">Allows passing in the dictionary used for storage, for testing purposes.</param>
+    /// <param name="internalCollection">Internal storage for the record collection.</param>
+    /// <param name="internalCollectionTypes">The data type of each collection, to enforce a single type per collection.</param>
     /// <param name="collectionName">The name of the collection that this <see cref="VolatileVectorStoreRecordCollection{TKey,TRecord}"/> will access.</param>
     /// <param name="options">Optional configuration options for this class.</param>
-    internal VolatileVectorStoreRecordCollection(ConcurrentDictionary<string, ConcurrentDictionary<object, object>> internalCollection, string collectionName, VolatileVectorStoreRecordCollectionOptions? options = default)
+    internal VolatileVectorStoreRecordCollection(
+        ConcurrentDictionary<string, ConcurrentDictionary<object, object>> internalCollection,
+        ConcurrentDictionary<string, Type> internalCollectionTypes,
+        string collectionName,
+        VolatileVectorStoreRecordCollectionOptions? options = default)
         : this(collectionName, options)
     {
         this._internalCollection = internalCollection;
+        this._internalCollectionTypes = internalCollectionTypes;
     }
 
     /// <inheritdoc />
@@ -110,7 +119,12 @@ public sealed class VolatileVectorStoreRecordCollection<TKey, TRecord> : IVector
     /// <inheritdoc />
     public Task CreateCollectionAsync(CancellationToken cancellationToken = default)
     {
-        this._internalCollection.TryAdd(this._collectionName, new ConcurrentDictionary<object, object>());
+        if (!this._internalCollection.ContainsKey(this._collectionName))
+        {
+            this._internalCollection.TryAdd(this._collectionName, new ConcurrentDictionary<object, object>());
+            this._internalCollectionTypes.TryAdd(this._collectionName, typeof(TRecord));
+        }
+
         return Task.CompletedTask;
     }
 

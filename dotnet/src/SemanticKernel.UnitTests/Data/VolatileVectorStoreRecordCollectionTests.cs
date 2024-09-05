@@ -25,10 +25,12 @@ public class VolatileVectorStoreRecordCollectionTests
     private readonly CancellationToken _testCancellationToken = new(false);
 
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<object, object>> _collectionStore;
+    private readonly ConcurrentDictionary<string, Type> _collectionStoreTypes;
 
     public VolatileVectorStoreRecordCollectionTests()
     {
         this._collectionStore = new();
+        this._collectionStoreTypes = new();
     }
 
     [Theory]
@@ -42,6 +44,7 @@ public class VolatileVectorStoreRecordCollectionTests
 
         var sut = new VolatileVectorStoreRecordCollection<string, SinglePropsModel<string>>(
             this._collectionStore,
+            this._collectionStoreTypes,
             collectionName);
 
         // Act
@@ -373,6 +376,7 @@ public class VolatileVectorStoreRecordCollectionTests
 
         var sut = new VolatileVectorStoreRecordCollection<string, SinglePropsModel<string>>(
             this._collectionStore,
+            this._collectionStoreTypes,
             TestCollectionName,
             new()
             {
@@ -463,6 +467,7 @@ public class VolatileVectorStoreRecordCollectionTests
     {
         return new VolatileVectorStoreRecordCollection<TKey, SinglePropsModel<TKey>>(
             this._collectionStore,
+            this._collectionStoreTypes,
             TestCollectionName,
             new()
             {
