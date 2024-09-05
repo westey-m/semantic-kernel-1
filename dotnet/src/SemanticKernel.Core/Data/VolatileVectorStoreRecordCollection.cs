@@ -214,7 +214,9 @@ public sealed class VolatileVectorStoreRecordCollection<TKey, TRecord> : IVector
     }
 
     /// <inheritdoc />
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously - Need to satisfy the interface which returns IAsyncEnumerable
     public async IAsyncEnumerable<VectorSearchResult<TRecord>> SearchAsync(VectorSearchQuery vectorQuery, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+#pragma warning restore CS1998
     {
         if (this._firstVectorPropertyInfo is null)
         {
@@ -243,23 +245,19 @@ public sealed class VolatileVectorStoreRecordCollection<TKey, TRecord> : IVector
             // Filter records using the provided filter before doing the vector comparison.
             var filteredRecords = VolatileVectorStoreCollectionSearchMapping.FilterRecords(internalOptions.VectorSearchFilter, this.GetCollectionDictionary().Values);
 
-            // Compare each vector in the filtered results with the provided vector in parallel batches.
-            var results = await ExecuteInParallelAsync<object, (object record, float score)?>(
-                filteredRecords,
-                (record) =>
+            // Compare each vector in the filtered results with the provided vector.
+            var results = filteredRecords.Select<object, (object record, float score)?>((record) =>
+            {
+                var vector = (ReadOnlyMemory<float>?)vectorPropertyInfo.GetValue(record);
+                if (vector is not null)
                 {
-                    var vector = (ReadOnlyMemory<float>?)this._firstVectorPropertyInfo.GetValue(record);
-                    if (vector is not null)
-                    {
-                        var score = VolatileVectorStoreCollectionSearchMapping.CompareVectors(floatVectorQuery.Vector.Span, vector.Value.Span, vectorProperty.DistanceFunction);
-                        var convertedscore = VolatileVectorStoreCollectionSearchMapping.ConvertScore(score, vectorProperty.DistanceFunction);
-                        return (record, convertedscore);
-                    }
+                    var score = VolatileVectorStoreCollectionSearchMapping.CompareVectors(floatVectorQuery.Vector.Span, vector.Value.Span, vectorProperty.DistanceFunction);
+                    var convertedscore = VolatileVectorStoreCollectionSearchMapping.ConvertScore(score, vectorProperty.DistanceFunction);
+                    return (record, convertedscore);
+                }
 
-                    return null;
-                },
-                4,
-                cancellationToken).ConfigureAwait(false);
+                return null;
+            });
 
             // Get the non-null results, sort them appropriately for the selected distance function and return the requested page.
             var nonNullResults = results.Where(x => x.HasValue).Select(x => x!.Value);
@@ -290,48 +288,5 @@ public sealed class VolatileVectorStoreRecordCollection<TKey, TRecord> : IVector
         }
 
         return collectionDictionary;
-    }
-
-    /// <summary>
-    /// Execute the provided action in parallel on the provided items, with a maximum parallelism.
-    /// </summary>
-    /// <typeparam name="TInput">The type of items in the input enumerable.</typeparam>
-    /// <typeparam name="TResult">The type of results to return for each input item.</typeparam>
-    /// <param name="items">The input items to process in parallel.</param>
-    /// <param name="action">The action to use to process each item.</param>
-    /// <param name="maxParallelism">The maximum parallel processing queues.</param>
-    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
-    /// <returns>The processed results.</returns>
-    private static Task<TResult[]> ExecuteInParallelAsync<TInput, TResult>(IEnumerable<TInput> items, Func<TInput, TResult> action, int maxParallelism, CancellationToken cancellationToken)
-    {
-        var allTasks = new List<Task<TResult>>();
-        var taskQueues = new Task[maxParallelism];
-        var taskIndex = 0;
-
-        foreach (var item in items)
-        {
-            var task = new Task<TResult>(() => action(item));
-            allTasks.Add(task);
-
-            var taskQueueIndex = taskIndex++ % maxParallelism;
-
-            var existingTask = taskQueues[taskQueueIndex];
-            if (existingTask is not null)
-            {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed - we want to run the task in parallel.
-#pragma warning disable VSTHRD110 // Observe result of async calls
-                existingTask.ContinueWith(_ => task.Start(), cancellationToken, TaskContinuationOptions.None, TaskScheduler.Default);
-#pragma warning restore VSTHRD110 // Observe result of async calls
-#pragma warning restore CS4014
-            }
-            else
-            {
-                task.Start();
-            }
-
-            taskQueues[taskQueueIndex] = task;
-        }
-
-        return Task.WhenAll(allTasks);
     }
 }
