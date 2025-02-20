@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.SemanticKernel.Agents.Chat;
 using Microsoft.SemanticKernel.Agents.Extensions;
+using Microsoft.SemanticKernel.Agents.Memory;
 
 namespace Microsoft.SemanticKernel.Agents;
 
@@ -19,6 +20,7 @@ public sealed class AgentGroupChat : AgentChat
 {
     private readonly HashSet<string> _agentIds; // Efficient existence test O(1) vs O(n) for list.
     private readonly List<Agent> _agents; // Maintain order the agents joined the chat
+    private readonly ChatMemoryManager _memoryManager;
 
     /// <summary>
     /// Gets or sets a value that indicates if the completion criteria have been met.
@@ -38,6 +40,9 @@ public sealed class AgentGroupChat : AgentChat
     /// Gets the agents participating in the chat.
     /// </summary>
     public override IReadOnlyList<Agent> Agents => this._agents.AsReadOnly();
+
+    /// <inheritdoc/>
+    public override AgentsMemoryManager MemoryManager => this._memoryManager;
 
     /// <summary>
     /// Add an <see cref="Agent"/> to the chat.
@@ -218,6 +223,7 @@ public sealed class AgentGroupChat : AgentChat
     {
         this._agents = new(agents);
         this._agentIds = new(this._agents.Select(a => a.Id));
+        this._memoryManager = new(() => this.History);
     }
 
     private void EnsureStrategyLoggerAssignment()

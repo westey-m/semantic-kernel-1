@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.SemanticKernel.Agents.Extensions;
 using Microsoft.SemanticKernel.Agents.Internal;
+using Microsoft.SemanticKernel.Agents.Memory;
 using Microsoft.SemanticKernel.Agents.Serialization;
 using Microsoft.SemanticKernel.ChatCompletion;
 
@@ -34,6 +35,11 @@ public abstract class AgentChat
     /// Gets the agents participating in the chat.
     /// </summary>
     public abstract IReadOnlyList<Agent> Agents { get; }
+
+    /// <summary>
+    /// Gets the component used to manage memory for the chat.
+    /// </summary>
+    public abstract AgentsMemoryManager MemoryManager { get; }
 
     /// <summary>
     /// Gets a value that indicates whether a chat operation is active. Activity is defined as
@@ -183,6 +189,11 @@ public abstract class AgentChat
             // Append to chat history
             this.History.AddRange(messages);
 
+            foreach (ChatMessageContent message in messages)
+            {
+                var task = this.MemoryManager.MaintainContextAsync(message);
+            }
+
             // Broadcast message to other channels (in parallel)
             // Note: Able to queue messages without synchronizing channels.
             var channelRefs = this._agentChannels.Select(kvp => new ChannelReference(kvp.Value, kvp.Key));
@@ -223,7 +234,10 @@ public abstract class AgentChat
             // Invoke agent & process response
             List<ChatMessageContent> messages = [];
 
-            await foreach ((bool isVisible, ChatMessageContent message) in channel.InvokeAsync(agent, cancellationToken).ConfigureAwait(false))
+            // Render the context from each memory component and pass to the agent as override instructions.
+            var renderedContext = await this.MemoryManager.GetRenderedContextAsync(cancellationToken).ConfigureAwait(false);
+
+            await foreach ((bool isVisible, ChatMessageContent message) in channel.InvokeAsync(agent, renderedContext, cancellationToken).ConfigureAwait(false))
             {
                 this.Logger.LogAgentChatInvokedAgentMessage(nameof(InvokeAgentAsync), agent.GetType(), agent.Id, agent.GetDisplayName(), message);
 
@@ -237,6 +251,11 @@ public abstract class AgentChat
                     // Yield message to caller
                     yield return message;
                 }
+            }
+
+            foreach (ChatMessageContent message in messages)
+            {
+                await this.MemoryManager.MaintainContextAsync(message, cancellationToken: cancellationToken).ConfigureAwait(false);
             }
 
             // Broadcast message to other channels (in parallel)

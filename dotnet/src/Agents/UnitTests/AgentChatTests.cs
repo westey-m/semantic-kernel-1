@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
+using Microsoft.SemanticKernel.Agents.Memory;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Moq;
 using Xunit;
@@ -151,6 +152,8 @@ public class AgentChatTests
 
     private sealed class TestChat : AgentChat
     {
+        public override AgentsMemoryManager MemoryManager => throw new System.NotImplementedException();
+
         public MockAgent Agent { get; } = new() { Response = [new(AuthorRole.Assistant, "sup")] };
 
         public override IReadOnlyList<Agent> Agents => [this.Agent];

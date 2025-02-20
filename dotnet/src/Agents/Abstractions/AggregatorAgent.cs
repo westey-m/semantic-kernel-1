@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.SemanticKernel.Agents.Memory;
 using Microsoft.SemanticKernel.Agents.Serialization;
 
 namespace Microsoft.SemanticKernel.Agents;
@@ -31,6 +32,9 @@ public enum AggregatorMode
 /// <param name="chatProvider">A factory method that produces a new <see cref="AgentChat"/> instance.</param>
 public sealed class AggregatorAgent(Func<AgentChat> chatProvider) : Agent
 {
+    /// <inheritdoc/>
+    public AgentsMemoryManager MemoryManager => chatProvider().MemoryManager;
+
     /// <summary>
     /// Gets the relationship between the internal aggregated chat and the chat
     /// with which <see cref="AggregatorAgent"/> is participating.

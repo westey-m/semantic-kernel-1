@@ -62,6 +62,7 @@ public sealed class ChatCompletionAgent : ChatHistoryKernelAgent
     public override IAsyncEnumerable<ChatMessageContent> InvokeAsync(
         ChatHistory history,
         KernelArguments? arguments = null,
+        string overrideInstructions = null,
         Kernel? kernel = null,
         CancellationToken cancellationToken = default)
     {
@@ -69,7 +70,7 @@ public sealed class ChatCompletionAgent : ChatHistoryKernelAgent
 
         return ActivityExtensions.RunWithActivityAsync(
             () => ModelDiagnostics.StartAgentInvocationActivity(this.Id, agentName, this.Description),
-            () => this.InternalInvokeAsync(agentName, history, arguments, kernel, cancellationToken),
+            () => this.InternalInvokeAsync(agentName, history, arguments, overrideInstructions, kernel, cancellationToken),
             cancellationToken);
     }
 
@@ -115,6 +116,7 @@ public sealed class ChatCompletionAgent : ChatHistoryKernelAgent
     private async Task<ChatHistory> SetupAgentChatHistoryAsync(
         IReadOnlyList<ChatMessageContent> history,
         KernelArguments? arguments,
+        string? overrideInstructions,
         Kernel kernel,
         CancellationToken cancellationToken)
     {
@@ -127,6 +129,11 @@ public sealed class ChatCompletionAgent : ChatHistoryKernelAgent
             chat.Add(new ChatMessageContent(this.InstructionsRole, instructions) { AuthorName = this.Name });
         }
 
+        if (!string.IsNullOrWhiteSpace(overrideInstructions))
+        {
+            chat.Add(new ChatMessageContent(AuthorRole.System, overrideInstructions) { AuthorName = this.Name });
+        }
+
         chat.AddRange(history);
 
         return chat;
@@ -136,6 +143,7 @@ public sealed class ChatCompletionAgent : ChatHistoryKernelAgent
         string agentName,
         ChatHistory history,
         KernelArguments? arguments = null,
+        string overrideInstructions = null,
         Kernel? kernel = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -144,7 +152,7 @@ public sealed class ChatCompletionAgent : ChatHistoryKernelAgent
 
         (IChatCompletionService chatCompletionService, PromptExecutionSettings? executionSettings) = GetChatCompletionService(kernel, arguments);
 
-        ChatHistory chat = await this.SetupAgentChatHistoryAsync(history, arguments, kernel, cancellationToken).ConfigureAwait(false);
+        ChatHistory chat = await this.SetupAgentChatHistoryAsync(history, arguments, overrideInstructions, kernel, cancellationToken).ConfigureAwait(false);
 
         int messageCount = chat.Count;
 
@@ -191,7 +199,7 @@ public sealed class ChatCompletionAgent : ChatHistoryKernelAgent
 
         (IChatCompletionService chatCompletionService, PromptExecutionSettings? executionSettings) = GetChatCompletionService(kernel, arguments);
 
-        ChatHistory chat = await this.SetupAgentChatHistoryAsync(history, arguments, kernel, cancellationToken).ConfigureAwait(false);
+        ChatHistory chat = await this.SetupAgentChatHistoryAsync(history, arguments, null, kernel, cancellationToken).ConfigureAwait(false);
 
         int messageCount = chat.Count;
 

@@ -26,8 +26,8 @@ internal sealed class MockChannel : AgentChannel<MockAgent>
         throw new NotImplementedException();
     }
 
-    public IAsyncEnumerable<(bool IsVisible, ChatMessageContent Message)> InvokeAgentAsync(Agent agent, CancellationToken cancellationToken = default)
-        => base.InvokeAsync(agent, cancellationToken);
+    public IAsyncEnumerable<(bool IsVisible, ChatMessageContent Message)> InvokeAgentAsync(Agent agent, string overrideInstructions, CancellationToken cancellationToken = default)
+        => base.InvokeAsync(agent, overrideInstructions, cancellationToken);
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
     protected internal override async IAsyncEnumerable<(bool IsVisible, ChatMessageContent Message)> InvokeAsync(MockAgent agent, [EnumeratorCancellation] CancellationToken cancellationToken = default)

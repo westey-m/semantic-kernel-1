@@ -23,6 +23,8 @@ public abstract class BaseAgentsTest<TClient>(ITestOutputHelper output) : BaseAg
     /// </summary>
     protected const string SampleMetadataKey = "sksample";
 
+    protected override bool ForceOpenAI => false;
+
     /// <summary>
     /// Metadata to indicate the object was created for a sample.
     /// </summary>

@@ -31,6 +31,7 @@ internal sealed class ChatHistoryChannel : AgentChannel
     /// <inheritdoc/>
     protected override async IAsyncEnumerable<(bool IsVisible, ChatMessageContent Message)> InvokeAsync(
         Agent agent,
+        string overrideInstructions = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         if (agent is not ChatHistoryKernelAgent historyAgent)
@@ -49,7 +50,7 @@ internal sealed class ChatHistoryChannel : AgentChannel
         Queue<ChatMessageContent> messageQueue = [];
 
         ChatMessageContent? yieldMessage = null;
-        await foreach (ChatMessageContent responseMessage in historyAgent.InvokeAsync(this._history, null, null, cancellationToken).ConfigureAwait(false))
+        await foreach (ChatMessageContent responseMessage in historyAgent.InvokeAsync(this._history, null, overrideInstructions, null, cancellationToken).ConfigureAwait(false))
         {
             // Capture all messages that have been included in the mutated the history.
             for (int messageIndex = messageCount; messageIndex < this._history.Count; messageIndex++)

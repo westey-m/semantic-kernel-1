@@ -38,6 +38,7 @@ public abstract class ChatHistoryKernelAgent : KernelAgent
     public abstract IAsyncEnumerable<ChatMessageContent> InvokeAsync(
         ChatHistory history,
         KernelArguments? arguments = null,
+        string overrideInstructions = null,
         Kernel? kernel = null,
         CancellationToken cancellationToken = default);
 

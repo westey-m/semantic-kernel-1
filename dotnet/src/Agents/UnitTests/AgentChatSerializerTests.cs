@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
+using Microsoft.SemanticKernel.Agents.Memory;
 using Microsoft.SemanticKernel.Agents.Serialization;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Xunit;
@@ -259,6 +260,8 @@ public class AgentChatSerializerTests
 
     private sealed class TestChat(params Agent[] agents) : AgentChat
     {
+        public override AgentsMemoryManager MemoryManager => throw new System.NotImplementedException();
+
         public override IReadOnlyList<Agent> Agents => agents;
 
         public override IAsyncEnumerable<ChatMessageContent> InvokeAsync(

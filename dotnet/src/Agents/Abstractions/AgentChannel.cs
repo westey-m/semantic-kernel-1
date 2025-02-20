@@ -53,6 +53,7 @@ public abstract class AgentChannel
     /// </remarks>
     protected internal abstract IAsyncEnumerable<(bool IsVisible, ChatMessageContent Message)> InvokeAsync(
         Agent agent,
+        string overrideInstructions = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -102,6 +103,7 @@ public abstract class AgentChannel<TAgent> : AgentChannel where TAgent : Agent
     /// <inheritdoc/>
     protected internal override IAsyncEnumerable<(bool IsVisible, ChatMessageContent Message)> InvokeAsync(
         Agent agent,
+        string overrideInstructions = null,
         CancellationToken cancellationToken = default)
     {
         if (agent.GetType() != typeof(TAgent))

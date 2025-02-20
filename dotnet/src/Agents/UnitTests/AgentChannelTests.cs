@@ -26,13 +26,13 @@ public class AgentChannelTests
         Assert.Equal(0, channel.InvokeCount);
 
         // Act
-        var messages = await channel.InvokeAgentAsync(new MockAgent()).ToArrayAsync();
+        var messages = await channel.InvokeAgentAsync(new MockAgent(), string.Empty).ToArrayAsync();
         // Assert
         Assert.Equal(1, channel.InvokeCount);
 
         // Act
         Mock<Agent> mockAgent = new();
-        await Assert.ThrowsAsync<KernelException>(() => channel.InvokeAgentAsync(mockAgent.Object).ToArrayAsync().AsTask());
+        await Assert.ThrowsAsync<KernelException>(() => channel.InvokeAgentAsync(mockAgent.Object, string.Empty).ToArrayAsync().AsTask());
         // Assert
         Assert.Equal(1, channel.InvokeCount);
     }

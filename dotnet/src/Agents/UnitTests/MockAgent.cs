@@ -22,6 +22,7 @@ internal sealed class MockAgent : ChatHistoryKernelAgent
     public override IAsyncEnumerable<ChatMessageContent> InvokeAsync(
         ChatHistory history,
         KernelArguments? arguments = null,
+        string overrideInstructions = null,
         Kernel? kernel = null,
         CancellationToken cancellationToken = default)
     {
