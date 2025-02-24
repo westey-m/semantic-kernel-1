@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -15,6 +14,8 @@ public class ChatMemoryManager : AgentsMemoryManager
     private readonly Func<ChatHistory> _currentChatHistoryReriever;
 
     public override IReadOnlyList<AgentsMemory> MemoryComponents => this._memoryComponents;
+
+    public ChatHistory ChatHistory => this._currentChatHistoryReriever();
 
     public ChatMemoryManager(Func<ChatHistory> currentChatHistoryReriever)
     {
@@ -32,14 +33,22 @@ public class ChatMemoryManager : AgentsMemoryManager
         this._memoryComponents.Add(agentMemory);
     }
 
-    public override async Task StartChatAsync(string userInput, CancellationToken cancellationToken = default)
+    public override async Task LoadContextAsync(string userInput, CancellationToken cancellationToken = default)
     {
-        await Task.WhenAll(this.MemoryComponents.Select(x => x.LoadContextAsync(userInput, cancellationToken)).ToList()).ConfigureAwait(false);
+        foreach (var memoryComponent in this.MemoryComponents)
+        {
+            await memoryComponent.LoadContextAsync(userInput, cancellationToken).ConfigureAwait(false);
+        }
+        //await Task.WhenAll(this.MemoryComponents.Select(x => x.LoadContextAsync(userInput, cancellationToken)).ToList()).ConfigureAwait(false);
     }
 
-    public override async Task EndChatAsync(CancellationToken cancellationToken = default)
+    public override async Task SaveContextAsync(CancellationToken cancellationToken = default)
     {
-        await Task.WhenAll(this.MemoryComponents.Select(x => x.SaveContextAsync(this._currentChatHistoryReriever(), cancellationToken)).ToList()).ConfigureAwait(false);
+        foreach (var memoryComponent in this.MemoryComponents)
+        {
+            await memoryComponent.SaveContextAsync(this._currentChatHistoryReriever(), cancellationToken).ConfigureAwait(false);
+        }
+        //await Task.WhenAll(this.MemoryComponents.Select(x => x.SaveContextAsync(this._currentChatHistoryReriever(), cancellationToken)).ToList()).ConfigureAwait(false);
     }
 
     public override async Task MaintainContextAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)

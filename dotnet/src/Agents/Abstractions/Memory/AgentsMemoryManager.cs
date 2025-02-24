@@ -12,9 +12,9 @@ public abstract class AgentsMemoryManager
 
     public abstract void RegisterMemoryComponent(AgentsMemory agentMemory);
 
-    public abstract Task StartChatAsync(string userInput, CancellationToken cancellationToken = default);
+    public abstract Task LoadContextAsync(string userInput, CancellationToken cancellationToken = default);
 
-    public abstract Task EndChatAsync(CancellationToken cancellationToken = default);
+    public abstract Task SaveContextAsync(CancellationToken cancellationToken = default);
 
     public abstract Task MaintainContextAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default);
 

@@ -1,4 +1,5 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
+using System.Buffers;
 using Azure.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
@@ -80,7 +81,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             };
 
         chat.MemoryManager.RegisterMemoryComponent(new UserPreferencesMemory(kernel));
-        await chat.MemoryManager.StartChatAsync("concept: maps made out of egg cartons.");
+        await chat.MemoryManager.LoadContextAsync("concept: maps made out of egg cartons.");
 
         // Invoke chat and display messages.
         ChatMessageContent input = new(AuthorRole.User, "concept: maps made out of egg cartons.");
@@ -92,7 +93,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             this.WriteAgentChatMessage(response);
         }
 
-        await chat.MemoryManager.EndChatAsync();
+        await chat.MemoryManager.SaveContextAsync();
 
         Console.WriteLine($"\n[IS COMPLETED: {chat.IsComplete}]");
     }
@@ -116,7 +117,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
 
         ChatMemoryManager memoryManager = new(() => chat);
         memoryManager.RegisterMemoryComponent(new UserPreferencesMemory(kernel));
-        await memoryManager.StartChatAsync($"Summarize user input. User Input: {userMessage}.");
+        await memoryManager.LoadContextAsync($"Summarize user input. User Input: {userMessage}.");
 
         // Define the agent
         ChatCompletionAgent agent =
@@ -141,7 +142,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             Console.WriteLine(response.Content);
         }
 
-        await memoryManager.EndChatAsync();
+        await memoryManager.SaveContextAsync();
     }
 
     [Fact]
@@ -156,7 +157,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
 
         ChatMemoryManager memoryManager = new(() => chat);
         memoryManager.RegisterMemoryComponent(new UserPreferencesMemory(kernel));
-        await memoryManager.StartChatAsync($"Summarize user input. User Input: {userMessage}.");
+        await memoryManager.LoadContextAsync($"Summarize user input. User Input: {userMessage}.");
 
         // Define the agent
         ChatCompletionAgent agent =
@@ -195,46 +196,139 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             Console.WriteLine(response.Content);
         }
 
-        await memoryManager.EndChatAsync();
+        await memoryManager.SaveContextAsync();
 
         // Second usage of memory manager should load previous context.
         ChatMemoryManager memoryManager2 = new(() => chat);
         memoryManager2.RegisterMemoryComponent(new UserPreferencesMemory(kernel));
-        await memoryManager2.StartChatAsync(string.Empty);
-        await memoryManager.EndChatAsync();
+        await memoryManager2.LoadContextAsync(string.Empty);
+        await memoryManager.SaveContextAsync();
     }
 
     [Fact]
     public async Task UserPreferencesAsync()
     {
+        Console.WriteLine("------------ Session one --------------");
+
         var kernel = CreateKernelWithMemorySupport();
 
-        // Create a ChatHistory object to maintain the conversation state.
-        var userMessage = "My name is John. I live in Madrid. I like rain and the seaside.";
-
-        ChatMemoryManager memoryManager = new(new ChatHistoryMemory());
+        // Create memory manager and register memory components.
+        ChatMemoryManager memoryManager = new(new ChatHistoryMemory(kernel));
         memoryManager.RegisterMemoryComponent(new UserPreferencesMemory(kernel));
-        await memoryManager.StartChatAsync(userMessage);
 
-        // Add a user message to the conversation
-        var newMessage1 = new ChatMessageContent(AuthorRole.User, userMessage);
+        await memoryManager.MaintainContextAsync(new ChatMessageContent(AuthorRole.Assistant, "How can I help you?") { Source = "MyAgent" });
 
-        await memoryManager.MaintainContextAsync(newMessage1);
-        var memories = await memoryManager.GetRenderedContextAsync();
+        var userMessage = "My name is John. I live in Madrid. I like rain and the seaside.";
+        await memoryManager.LoadContextAsync(userMessage);
+        await memoryManager.MaintainContextAsync(new ChatMessageContent(AuthorRole.User, userMessage));
+        await memoryManager.MaintainContextAsync(new ChatMessageContent(AuthorRole.User, "This chat is very dreary."));
 
-        // Add another user message to the conversation
-        var newMessage2 = new ChatMessageContent(AuthorRole.User, "I live in Paris");
+        await memoryManager.SaveContextAsync();
 
-        await memoryManager.MaintainContextAsync(newMessage2);
-        memories = await memoryManager.GetRenderedContextAsync();
-
-        await memoryManager.EndChatAsync();
+        Console.WriteLine("------------ Session two --------------");
 
         // Second usage of memory manager should load previous context.
-        ChatMemoryManager memoryManager2 = new(new ChatHistoryMemory());
+        ChatMemoryManager memoryManager2 = new(new ChatHistoryMemory(kernel));
         memoryManager2.RegisterMemoryComponent(new UserPreferencesMemory(kernel));
-        await memoryManager2.StartChatAsync(string.Empty);
-        await memoryManager.EndChatAsync();
+        await memoryManager2.LoadContextAsync("Hi there");
+
+        // Add a user message to the conversation
+        await memoryManager2.MaintainContextAsync(new ChatMessageContent(AuthorRole.User, "I now live in Paris."));
+
+        await memoryManager2.SaveContextAsync();
+    }
+
+    [Fact]
+    public async Task FinancialReportAsync()
+    {
+        var kernel = CreateKernelWithMemorySupport();
+
+        // Define the agent
+        var agentKernel = kernel.Clone();
+        agentKernel.Plugins.AddFromType<FinancialPlugin>();
+        ChatCompletionAgent agent =
+            new()
+            {
+                Instructions = "You are an expert in financial management and accounting and can use tools to consolidate invoices and payments",
+                Name = "FinanceAgent",
+                Kernel = agentKernel,
+            };
+
+        Console.WriteLine("------------ Session one --------------");
+
+        // Create memory manager and register memory components.
+        ChatMemoryManager memoryManager1 = new(new ChatHistoryMemory(kernel));
+        memoryManager1.RegisterMemoryComponent(new UserPreferencesMemory(kernel));
+
+        var userMessage = "Please consolidate today's invoices and payments.";
+        await memoryManager1.LoadContextAsync(userMessage);
+        await this.InvokeAgentAsync(agent, memoryManager1, userMessage);
+        await this.InvokeAgentAsync(agent, memoryManager1, "I am working with Contoso and I always want format B.");
+
+        await memoryManager1.SaveContextAsync();
+
+        Console.WriteLine("------------ Session two --------------");
+
+        // Second usage of memory manager should load previous context.
+        ChatMemoryManager memoryManager2 = new(new ChatHistoryMemory(kernel));
+        memoryManager2.RegisterMemoryComponent(new UserPreferencesMemory(kernel));
+
+        var userMessage2 = "Please consolidate today's invoices and payments.";
+        await memoryManager2.LoadContextAsync(userMessage2);
+        await this.InvokeAgentAsync(agent, memoryManager2, userMessage);
+
+        await memoryManager2.SaveContextAsync();
+
+        Console.WriteLine("------------ Session three --------------");
+
+        // Third usage of memory manager should load previous context.
+        ChatMemoryManager memoryManager3 = new(new ChatHistoryMemory(kernel));
+        memoryManager3.RegisterMemoryComponent(new UserPreferencesMemory(kernel));
+
+        var userMessage3 = "What do you know about me?";
+        await memoryManager3.LoadContextAsync(userMessage3);
+        await this.InvokeAgentAsync(agent, memoryManager3, userMessage3);
+
+        await this.InvokeAgentAsync(agent, memoryManager3, "Please forget what you know about me.");
+
+        await memoryManager3.SaveContextAsync();
+    }
+
+    private async Task InvokeAgentAsync(ChatCompletionAgent agent, ChatMemoryManager memoryManager, string userMessage)
+    {
+        await memoryManager.MaintainContextAsync(new ChatMessageContent(AuthorRole.User, userMessage));
+        var memoryContext = await memoryManager.GetRenderedContextAsync();
+
+        // Generate the agent response(s)
+        await foreach (ChatMessageContent response in agent.InvokeAsync(
+            memoryManager.ChatHistory,
+            new KernelArguments(new PromptExecutionSettings { FunctionChoiceBehavior = FunctionChoiceBehavior.Auto() }),
+            overrideInstructions: memoryContext))
+        {
+            Console.WriteLine($"# {agent.Name} Agent response(s):");
+            Console.WriteLine($"    {response.Content}");
+
+            if (response.Role == AuthorRole.Assistant)
+            {
+                await memoryManager.MaintainContextAsync(response);
+            }
+        }
+    }
+
+    private class FinancialPlugin
+    {
+        [KernelFunction]
+        public async Task<string> ConsolidateInvoicesAndPaymentsAsync(string company, ReportFormat outputFormat, CancellationToken cancellationToken)
+        {
+            return "Here is your report: 123, 456, 789, ...";
+        }
+    }
+
+    private enum ReportFormat
+    {
+        A,
+        B,
+        C
     }
 
     protected Kernel CreateKernelWithMemorySupport()
@@ -254,6 +348,17 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
                     new InMemoryVectorStore(),
                     sp.GetRequiredService<ITextEmbeddingGenerationService>(),
                     "UserPreferences",
+                    "userid/12345",
+                    1536);
+            });
+        builder.Services.AddKeyedSingleton<MemoryDocumentStore>(
+            "ChatHistoryStore",
+            (sp, _) =>
+            {
+                return new VectorDataMemoryDocumentStore<string>(
+                    new InMemoryVectorStore(),
+                    sp.GetRequiredService<ITextEmbeddingGenerationService>(),
+                    "ChatHistory",
                     "userid/12345",
                     1536);
             });
