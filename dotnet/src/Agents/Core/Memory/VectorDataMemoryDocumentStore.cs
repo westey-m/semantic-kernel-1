@@ -106,7 +106,9 @@ public class VectorDataMemoryDocumentStore<TKey> : MemoryDocumentStore
             this._collectionInitialized = true;
         }
 
-        var vector = await this._textEmbeddingGenerationService.GenerateEmbeddingAsync(memoryText, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var vector = await this._textEmbeddingGenerationService.GenerateEmbeddingAsync(
+            string.IsNullOrWhiteSpace(memoryText) ? "Empty" : memoryText,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
 
         var memoryDocument = new MemoryDocument<TKey>
         {

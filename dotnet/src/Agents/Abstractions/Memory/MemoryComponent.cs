@@ -37,4 +37,12 @@ public abstract class MemoryComponent
     }
 
     public abstract Task<string> GetRenderedContextAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Register plugins required by this memory component on the provided <see cref="Kernel"/>.
+    /// </summary>
+    /// <param name="kernel">The kernel to register the plugins on.</param>
+    public virtual void RegisterPlugins(Kernel kernel)
+    {
+    }
 }

@@ -238,6 +238,55 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
     }
 
     [Fact]
+    public async Task FinancialReportWithMemoryAgentAsync()
+    {
+        var kernel = CreateKernelWithMemorySupport();
+
+        // Define the agent
+        var agentKernel = kernel.Clone();
+        agentKernel.Plugins.AddFromType<FinancialPlugin>();
+        ChatCompletionAgent agent =
+            new()
+            {
+                Instructions = "You are an expert in financial management and accounting and can use tools to consolidate invoices and payments",
+                Name = "FinanceAgent",
+                Kernel = agentKernel,
+            };
+
+        Console.WriteLine("------------ Session one --------------");
+
+        // Create agent with memory and register memory components.
+        AgentWithMemory agentWithMemory = new(agent, new ChatHistoryMemoryComponent(kernel));
+        agentWithMemory.MemoryManager.RegisterMemoryComponent(new UserPreferencesMemoryComponent(kernel));
+
+        (await agentWithMemory.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Please consolidate today's invoices and payments.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
+        (await agentWithMemory.InvokeAsync(new ChatMessageContent(AuthorRole.User, "I am working with Contoso and I always want format B.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
+
+        await agentWithMemory.MemoryManager.SaveContextAsync();
+
+        Console.WriteLine("------------ Session two --------------");
+
+        // Second usage of memory manager should load previous context.
+        AgentWithMemory agentWithMemory2 = new(agent, new ChatHistoryMemoryComponent(kernel));
+        agentWithMemory2.MemoryManager.RegisterMemoryComponent(new UserPreferencesMemoryComponent(kernel));
+
+        (await agentWithMemory2.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Please consolidate today's invoices and payments.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
+
+        await agentWithMemory2.MemoryManager.SaveContextAsync();
+
+        Console.WriteLine("------------ Session three --------------");
+
+        // Third usage of memory manager should load previous context.
+        AgentWithMemory agentWithMemory3 = new(agent, new ChatHistoryMemoryComponent(kernel));
+        agentWithMemory3.MemoryManager.RegisterMemoryComponent(new UserPreferencesMemoryComponent(kernel));
+
+        (await agentWithMemory3.InvokeAsync(new ChatMessageContent(AuthorRole.User, "What do you know about me?")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
+        (await agentWithMemory3.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Please forget what you know about me.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
+
+        await agentWithMemory3.MemoryManager.SaveContextAsync();
+    }
+
+    [Fact]
     public async Task FinancialReportAsync()
     {
         var kernel = CreateKernelWithMemorySupport();

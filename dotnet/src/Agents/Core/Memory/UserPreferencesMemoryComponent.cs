@@ -89,8 +89,8 @@ public class UserPreferencesMemoryComponent : MemoryComponent
                 this._userPreferences = memoryText;
             }
 
-            string logOutput = "- UserPreferencesMemory - Loading user preferences context"
-                + (string.IsNullOrWhiteSpace(this._userPreferences) ? string.Empty : $"\n    {this._userPreferences}");
+            Console.WriteLine("- UserPreferencesMemory - Loading user preferences context"
+                + (string.IsNullOrWhiteSpace(this._userPreferences) ? string.Empty : $"\n    {this._userPreferences}"));
 
             this._contextLoaded = true;
         }
