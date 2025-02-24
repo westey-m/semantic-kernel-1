@@ -58,7 +58,7 @@ public class ChatHistoryMemoryComponent : MemoryComponent
     }
 
     /// <inheritdoc/>
-    public override async Task MaintainContextAsync(ChatMessageContent newMessage, ChatHistory currentChatHistory, CancellationToken cancellationToken = default)
+    public override async Task MaintainContextAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
     {
         this._chatHistory.Add(newMessage);
         await this._chatHistory.ReduceInPlaceAsync(this.HistoryReducer, cancellationToken).ConfigureAwait(false);
@@ -74,9 +74,9 @@ public class ChatHistoryMemoryComponent : MemoryComponent
     }
 
     /// <inheritdoc/>
-    public override async Task SaveContextAsync(ChatHistory currentChatHistory, CancellationToken cancellationToken = default)
+    public override async Task SaveContextAsync(CancellationToken cancellationToken = default)
     {
-        var conversation = string.Join("\n", currentChatHistory
+        var conversation = string.Join("\n", this.Chathistory
             .Where(x => x.Role == AuthorRole.User || x.Role == AuthorRole.Assistant)
             .Select(x => $"{x.Source ?? x.Role}: {x.Content}")).Trim();
 

@@ -94,7 +94,7 @@ public class UserPreferencesMemoryComponent : MemoryComponent
     }
 
     /// <inheritdoc/>
-    public override async Task SaveContextAsync(ChatHistory currentChatHistory, CancellationToken cancellationToken = default)
+    public override async Task SaveContextAsync(CancellationToken cancellationToken = default)
     {
         Console.WriteLine("- UserPreferencesMemory - Saving user preferences context"
             + "\n    " + this._userPreferences);
@@ -103,7 +103,7 @@ public class UserPreferencesMemoryComponent : MemoryComponent
     }
 
     /// <inheritdoc/>
-    public override async Task MaintainContextAsync(ChatMessageContent newMessage, ChatHistory currentChatHistory, CancellationToken cancellationToken = default)
+    public override async Task MaintainContextAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
     {
         if (newMessage.Role == AuthorRole.User)
         {

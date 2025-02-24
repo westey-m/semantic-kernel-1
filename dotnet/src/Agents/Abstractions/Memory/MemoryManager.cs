@@ -36,7 +36,7 @@ public abstract class MemoryManager
 
     public virtual async Task SaveContextAsync(CancellationToken cancellationToken = default)
     {
-        await Task.WhenAll(this.MemoryComponents.Select(x => x.SaveContextAsync(this.ChatHistoryReriever(), cancellationToken)).ToList()).ConfigureAwait(false);
+        await Task.WhenAll(this.MemoryComponents.Select(x => x.SaveContextAsync(cancellationToken)).ToList()).ConfigureAwait(false);
     }
 
     public virtual async Task MaintainContextAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
@@ -44,7 +44,7 @@ public abstract class MemoryManager
         var renderedContext = string.Empty;
         foreach (var memoryComponent in this.MemoryComponents)
         {
-            await memoryComponent.MaintainContextAsync(newMessage, this.ChatHistoryReriever(), cancellationToken).ConfigureAwait(false);
+            await memoryComponent.MaintainContextAsync(newMessage, cancellationToken).ConfigureAwait(false);
         }
     }
 
