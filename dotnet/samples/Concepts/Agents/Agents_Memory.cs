@@ -347,11 +347,15 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         await memoryManager.MaintainContextAsync(new ChatMessageContent(AuthorRole.User, userMessage));
         var memoryContext = await memoryManager.GetRenderedContextAsync();
 
+        var overrideKernel = agent.Kernel.Clone();
+        memoryManager.RegisterPlugins(overrideKernel);
+
         // Generate the agent response(s)
         await foreach (ChatMessageContent response in agent.InvokeAsync(
             memoryManager.ChatHistory,
             new KernelArguments(new PromptExecutionSettings { FunctionChoiceBehavior = FunctionChoiceBehavior.Auto() }),
-            overrideInstructions: memoryContext))
+            overrideInstructions: memoryContext,
+            overrideKernel))
         {
             Console.WriteLine($"# {agent.Name} Agent response(s):");
             Console.WriteLine($"    {response.Content}");

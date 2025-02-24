@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -60,10 +61,6 @@ public class UserPreferencesMemoryComponent : MemoryComponent
         Input facts: 
         Output: 
         
-        Input text: Please forget what you know about me.
-        Input facts: User name is Francine. User likes math.
-        Output: 
-
         Input text: What is today's date?
         Input facts: User name is Peter.
         Output: User name is Peter.
@@ -127,5 +124,19 @@ public class UserPreferencesMemoryComponent : MemoryComponent
     public override Task<string> GetRenderedContextAsync(CancellationToken cancellationToken = default)
     {
         return Task.FromResult("The following list contains facts about hte user:\n" + this._userPreferences);
+    }
+
+    public override void RegisterPlugins(Kernel kernel)
+    {
+        base.RegisterPlugins(kernel);
+        kernel.Plugins.AddFromObject(this, "UserPreferencesMemory");
+    }
+
+    [KernelFunction]
+    [Description("Deletes any user preferences stored about the user.")]
+    public void ClearUserPreferences()
+    {
+        this._userPreferences = string.Empty;
+        Console.WriteLine("- UserPreferencesMemory - User preferences cleared via plugin call.");
     }
 }

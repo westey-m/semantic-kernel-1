@@ -58,4 +58,16 @@ public abstract class MemoryManager
 
         return renderedContext;
     }
+
+    /// <summary>
+    /// Register plugins required by all memory components contained by this manager on the provided <see cref="Kernel"/>.
+    /// </summary>
+    /// <param name="kernel">The kernel to register the plugins on.</param>
+    public virtual void RegisterPlugins(Kernel kernel)
+    {
+        foreach (var memoryComponent in this.MemoryComponents)
+        {
+            memoryComponent.RegisterPlugins(kernel);
+        }
+    }
 }
