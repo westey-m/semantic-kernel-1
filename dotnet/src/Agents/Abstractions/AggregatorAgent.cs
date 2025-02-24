@@ -33,7 +33,7 @@ public enum AggregatorMode
 public sealed class AggregatorAgent(Func<AgentChat> chatProvider) : Agent
 {
     /// <inheritdoc/>
-    public AgentsMemoryManager MemoryManager => chatProvider().MemoryManager;
+    public MemoryManager MemoryManager => chatProvider().MemoryManager;
 
     /// <summary>
     /// Gets the relationship between the internal aggregated chat and the chat

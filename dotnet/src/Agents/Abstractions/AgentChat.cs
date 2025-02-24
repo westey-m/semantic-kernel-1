@@ -39,7 +39,7 @@ public abstract class AgentChat
     /// <summary>
     /// Gets the component used to manage memory for the chat.
     /// </summary>
-    public abstract AgentsMemoryManager MemoryManager { get; }
+    public abstract MemoryManager MemoryManager { get; }
 
     /// <summary>
     /// Gets a value that indicates whether a chat operation is active. Activity is defined as

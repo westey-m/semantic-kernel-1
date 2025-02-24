@@ -11,7 +11,7 @@ namespace Microsoft.SemanticKernel.Agents.Memory;
 /// A memory component that can retrieve, maintain and store user preferences that
 /// are learned from the user's interactions with the agent.
 /// </summary>
-public class UserPreferencesMemory : AgentsMemory
+public class UserPreferencesMemoryComponent : MemoryComponent
 {
     private readonly Kernel _kernel;
     private readonly MemoryDocumentStore _memoryDocumentStore;
@@ -19,11 +19,11 @@ public class UserPreferencesMemory : AgentsMemory
     private bool _contextLoaded = false;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="UserPreferencesMemory"/> class.
+    /// Initializes a new instance of the <see cref="UserPreferencesMemoryComponent"/> class.
     /// </summary>
     /// <param name="kernel">A kernel to use for making chat completion calls.</param>
     /// <param name="userPreferencesStoreName">The service key that the <see cref="MemoryDocumentStore"/> for user preferences is registered under in DI.</param>
-    public UserPreferencesMemory(Kernel kernel, string? userPreferencesStoreName = "UserPreferencesStore")
+    public UserPreferencesMemoryComponent(Kernel kernel, string? userPreferencesStoreName = "UserPreferencesStore")
     {
         this._kernel = kernel;
         this._memoryDocumentStore = new OptionalDocumentStore(kernel, userPreferencesStoreName);
@@ -89,12 +89,8 @@ public class UserPreferencesMemory : AgentsMemory
                 this._userPreferences = memoryText;
             }
 
-            Console.WriteLine("- UserPreferencesMemory - Loading user preferences context");
-
-            if (!string.IsNullOrWhiteSpace(this._userPreferences))
-            {
-                Console.WriteLine($"    {this._userPreferences}");
-            }
+            string logOutput = "- UserPreferencesMemory - Loading user preferences context"
+                + (string.IsNullOrWhiteSpace(this._userPreferences) ? string.Empty : $"\n    {this._userPreferences}");
 
             this._contextLoaded = true;
         }
@@ -103,8 +99,8 @@ public class UserPreferencesMemory : AgentsMemory
     /// <inheritdoc/>
     public override async Task SaveContextAsync(ChatHistory currentChatHistory, CancellationToken cancellationToken = default)
     {
-        Console.WriteLine("- UserPreferencesMemory - Saving user preferences context");
-        Console.WriteLine("    " + this._userPreferences);
+        Console.WriteLine("- UserPreferencesMemory - Saving user preferences context"
+            + "\n    " + this._userPreferences);
 
         await this._memoryDocumentStore.SaveMemoryAsync("UserPreferences", this._userPreferences, cancellationToken).ConfigureAwait(false);
     }

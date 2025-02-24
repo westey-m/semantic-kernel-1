@@ -260,7 +260,7 @@ public class AgentChatSerializerTests
 
     private sealed class TestChat(params Agent[] agents) : AgentChat
     {
-        public override AgentsMemoryManager MemoryManager => throw new System.NotImplementedException();
+        public override MemoryManager MemoryManager => throw new System.NotImplementedException();
 
         public override IReadOnlyList<Agent> Agents => agents;
 

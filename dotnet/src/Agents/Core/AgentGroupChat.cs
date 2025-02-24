@@ -42,7 +42,7 @@ public sealed class AgentGroupChat : AgentChat
     public override IReadOnlyList<Agent> Agents => this._agents.AsReadOnly();
 
     /// <inheritdoc/>
-    public override AgentsMemoryManager MemoryManager => this._memoryManager;
+    public override MemoryManager MemoryManager => this._memoryManager;
 
     /// <summary>
     /// Add an <see cref="Agent"/> to the chat.

@@ -6,7 +6,10 @@ using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace Microsoft.SemanticKernel.Agents.Memory;
 
-public abstract class AgentsMemory
+/// <summary>
+/// Base class for all memory components.
+/// </summary>
+public abstract class MemoryComponent
 {
     public virtual Task LoadContextAsync(string? inputText = default, CancellationToken cancellationToken = default)
     {

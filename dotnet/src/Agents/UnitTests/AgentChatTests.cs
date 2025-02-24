@@ -152,7 +152,7 @@ public class AgentChatTests
 
     private sealed class TestChat : AgentChat
     {
-        public override AgentsMemoryManager MemoryManager => throw new System.NotImplementedException();
+        public override MemoryManager MemoryManager => throw new System.NotImplementedException();
 
         public MockAgent Agent { get; } = new() { Response = [new(AuthorRole.Assistant, "sup")] };
 
