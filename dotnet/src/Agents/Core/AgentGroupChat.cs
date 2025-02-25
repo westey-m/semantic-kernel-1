@@ -20,7 +20,7 @@ public sealed class AgentGroupChat : AgentChat
 {
     private readonly HashSet<string> _agentIds; // Efficient existence test O(1) vs O(n) for list.
     private readonly List<Agent> _agents; // Maintain order the agents joined the chat
-    private readonly ChatMemoryManager _memoryManager;
+    private readonly MemoryManager _memoryManager;
 
     /// <summary>
     /// Gets or sets a value that indicates if the completion criteria have been met.
@@ -223,7 +223,7 @@ public sealed class AgentGroupChat : AgentChat
     {
         this._agents = new(agents);
         this._agentIds = new(this._agents.Select(a => a.Id));
-        this._memoryManager = new(() => this.History);
+        this._memoryManager = new ChatHistoryMemoryManager(() => this.History);
     }
 
     private void EnsureStrategyLoggerAssignment()

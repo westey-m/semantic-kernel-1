@@ -4,24 +4,23 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.SemanticKernel.Agents.Memory;
 using Microsoft.SemanticKernel.ChatCompletion;
 
-namespace Microsoft.SemanticKernel.Agents;
+namespace Microsoft.SemanticKernel.Agents.Memory;
 
 /// <summary>
 /// An agent that has integrated memory components attached.
 /// </summary>
-public class AgentWithMemory
+public class ChatCompletionAgentWithMemory : AgentWithMemory
 {
     private readonly ChatCompletionAgent _agent;
-    private readonly MemoryManager _memoryManager;
+    private readonly ChatHistoryMemoryManager _memoryManager;
     private readonly bool _loadContextOnFirstMessage;
     private bool _isFirstMessage = true;
 
-    public AgentWithMemory(
+    public ChatCompletionAgentWithMemory(
         ChatCompletionAgent agent,
-        MemoryManager memoryManager,
+        ChatHistoryMemoryManager memoryManager,
         bool loadContextOnFirstMessage = true)
     {
         this._agent = agent;
@@ -29,19 +28,19 @@ public class AgentWithMemory
         this._loadContextOnFirstMessage = loadContextOnFirstMessage;
     }
 
-    public AgentWithMemory(
+    public ChatCompletionAgentWithMemory(
         ChatCompletionAgent agent,
         ChatHistoryMemoryComponent chatHistoryMemoryComponent,
         bool loadContextOnFirstMessage = true)
     {
         this._agent = agent;
-        this._memoryManager = new ChatMemoryManager(chatHistoryMemoryComponent);
+        this._memoryManager = new ChatHistoryMemoryManager(chatHistoryMemoryComponent);
         this._loadContextOnFirstMessage = loadContextOnFirstMessage;
     }
 
-    public MemoryManager MemoryManager => this._memoryManager;
+    public override MemoryManager MemoryManager => this._memoryManager;
 
-    public async IAsyncEnumerable<ChatMessageContent> InvokeAsync(
+    public override async IAsyncEnumerable<ChatMessageContent> InvokeAsync(
         ChatMessageContent chatMessageContent,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {

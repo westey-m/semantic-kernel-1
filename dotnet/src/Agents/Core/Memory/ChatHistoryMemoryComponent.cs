@@ -8,7 +8,7 @@ using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace Microsoft.SemanticKernel.Agents.Memory;
 
-public class ChatHistoryMemoryComponent : MemoryComponent
+public class ChatHistoryMemoryComponent : BaseChatHistoryMemoryComponent
 {
     private readonly Kernel _kernel;
     private readonly MemoryDocumentStore _memoryDocumentStore;
@@ -28,7 +28,7 @@ public class ChatHistoryMemoryComponent : MemoryComponent
     /// <summary>
     /// Gets the current chat history as maintained by this memory component.
     /// </summary>
-    public ChatHistory Chathistory => this._chatHistory;
+    public override ChatHistory Chathistory => this._chatHistory;
 
     /// <summary>
     /// Gets or sets the prompt template to use when generating a summary of the conversation to save to memory at the end of the conversation.

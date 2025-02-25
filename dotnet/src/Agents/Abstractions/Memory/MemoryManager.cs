@@ -1,26 +1,15 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace Microsoft.SemanticKernel.Agents.Memory;
 
-public abstract class MemoryManager
+public class MemoryManager
 {
     private readonly List<MemoryComponent> _memoryComponents = new();
-
-    public MemoryManager(Func<ChatHistory> chatHistoryRetriever)
-    {
-        this.ChatHistoryReriever = chatHistoryRetriever;
-    }
-
-    protected Func<ChatHistory> ChatHistoryReriever { get; private set; }
-
-    public ChatHistory ChatHistory => this.ChatHistoryReriever();
 
     public virtual IReadOnlyList<MemoryComponent> MemoryComponents => this._memoryComponents;
 
