@@ -13,31 +13,27 @@ namespace Microsoft.SemanticKernel.Agents.OpenAI;
 public class OpenAIAssistantAgentWithMemory : AgentWithMemory
 {
     private readonly OpenAIAssistantAgent _agent;
-    private readonly string _threadId;
-    private readonly MemoryManager _memoryManager;
+    private readonly OpenAIAssistantMemoryManager _memoryManager;
     private readonly bool _loadContextOnFirstMessage;
     private bool _isFirstMessage = true;
 
     public OpenAIAssistantAgentWithMemory(
         OpenAIAssistantAgent agent,
-        string threadId,
-        MemoryManager memoryManager,
+        OpenAIAssistantMemoryManager memoryManager,
         bool loadContextOnFirstMessage = true)
     {
         this._agent = agent;
-        this._threadId = threadId;
         this._memoryManager = memoryManager;
         this._loadContextOnFirstMessage = loadContextOnFirstMessage;
     }
 
     public OpenAIAssistantAgentWithMemory(
         OpenAIAssistantAgent agent,
-        string threadId,
+        AssistantClient client,
         bool loadContextOnFirstMessage = true)
     {
         this._agent = agent;
-        this._threadId = threadId;
-        this._memoryManager = new MemoryManager();
+        this._memoryManager = new OpenAIAssistantMemoryManager(new OpenAIAssistantThreadMemoryComponent(client));
         this._loadContextOnFirstMessage = loadContextOnFirstMessage;
     }
 
@@ -56,13 +52,13 @@ public class OpenAIAssistantAgentWithMemory : AgentWithMemory
         await this._memoryManager.MaintainContextAsync(chatMessageContent, cancellationToken).ConfigureAwait(false);
         var memoryContext = await this._memoryManager.GetRenderedContextAsync(cancellationToken).ConfigureAwait(false);
 
-        await this._agent.AddChatMessageAsync(this._threadId, chatMessageContent, cancellationToken).ConfigureAwait(false);
+        //await this._agent.AddChatMessageAsync(this._memoryManager.ThreadId, chatMessageContent, cancellationToken).ConfigureAwait(false);
 
         var overrideKernel = this._agent.Kernel.Clone();
         this.MemoryManager.RegisterPlugins(overrideKernel);
 
         await foreach (ChatMessageContent response in this._agent.InvokeAsync(
-            this._threadId,
+            this._memoryManager.ThreadId,
             new RunCreationOptions { AdditionalInstructions = memoryContext },
             new KernelArguments(new PromptExecutionSettings { FunctionChoiceBehavior = FunctionChoiceBehavior.Auto() }),
             overrideKernel,

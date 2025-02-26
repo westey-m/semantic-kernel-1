@@ -271,43 +271,34 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             Console.WriteLine("------------ Session one --------------");
 
             // Create agent with memory and register memory components.
-            var assitantThreadResponse = await assistantClient.CreateThreadAsync();
-            var threadId = assitantThreadResponse.Value.Id;
-            OpenAIAssistantAgentWithMemory agentWithMemory = new(agent, threadId);
+            OpenAIAssistantAgentWithMemory agentWithMemory = new(agent, assistantClient);
             agentWithMemory.MemoryManager.RegisterMemoryComponent(new UserPreferencesMemoryComponent(kernel));
 
             (await agentWithMemory.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Please consolidate today's invoices and payments.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
             (await agentWithMemory.InvokeAsync(new ChatMessageContent(AuthorRole.User, "I am working with Contoso and I always want format B.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
 
             await agentWithMemory.MemoryManager.SaveContextAsync();
-            await assistantClient.DeleteThreadAsync(threadId);
 
             Console.WriteLine("------------ Session two --------------");
 
             // Second usage of memory manager should load previous context.
-            assitantThreadResponse = await assistantClient.CreateThreadAsync();
-            threadId = assitantThreadResponse.Value.Id;
-            OpenAIAssistantAgentWithMemory agentWithMemory2 = new(agent, threadId);
+            OpenAIAssistantAgentWithMemory agentWithMemory2 = new(agent, assistantClient);
             agentWithMemory2.MemoryManager.RegisterMemoryComponent(new UserPreferencesMemoryComponent(kernel));
 
             (await agentWithMemory2.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Please consolidate today's invoices and payments.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
 
             await agentWithMemory2.MemoryManager.SaveContextAsync();
-            await assistantClient.DeleteThreadAsync(threadId);
 
             Console.WriteLine("------------ Session three --------------");
 
             // Third usage of memory manager should load previous context.
-            assitantThreadResponse = await assistantClient.CreateThreadAsync();
-            threadId = assitantThreadResponse.Value.Id;
-            OpenAIAssistantAgentWithMemory agentWithMemory3 = new(agent, threadId);
+            OpenAIAssistantAgentWithMemory agentWithMemory3 = new(agent, assistantClient);
             agentWithMemory3.MemoryManager.RegisterMemoryComponent(new UserPreferencesMemoryComponent(kernel));
 
             (await agentWithMemory3.InvokeAsync(new ChatMessageContent(AuthorRole.User, "What do you know about me?")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
             (await agentWithMemory3.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Please forget what you know about me.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
 
             await agentWithMemory3.MemoryManager.SaveContextAsync();
-            await assistantClient.DeleteThreadAsync(threadId);
         }
         finally
         {
