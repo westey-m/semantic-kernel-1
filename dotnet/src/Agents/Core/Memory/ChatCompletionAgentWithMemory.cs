@@ -15,7 +15,7 @@ namespace Microsoft.SemanticKernel.Agents.Memory;
 public class ChatCompletionAgentWithMemory : AgentWithMemory
 {
     private readonly ChatCompletionAgent _agent;
-    private readonly ChatHistoryMemoryComponent _chatHistoryMemoryComponent;
+    private readonly BaseChatHistoryMemoryComponent _chatHistoryMemoryComponent;
     private readonly ChatHistoryMemoryManager _memoryManager;
     private readonly bool _loadContextOnFirstMessage;
     private readonly bool _startNewThreadOnFirstMessage;
@@ -43,7 +43,7 @@ public class ChatCompletionAgentWithMemory : AgentWithMemory
 
     public ChatCompletionAgentWithMemory(
         ChatCompletionAgent agent,
-        ChatHistoryMemoryComponent chatHistoryMemoryComponent,
+        BaseChatHistoryMemoryComponent chatHistoryMemoryComponent,
         IEnumerable<MemoryComponent>? memoryComponents = default,
         bool loadContextOnFirstMessage = true,
         bool startNewThreadOnFirstMessage = true)

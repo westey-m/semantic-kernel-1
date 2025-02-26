@@ -93,7 +93,7 @@ public class ChatHistoryMemoryComponent : BaseChatHistoryMemoryComponent
             + $"\n    {summary}");
     }
 
-    public void ClearChatHistory()
+    public override void ClearChatHistory()
     {
         this._chatHistory.Clear();
     }
