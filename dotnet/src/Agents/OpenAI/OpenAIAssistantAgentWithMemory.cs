@@ -22,13 +22,12 @@ public class OpenAIAssistantAgentWithMemory : AgentWithMemory
 
     public OpenAIAssistantAgentWithMemory(
         OpenAIAssistantAgent agent,
-        AssistantClient client,
         IEnumerable<MemoryComponent>? memoryComponents = default,
         bool loadContextOnFirstMessage = true,
         bool startNewThreadOnFirstMessage = true)
     {
         this._agent = agent;
-        this._openAIAssistantThreadMemoryComponent = new OpenAIAssistantThreadMemoryComponent(client);
+        this._openAIAssistantThreadMemoryComponent = new OpenAIAssistantThreadMemoryComponent(agent.Client);
         this._memoryManager = new OpenAIAssistantMemoryManager(this._openAIAssistantThreadMemoryComponent);
         this._loadContextOnFirstMessage = loadContextOnFirstMessage;
         this._startNewThreadOnFirstMessage = startNewThreadOnFirstMessage;

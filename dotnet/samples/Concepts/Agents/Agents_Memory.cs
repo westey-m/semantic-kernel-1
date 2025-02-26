@@ -271,7 +271,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             Console.WriteLine("------------ Session one --------------");
 
             // Create agent with memory and register memory components.
-            AgentWithMemory agentWithMemory = agent.WithMemory(assistantClient, [new UserPreferencesMemoryComponent(kernel)]);
+            AgentWithMemory agentWithMemory = agent.WithMemory([new UserPreferencesMemoryComponent(kernel)]);
 
             (await agentWithMemory.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Please consolidate today's invoices and payments.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
             (await agentWithMemory.InvokeAsync(new ChatMessageContent(AuthorRole.User, "I am working with Contoso and I always want format B.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
@@ -281,7 +281,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             Console.WriteLine("------------ Session two --------------");
 
             // Second usage of memory manager should load previous context.
-            agentWithMemory = agent.WithMemory(assistantClient, [new UserPreferencesMemoryComponent(kernel)]);
+            agentWithMemory = agent.WithMemory([new UserPreferencesMemoryComponent(kernel)]);
 
             (await agentWithMemory.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Please consolidate today's invoices and payments.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
 
@@ -290,7 +290,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             Console.WriteLine("------------ Session three --------------");
 
             // Third usage of memory manager should load previous context.
-            agentWithMemory = agent.WithMemory(assistantClient, [new UserPreferencesMemoryComponent(kernel)]);
+            agentWithMemory = agent.WithMemory([new UserPreferencesMemoryComponent(kernel)]);
 
             (await agentWithMemory.InvokeAsync(new ChatMessageContent(AuthorRole.User, "What do you know about me?")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
             (await agentWithMemory.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Please clear any user preferences you have for me.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
