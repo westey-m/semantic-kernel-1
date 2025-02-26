@@ -42,7 +42,7 @@ public class MemoryManager
         var renderedContext = string.Empty;
         foreach (var memoryComponent in this.MemoryComponents)
         {
-            renderedContext += await memoryComponent.GetRenderedContextAsync(cancellationToken).ConfigureAwait(false) + "\n";
+            renderedContext += await memoryComponent.GetFormattedContextAsync(cancellationToken).ConfigureAwait(false) + "\n";
         }
 
         return renderedContext;

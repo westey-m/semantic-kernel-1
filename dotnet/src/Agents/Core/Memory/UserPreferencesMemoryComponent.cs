@@ -121,7 +121,7 @@ public class UserPreferencesMemoryComponent : MemoryComponent
     }
 
     /// <inheritdoc/>
-    public override Task<string> GetRenderedContextAsync(CancellationToken cancellationToken = default)
+    public override Task<string> GetFormattedContextAsync(CancellationToken cancellationToken = default)
     {
         return Task.FromResult("The following list contains facts about hte user:\n" + this._userPreferences);
     }

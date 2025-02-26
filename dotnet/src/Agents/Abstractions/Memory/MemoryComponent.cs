@@ -50,7 +50,7 @@ public abstract class MemoryComponent
     /// </summary>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>A task that completes when the context has been rendered and returned.</returns>
-    public abstract Task<string> GetRenderedContextAsync(CancellationToken cancellationToken = default);
+    public abstract Task<string> GetFormattedContextAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Register plugins required by this memory component on the provided <see cref="Kernel"/>.

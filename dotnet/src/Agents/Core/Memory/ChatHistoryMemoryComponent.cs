@@ -68,7 +68,7 @@ public class ChatHistoryMemoryComponent : BaseChatHistoryMemoryComponent
     }
 
     /// <inheritdoc/>
-    public override Task<string> GetRenderedContextAsync(CancellationToken cancellationToken = default)
+    public override Task<string> GetFormattedContextAsync(CancellationToken cancellationToken = default)
     {
         return Task.FromResult(string.Empty);
     }

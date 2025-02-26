@@ -321,6 +321,8 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
 
         Console.WriteLine("------------ Session one --------------");
 
+        // TODO: Suspend / Resume.
+
         // Create agent with memory and register memory components.
         AgentWithMemory agentWithMemory = agent.WithMemory(kernel, [new UserPreferencesMemoryComponent(kernel)]);
 
