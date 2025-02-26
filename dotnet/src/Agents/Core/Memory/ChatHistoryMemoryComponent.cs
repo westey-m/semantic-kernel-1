@@ -92,4 +92,9 @@ public class ChatHistoryMemoryComponent : BaseChatHistoryMemoryComponent
         Console.WriteLine("- ChatHistoryMemory - Saving summary of this conversation"
             + $"\n    {summary}");
     }
+
+    public void ClearChatHistory()
+    {
+        this._chatHistory.Clear();
+    }
 }

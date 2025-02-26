@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -14,36 +15,93 @@ namespace Microsoft.SemanticKernel.Agents.Memory;
 public class ChatCompletionAgentWithMemory : AgentWithMemory
 {
     private readonly ChatCompletionAgent _agent;
+    private readonly ChatHistoryMemoryComponent _chatHistoryMemoryComponent;
     private readonly ChatHistoryMemoryManager _memoryManager;
     private readonly bool _loadContextOnFirstMessage;
+    private readonly bool _startNewThreadOnFirstMessage;
     private bool _isFirstMessage = true;
+    private bool _threadActive = false;
 
     public ChatCompletionAgentWithMemory(
         ChatCompletionAgent agent,
-        ChatHistoryMemoryManager memoryManager,
-        bool loadContextOnFirstMessage = true)
+        Kernel? chatHistoryMemoryComponentKernel = default,
+        IEnumerable<MemoryComponent>? memoryComponents = default,
+        bool loadContextOnFirstMessage = true,
+        bool startNewThreadOnFirstMessage = true)
     {
         this._agent = agent;
-        this._memoryManager = memoryManager;
+        this._chatHistoryMemoryComponent = new ChatHistoryMemoryComponent(chatHistoryMemoryComponentKernel ?? agent.Kernel);
+        this._memoryManager = new ChatHistoryMemoryManager(this._chatHistoryMemoryComponent);
         this._loadContextOnFirstMessage = loadContextOnFirstMessage;
+        this._startNewThreadOnFirstMessage = startNewThreadOnFirstMessage;
+
+        foreach (var memoryComponent in memoryComponents)
+        {
+            this.MemoryManager.RegisterMemoryComponent(memoryComponent);
+        }
     }
 
     public ChatCompletionAgentWithMemory(
         ChatCompletionAgent agent,
         ChatHistoryMemoryComponent chatHistoryMemoryComponent,
-        bool loadContextOnFirstMessage = true)
+        IEnumerable<MemoryComponent>? memoryComponents = default,
+        bool loadContextOnFirstMessage = true,
+        bool startNewThreadOnFirstMessage = true)
     {
         this._agent = agent;
+        this._chatHistoryMemoryComponent = chatHistoryMemoryComponent;
         this._memoryManager = new ChatHistoryMemoryManager(chatHistoryMemoryComponent);
         this._loadContextOnFirstMessage = loadContextOnFirstMessage;
+        this._startNewThreadOnFirstMessage = startNewThreadOnFirstMessage;
+
+        foreach (var memoryComponent in memoryComponents)
+        {
+            this.MemoryManager.RegisterMemoryComponent(memoryComponent);
+        }
     }
 
     public override MemoryManager MemoryManager => this._memoryManager;
+
+    public override bool HasActiveThread => this._threadActive;
+
+    public override Task StartNewThreadAsync(CancellationToken cancellationToken = default)
+    {
+        if (this._threadActive)
+        {
+            throw new InvalidOperationException("Thread already active.");
+        }
+
+        this._threadActive = true;
+
+        return Task.CompletedTask;
+    }
+
+    public override async Task EndThreadAsync(CancellationToken cancellationToken = default)
+    {
+        if (!this._threadActive)
+        {
+            throw new InvalidOperationException("No thread active.");
+        }
+
+        await this._memoryManager.SaveContextAsync(cancellationToken).ConfigureAwait(false);
+        this._chatHistoryMemoryComponent.ClearChatHistory();
+        this._threadActive = false;
+    }
 
     public override async IAsyncEnumerable<ChatMessageContent> InvokeAsync(
         ChatMessageContent chatMessageContent,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        if (!this._threadActive)
+        {
+            if (!this._startNewThreadOnFirstMessage)
+            {
+                throw new InvalidOperationException("No thread active.");
+            }
+
+            await this.StartNewThreadAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         if (this._isFirstMessage && this._loadContextOnFirstMessage)
         {
             await this._memoryManager.LoadContextAsync(chatMessageContent.Content ?? string.Empty, cancellationToken).ConfigureAwait(false);
