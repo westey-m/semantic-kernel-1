@@ -134,7 +134,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         chat.Add(newMessage);
 
         await memoryManager.MaintainContextAsync(newMessage);
-        var memories = await memoryManager.GetRenderedContextAsync();
+        var memories = await memoryManager.GetFormattedContextAsync();
 
         // Generate the agent response(s)
         Console.WriteLine("# Agent response(s):");
@@ -174,7 +174,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         chat.Add(newMessage1);
 
         await memoryManager.MaintainContextAsync(newMessage1);
-        var memories = await memoryManager.GetRenderedContextAsync();
+        var memories = await memoryManager.GetFormattedContextAsync();
 
         // Generate the agent response(s)
         Console.WriteLine("# Agent response(s):");
@@ -188,7 +188,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         chat.Add(newMessage2);
 
         await memoryManager.MaintainContextAsync(newMessage2);
-        memories = await memoryManager.GetRenderedContextAsync();
+        memories = await memoryManager.GetFormattedContextAsync();
 
         // Generate the agent response(s)
         Console.WriteLine("# Agent response(s):");
@@ -245,17 +245,17 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         var kernel = CreateKernelWithMemorySupport();
 
         Console.WriteLine("------------ Session one --------------");
-        var agentWithMemory = CreateAssistant().WithMemory(kernel, [new UserPreferencesMemoryComponent(kernel)]);
+        var agentWithMemory = CreateAgent().WithMemory(memoryComponents: [new UserPreferencesMemoryComponent(kernel)]);
         (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Hi, my name is Caoimhe")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
         (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "I love history, please tell me a historical fact")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
         await agentWithMemory.EndThreadAsync();
 
         Console.WriteLine("------------ Session two --------------");
-        var agentWithMemory2 = CreateAssistant().WithMemory(kernel, [new UserPreferencesMemoryComponent(kernel)]);
+        var agentWithMemory2 = CreateAgent().WithMemory(memoryComponents: [new UserPreferencesMemoryComponent(kernel)]);
         (await agentWithMemory2.CompleteAsync(new ChatMessageContent(AuthorRole.User, "What do you know about me?")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
         await agentWithMemory2.EndThreadAsync();
 
-        ChatCompletionAgent CreateAssistant()
+        ChatCompletionAgent CreateAgent()
         {
             return new()
             {
@@ -437,7 +437,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
     private async Task InvokeAgentAsync(ChatCompletionAgent agent, ChatHistoryMemoryManager memoryManager, string userMessage)
     {
         await memoryManager.MaintainContextAsync(new ChatMessageContent(AuthorRole.User, userMessage));
-        var memoryContext = await memoryManager.GetRenderedContextAsync();
+        var memoryContext = await memoryManager.GetFormattedContextAsync();
 
         var overrideKernel = agent.Kernel.Clone();
         memoryManager.RegisterPlugins(overrideKernel);

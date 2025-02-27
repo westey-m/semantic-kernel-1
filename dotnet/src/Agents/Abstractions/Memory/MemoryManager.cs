@@ -30,22 +30,13 @@ public class MemoryManager
 
     public virtual async Task MaintainContextAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
     {
-        var renderedContext = string.Empty;
-        foreach (var memoryComponent in this.MemoryComponents)
-        {
-            await memoryComponent.MaintainContextAsync(newMessage, cancellationToken).ConfigureAwait(false);
-        }
+        await Task.WhenAll(this.MemoryComponents.Select(x => x.MaintainContextAsync(newMessage, cancellationToken)).ToList()).ConfigureAwait(false);
     }
 
-    public virtual async Task<string> GetRenderedContextAsync(CancellationToken cancellationToken = default)
+    public virtual async Task<string> GetFormattedContextAsync(CancellationToken cancellationToken = default)
     {
-        var renderedContext = string.Empty;
-        foreach (var memoryComponent in this.MemoryComponents)
-        {
-            renderedContext += await memoryComponent.GetFormattedContextAsync(cancellationToken).ConfigureAwait(false) + "\n";
-        }
-
-        return renderedContext;
+        var subContexts = await Task.WhenAll(this.MemoryComponents.Select(x => x.GetFormattedContextAsync(cancellationToken)).ToList()).ConfigureAwait(false);
+        return string.Join("\n", subContexts);
     }
 
     /// <summary>

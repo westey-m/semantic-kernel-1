@@ -73,7 +73,7 @@ public class OpenAIAssistantAgentWithMemory : AgentWithMemory
         }
 
         await this._memoryManager.MaintainContextAsync(chatMessageContent, cancellationToken).ConfigureAwait(false);
-        var memoryContext = await this._memoryManager.GetRenderedContextAsync(cancellationToken).ConfigureAwait(false);
+        var memoryContext = await this._memoryManager.GetFormattedContextAsync(cancellationToken).ConfigureAwait(false);
 
         //await this._agent.AddChatMessageAsync(this._memoryManager.ThreadId, chatMessageContent, cancellationToken).ConfigureAwait(false);
 

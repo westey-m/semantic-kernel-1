@@ -123,7 +123,7 @@ public class UserPreferencesMemoryComponent : MemoryComponent
     /// <inheritdoc/>
     public override Task<string> GetFormattedContextAsync(CancellationToken cancellationToken = default)
     {
-        return Task.FromResult("The following list contains facts about hte user:\n" + this._userPreferences);
+        return Task.FromResult("The following list contains facts about the user:\n" + this._userPreferences);
     }
 
     public override void RegisterPlugins(Kernel kernel)
