@@ -35,7 +35,9 @@ public class ChatHistoryMemoryComponent : BaseChatHistoryMemoryComponent
     /// </summary>
     public string SaveSummaryPromptTemplate { get; init; } =
         """
-        Please summarise the following conversation in a single paragraph:
+        Please summarise the following conversation in a single paragraph. Focus on decisions and outcomes, not on details.
+
+        Conversation:
         {{$conversation}}
         """;
 

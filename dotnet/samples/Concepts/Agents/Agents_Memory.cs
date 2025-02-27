@@ -11,6 +11,7 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using OpenAI.Assistants;
 
 namespace Agents;
+
 /// <summary>
 /// Demonstrate that two different agent types are able to participate in the same conversation.
 /// In this case a <see cref="ChatCompletionAgent"/> and <see cref="OpenAIAssistantAgent"/> participate.
@@ -351,7 +352,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             agentWithMemory = agent.WithMemory([new UserPreferencesMemoryComponent(kernel)]);
 
             (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "What do you know about me?")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
-            (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Please clear any user preferences you have for me.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
+            (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Please clear my user preferences.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
 
             await agentWithMemory.EndThreadAsync();
         }
@@ -362,7 +363,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
     }
 
     [Fact]
-    public async Task FinancialReportWithMemoryAgentAsync()
+    public async Task FinancialReportWithChatCompletionAgentAsync()
     {
         var kernel = CreateKernelWithMemorySupport();
 
@@ -404,7 +405,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         agentWithMemory = agent.WithMemory(kernel, [new UserPreferencesMemoryComponent(kernel)]);
 
         (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "What do you know about me?")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
-        (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Please clear any user preferences you have for me.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
+        (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Please clear my user preferences.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
 
         await agentWithMemory.EndThreadAsync();
     }
@@ -460,7 +461,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         await memoryManager3.LoadContextAsync(userMessage3);
         await this.InvokeAgentAsync(agent, memoryManager3, userMessage3);
 
-        await this.InvokeAgentAsync(agent, memoryManager3, "Please forget what you know about me.");
+        await this.InvokeAgentAsync(agent, memoryManager3, "Please clear my user preferences.");
 
         await memoryManager3.SaveContextAsync();
     }
