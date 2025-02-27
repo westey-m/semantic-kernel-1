@@ -10,7 +10,7 @@ public abstract class AgentWithMemory
 {
     public abstract MemoryManager MemoryManager { get; }
 
-    public abstract IAsyncEnumerable<ChatMessageContent> InvokeAsync(
+    public abstract IAsyncEnumerable<ChatMessageContent> CompleteAsync(
         ChatMessageContent chatMessageContent,
         CancellationToken cancellationToken = default);
 

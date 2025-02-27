@@ -52,7 +52,7 @@ public class OpenAIAssistantAgentWithMemory : AgentWithMemory
         await this._openAIAssistantThreadMemoryComponent.EndThreadAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    public override async IAsyncEnumerable<ChatMessageContent> InvokeAsync(
+    public override async IAsyncEnumerable<ChatMessageContent> CompleteAsync(
         ChatMessageContent chatMessageContent,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
