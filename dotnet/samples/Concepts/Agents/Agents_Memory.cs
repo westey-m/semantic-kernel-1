@@ -1,15 +1,13 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 using System.ClientModel;
 using Azure.Identity;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
+using Microsoft.SemanticKernel.Agents.AzureAI;
 using Microsoft.SemanticKernel.Agents.Chat;
 using Microsoft.SemanticKernel.Agents.Memory;
 using Microsoft.SemanticKernel.Agents.OpenAI;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.InMemory;
-using Microsoft.SemanticKernel.Embeddings;
 using OpenAI.Assistants;
 
 namespace Agents;
@@ -112,7 +110,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         // Create a ChatHistory object to maintain the conversation state.
         ChatHistory chat = [];
 
-        var userMessage = "My name is John. I live in Madrid. I like rain and the seaside.";
+        var userMessage = "My name is Eoin. I live in Madrid. I like rain and the seaside.";
 
         var kernel = CreateKernelWithMemorySupport();
 
@@ -152,7 +150,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         // Create a ChatHistory object to maintain the conversation state.
         ChatHistory chat = [];
 
-        var userMessage = "My name is John. I live in Madrid. I like rain and the seaside.";
+        var userMessage = "My name is Eoin. I live in Madrid. I like rain and the seaside.";
 
         var kernel = CreateKernelWithMemorySupport();
 
@@ -219,7 +217,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
 
         await memoryManager.MaintainContextAsync(new ChatMessageContent(AuthorRole.Assistant, "How can I help you?") { Source = "MyAgent" });
 
-        var userMessage = "My name is John. I live in Madrid. I like rain and the seaside.";
+        var userMessage = "My name is Eoin. I live in Madrid. I like rain and the seaside.";
         await memoryManager.LoadContextAsync(userMessage);
         await memoryManager.MaintainContextAsync(new ChatMessageContent(AuthorRole.User, userMessage));
         await memoryManager.MaintainContextAsync(new ChatMessageContent(AuthorRole.User, "This chat is very dreary."));
@@ -240,7 +238,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
     }
 
     [Fact]
-    public async Task MinimalAgentWithMemorySampleAsync()
+    public async Task MinimalChatCompletionAgentWithMemorySampleAsync()
     {
         var kernel = CreateKernelWithMemorySupport();
 
@@ -263,6 +261,39 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
                 Name = "FriendlyAssistant",
                 Kernel = kernel,
             };
+        }
+    }
+
+    [Fact]
+    public async Task MinimalAzureAIAgentWithMemorySampleAsync()
+    {
+        var kernel = CreateKernelWithMemorySupport();
+
+        var azureAIClient = AzureAIAgent.CreateAzureAIClient(TestConfiguration.AzureAI.ConnectionString, new AzureCliCredential());
+        var azureAIAgentsClient = azureAIClient.GetAgentsClient();
+        var createAgentResponse = await azureAIAgentsClient.CreateAgentAsync("gpt-4o", "FriendlyAssistant", "FriendlyAssistant", "You are a friendly assistant");
+
+        try
+        {
+            Console.WriteLine("------------ Session one --------------");
+            var agentWithMemory = (await CreateAgent()).WithMemory(memoryComponents: [new UserPreferencesMemoryComponent(kernel)]);
+            (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Hi, my name is Caoimhe")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
+            (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "I love history, please tell me a historical fact")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
+            await agentWithMemory.EndThreadAsync();
+
+            Console.WriteLine("------------ Session two --------------");
+            var agentWithMemory2 = (await CreateAgent()).WithMemory(memoryComponents: [new UserPreferencesMemoryComponent(kernel)]);
+            (await agentWithMemory2.CompleteAsync(new ChatMessageContent(AuthorRole.User, "What do you know about me?")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
+            await agentWithMemory2.EndThreadAsync();
+        }
+        finally
+        {
+            await azureAIAgentsClient.DeleteAgentAsync(createAgentResponse.Value.Id);
+        }
+
+        async Task<AzureAIAgent> CreateAgent()
+        {
+            return new(createAgentResponse.Value, azureAIAgentsClient) { Kernel = kernel };
         }
     }
 

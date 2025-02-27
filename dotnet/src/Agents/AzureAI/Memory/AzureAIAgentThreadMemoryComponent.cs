@@ -1,0 +1,71 @@
+﻿// Copyright (c) Microsoft. All rights reserved.
+
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Azure.AI.Projects;
+using Microsoft.SemanticKernel.Agents.AzureAI.Internal;
+using Microsoft.SemanticKernel.Agents.Memory;
+
+namespace Microsoft.SemanticKernel.Agents.AzureAI;
+
+public class AzureAIAgentThreadMemoryComponent : MemoryComponent
+{
+    private bool _threadActive = false;
+    private string _threadId = string.Empty;
+    private readonly AgentsClient _client;
+
+    public AzureAIAgentThreadMemoryComponent(AgentsClient client)
+    {
+        this._client = client;
+    }
+
+    public string ThreadId => this._threadId;
+
+    public bool HasActiveThread => this._threadActive;
+
+    public async Task StartNewThreadAsync(CancellationToken cancellationToken = default)
+    {
+        if (this._threadActive)
+        {
+            throw new InvalidOperationException("Thread already active.");
+        }
+
+        var assitantThreadResponse = await this._client.CreateThreadAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        this._threadId = assitantThreadResponse.Value.Id;
+        this._threadActive = true;
+    }
+
+    public async Task EndThreadAsync(CancellationToken cancellationToken = default)
+    {
+        if (!this._threadActive)
+        {
+            throw new InvalidOperationException("No thread active.");
+        }
+
+        await this._client.DeleteThreadAsync(this._threadId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public override async Task LoadContextAsync(string? inputText = null, CancellationToken cancellationToken = default)
+    {
+    }
+
+    public override async Task MaintainContextAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
+    {
+        if (!this._threadActive)
+        {
+            throw new InvalidOperationException("No thread active.");
+        }
+
+        await AgentThreadActions.CreateMessageAsync(this._client, this._threadId, newMessage, cancellationToken).ConfigureAwait(false);
+    }
+
+    public override async Task SaveContextAsync(CancellationToken cancellationToken = default)
+    {
+    }
+
+    public override Task<string> GetFormattedContextAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(string.Empty);
+    }
+}

@@ -7,28 +7,27 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Agents.Memory;
 using Microsoft.SemanticKernel.ChatCompletion;
-using OpenAI.Assistants;
 
-namespace Microsoft.SemanticKernel.Agents.OpenAI;
+namespace Microsoft.SemanticKernel.Agents.AzureAI;
 
-public class OpenAIAssistantAgentWithMemory : AgentWithMemory
+public class AzureAIAgentWithMemory : AgentWithMemory
 {
-    private readonly OpenAIAssistantAgent _agent;
-    private readonly OpenAIAssistantThreadMemoryComponent _openAIAssistantThreadMemoryComponent;
-    private readonly OpenAIAssistantMemoryManager _memoryManager;
+    private readonly AzureAIAgent _agent;
+    private readonly AzureAIAgentThreadMemoryComponent _openAIAssistantThreadMemoryComponent;
+    private readonly AzureAIAgentMemoryManager _memoryManager;
     private readonly bool _loadContextOnFirstMessage;
     private readonly bool _startNewThreadOnFirstMessage;
     private bool _isFirstMessage = true;
 
-    public OpenAIAssistantAgentWithMemory(
-        OpenAIAssistantAgent agent,
+    public AzureAIAgentWithMemory(
+        AzureAIAgent agent,
         IEnumerable<MemoryComponent>? memoryComponents = default,
         bool loadContextOnFirstMessage = true,
         bool startNewThreadOnFirstMessage = true)
     {
         this._agent = agent;
-        this._openAIAssistantThreadMemoryComponent = new OpenAIAssistantThreadMemoryComponent(agent.Client);
-        this._memoryManager = new OpenAIAssistantMemoryManager(this._openAIAssistantThreadMemoryComponent);
+        this._openAIAssistantThreadMemoryComponent = new AzureAIAgentThreadMemoryComponent(agent.Client);
+        this._memoryManager = new AzureAIAgentMemoryManager(this._openAIAssistantThreadMemoryComponent);
         this._loadContextOnFirstMessage = loadContextOnFirstMessage;
         this._startNewThreadOnFirstMessage = startNewThreadOnFirstMessage;
 
@@ -75,14 +74,12 @@ public class OpenAIAssistantAgentWithMemory : AgentWithMemory
         await this._memoryManager.MaintainContextAsync(chatMessageContent, cancellationToken).ConfigureAwait(false);
         var memoryContext = await this._memoryManager.GetFormattedContextAsync(cancellationToken).ConfigureAwait(false);
 
-        //await this._agent.AddChatMessageAsync(this._memoryManager.ThreadId, chatMessageContent, cancellationToken).ConfigureAwait(false);
-
         var overrideKernel = this._agent.Kernel.Clone();
         this.MemoryManager.RegisterPlugins(overrideKernel);
 
         await foreach (ChatMessageContent response in this._agent.InvokeAsync(
             this._memoryManager.ThreadId,
-            new RunCreationOptions { AdditionalInstructions = memoryContext },
+            new AzureAIInvocationOptions { AdditionalInstructions = memoryContext },
             new KernelArguments(new PromptExecutionSettings { FunctionChoiceBehavior = FunctionChoiceBehavior.Auto() }),
             overrideKernel,
             cancellationToken).ConfigureAwait(false))
