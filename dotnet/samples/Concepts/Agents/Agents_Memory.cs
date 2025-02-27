@@ -240,6 +240,33 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
     }
 
     [Fact]
+    public async Task MinimalAgentWithMemorySampleAsync()
+    {
+        var kernel = CreateKernelWithMemorySupport();
+
+        Console.WriteLine("------------ Session one --------------");
+        var agentWithMemory = CreateAssistant().WithMemory(kernel, [new UserPreferencesMemoryComponent(kernel)]);
+        (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Hi, my name is Caoimhe")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
+        (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "I love history, please tell me a historical fact")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
+        await agentWithMemory.EndThreadAsync();
+
+        Console.WriteLine("------------ Session two --------------");
+        var agentWithMemory2 = CreateAssistant().WithMemory(kernel, [new UserPreferencesMemoryComponent(kernel)]);
+        (await agentWithMemory2.CompleteAsync(new ChatMessageContent(AuthorRole.User, "What do you know about me?")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
+        await agentWithMemory2.EndThreadAsync();
+
+        ChatCompletionAgent CreateAssistant()
+        {
+            return new()
+            {
+                Instructions = "You are a friendly assistant",
+                Name = "FriendlyAssistant",
+                Kernel = kernel,
+            };
+        }
+    }
+
+    [Fact]
     public async Task FinancialReportWithMemoryAssistantAgentAsync()
     {
         var kernel = CreateKernelWithMemorySupport();
@@ -462,28 +489,13 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             TestConfiguration.AzureOpenAIEmbeddings.DeploymentName,
             TestConfiguration.AzureOpenAIEmbeddings.Endpoint,
             new AzureCliCredential());
-        builder.Services.AddKeyedSingleton<MemoryDocumentStore>(
-            "UserPreferencesStore",
-            (sp, _) =>
-            {
-                return new VectorDataMemoryDocumentStore<string>(
-                    new InMemoryVectorStore(),
-                    sp.GetRequiredService<ITextEmbeddingGenerationService>(),
-                    "UserPreferences",
-                    "userid/12345",
-                    1536);
-            });
-        builder.Services.AddKeyedSingleton<MemoryDocumentStore>(
-            "ChatHistoryStore",
-            (sp, _) =>
-            {
-                return new VectorDataMemoryDocumentStore<string>(
-                    new InMemoryVectorStore(),
-                    sp.GetRequiredService<ITextEmbeddingGenerationService>(),
-                    "ChatHistory",
-                    "userid/12345",
-                    1536);
-            });
+        builder.Services.AddInMemoryVectorStore();
+        builder.Services.AddTransientUserPreferencesMemoryDocumentStore(
+            1536,
+            "userid/12345");
+        builder.Services.AddTransientChatHistoryMemoryDocumentStore(
+            1536,
+            "userid/12345");
 
         return builder.Build();
     }
