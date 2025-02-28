@@ -14,5 +14,5 @@ public class OpenAIAssistantMemoryManager : MemoryManager
         this._openAIAssistantThreadMemoryComponent = openAIAssistantThreadMemoryComponent;
     }
 
-    public string ThreadId => this._openAIAssistantThreadMemoryComponent.ThreadId;
+    public string? CurrentThreadId => this._openAIAssistantThreadMemoryComponent.CurrentThreadId;
 }

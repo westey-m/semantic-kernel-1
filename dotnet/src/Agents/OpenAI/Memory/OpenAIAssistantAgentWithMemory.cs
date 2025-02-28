@@ -32,26 +32,39 @@ public class OpenAIAssistantAgentWithMemory : AgentWithMemory
         this._loadContextOnFirstMessage = loadContextOnFirstMessage;
         this._startNewThreadOnFirstMessage = startNewThreadOnFirstMessage;
 
-        foreach (var memoryComponent in memoryComponents)
+
+        if (memoryComponents != null)
         {
-            this.MemoryManager.RegisterMemoryComponent(memoryComponent);
+            foreach (var memoryComponent in memoryComponents)
+            {
+                this.MemoryManager.RegisterMemoryComponent(memoryComponent);
+            }
         }
     }
 
+    /// <inheritdoc/>
     public override MemoryManager MemoryManager => this._memoryManager;
 
+    /// <inheritdoc/>
     public override bool HasActiveThread => this._openAIAssistantThreadMemoryComponent.HasActiveThread;
 
+    /// <inheritdoc/>
+    public override string? CurrentThreadId => this._openAIAssistantThreadMemoryComponent.CurrentThreadId;
+
+    /// <inheritdoc/>
     public override Task<string> StartNewThreadAsync(CancellationToken cancellationToken = default)
     {
         return this._openAIAssistantThreadMemoryComponent.StartNewThreadAsync(cancellationToken);
     }
+
+    /// <inheritdoc/>
     public override async Task EndThreadAsync(CancellationToken cancellationToken = default)
     {
         await this._memoryManager.SaveContextAsync(cancellationToken).ConfigureAwait(false);
         await this._openAIAssistantThreadMemoryComponent.EndThreadAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    /// <inheritdoc/>
     public override async IAsyncEnumerable<ChatMessageContent> CompleteAsync(
         ChatMessageContent chatMessageContent,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -79,7 +92,7 @@ public class OpenAIAssistantAgentWithMemory : AgentWithMemory
         this.MemoryManager.RegisterPlugins(overrideKernel);
 
         await foreach (ChatMessageContent response in this._agent.InvokeAsync(
-            this._memoryManager.ThreadId,
+            this._memoryManager.CurrentThreadId!,
             new RunCreationOptions { AdditionalInstructions = memoryContext },
             new KernelArguments(new PromptExecutionSettings { FunctionChoiceBehavior = FunctionChoiceBehavior.Auto() }),
             overrideKernel,

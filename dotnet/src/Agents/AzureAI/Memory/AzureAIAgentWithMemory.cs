@@ -13,7 +13,7 @@ namespace Microsoft.SemanticKernel.Agents.AzureAI;
 public class AzureAIAgentWithMemory : AgentWithMemory
 {
     private readonly AzureAIAgent _agent;
-    private readonly AzureAIAgentThreadMemoryComponent _openAIAssistantThreadMemoryComponent;
+    private readonly AzureAIAgentThreadMemoryComponent _azureAIAssistantThreadMemoryComponent;
     private readonly AzureAIAgentMemoryManager _memoryManager;
     private readonly bool _loadContextOnFirstMessage;
     private readonly bool _startNewThreadOnFirstMessage;
@@ -26,31 +26,43 @@ public class AzureAIAgentWithMemory : AgentWithMemory
         bool startNewThreadOnFirstMessage = true)
     {
         this._agent = agent;
-        this._openAIAssistantThreadMemoryComponent = new AzureAIAgentThreadMemoryComponent(agent.Client);
-        this._memoryManager = new AzureAIAgentMemoryManager(this._openAIAssistantThreadMemoryComponent);
+        this._azureAIAssistantThreadMemoryComponent = new AzureAIAgentThreadMemoryComponent(agent.Client);
+        this._memoryManager = new AzureAIAgentMemoryManager(this._azureAIAssistantThreadMemoryComponent);
         this._loadContextOnFirstMessage = loadContextOnFirstMessage;
         this._startNewThreadOnFirstMessage = startNewThreadOnFirstMessage;
 
-        foreach (var memoryComponent in memoryComponents)
+        if (memoryComponents != null)
         {
-            this.MemoryManager.RegisterMemoryComponent(memoryComponent);
+            foreach (var memoryComponent in memoryComponents)
+            {
+                this.MemoryManager.RegisterMemoryComponent(memoryComponent);
+            }
         }
     }
 
+    /// <inheritdoc />
     public override MemoryManager MemoryManager => this._memoryManager;
 
-    public override bool HasActiveThread => this._openAIAssistantThreadMemoryComponent.HasActiveThread;
+    /// <inheritdoc />
+    public override bool HasActiveThread => this._azureAIAssistantThreadMemoryComponent.HasActiveThread;
 
+    /// <inheritdoc/>
+    public override string? CurrentThreadId => this._azureAIAssistantThreadMemoryComponent.CurrentThreadId;
+
+    /// <inheritdoc />
     public override Task<string> StartNewThreadAsync(CancellationToken cancellationToken = default)
     {
-        return this._openAIAssistantThreadMemoryComponent.StartNewThreadAsync(cancellationToken);
+        return this._azureAIAssistantThreadMemoryComponent.StartNewThreadAsync(cancellationToken);
     }
+
+    /// <inheritdoc />
     public override async Task EndThreadAsync(CancellationToken cancellationToken = default)
     {
         await this._memoryManager.SaveContextAsync(cancellationToken).ConfigureAwait(false);
-        await this._openAIAssistantThreadMemoryComponent.EndThreadAsync(cancellationToken).ConfigureAwait(false);
+        await this._azureAIAssistantThreadMemoryComponent.EndThreadAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    /// <inheritdoc />
     public override async IAsyncEnumerable<ChatMessageContent> CompleteAsync(
         ChatMessageContent chatMessageContent,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -78,7 +90,7 @@ public class AzureAIAgentWithMemory : AgentWithMemory
         this.MemoryManager.RegisterPlugins(overrideKernel);
 
         await foreach (ChatMessageContent response in this._agent.InvokeAsync(
-            this._memoryManager.ThreadId,
+            this._memoryManager.CurrentThreadId!,
             new AzureAIInvocationOptions { AdditionalInstructions = memoryContext },
             new KernelArguments(new PromptExecutionSettings { FunctionChoiceBehavior = FunctionChoiceBehavior.Auto() }),
             overrideKernel,

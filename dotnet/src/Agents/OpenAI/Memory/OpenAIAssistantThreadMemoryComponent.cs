@@ -12,7 +12,7 @@ namespace Microsoft.SemanticKernel.Agents.OpenAI;
 public class OpenAIAssistantThreadMemoryComponent : ThreadManagementMemoryComponent
 {
     private bool _threadActive = false;
-    private string _threadId = string.Empty;
+    private string? _threadId = null;
     private readonly AssistantClient _client;
 
     public OpenAIAssistantThreadMemoryComponent(AssistantClient client)
@@ -20,10 +20,13 @@ public class OpenAIAssistantThreadMemoryComponent : ThreadManagementMemoryCompon
         this._client = client;
     }
 
-    public string ThreadId => this._threadId;
-
+    /// <inheritdoc />
     public override bool HasActiveThread => this._threadActive;
 
+    /// <inheritdoc />
+    public override string? CurrentThreadId => this._threadId;
+
+    /// <inheritdoc />
     public override async Task<string> StartNewThreadAsync(CancellationToken cancellationToken = default)
     {
         if (this._threadActive)
@@ -38,6 +41,7 @@ public class OpenAIAssistantThreadMemoryComponent : ThreadManagementMemoryCompon
         return assitantThreadResponse.Value.Id;
     }
 
+    /// <inheritdoc />
     public override async Task EndThreadAsync(CancellationToken cancellationToken = default)
     {
         if (!this._threadActive)
@@ -46,12 +50,11 @@ public class OpenAIAssistantThreadMemoryComponent : ThreadManagementMemoryCompon
         }
 
         await this._client.DeleteThreadAsync(this._threadId, cancellationToken).ConfigureAwait(false);
+        this._threadId = null;
+        this._threadActive = false;
     }
 
-    public override async Task LoadContextAsync(string? inputText = null, CancellationToken cancellationToken = default)
-    {
-    }
-
+    /// <inheritdoc />
     public override async Task MaintainContextAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
     {
         if (!this._threadActive)
@@ -66,10 +69,7 @@ public class OpenAIAssistantThreadMemoryComponent : ThreadManagementMemoryCompon
         }
     }
 
-    public override async Task SaveContextAsync(CancellationToken cancellationToken = default)
-    {
-    }
-
+    /// <inheritdoc />
     public override Task<string> GetFormattedContextAsync(CancellationToken cancellationToken = default)
     {
         return Task.FromResult(string.Empty);

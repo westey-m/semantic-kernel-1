@@ -14,5 +14,5 @@ public class AzureAIAgentMemoryManager : MemoryManager
         this._azureAIAgentThreadMemoryComponent = azureAIAgentThreadMemoryComponent;
     }
 
-    public string ThreadId => this._azureAIAgentThreadMemoryComponent.ThreadId;
+    public string? CurrentThreadId => this._azureAIAgentThreadMemoryComponent.CurrentThreadId;
 }

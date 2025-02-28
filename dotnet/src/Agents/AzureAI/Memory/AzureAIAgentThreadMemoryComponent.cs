@@ -12,7 +12,7 @@ namespace Microsoft.SemanticKernel.Agents.AzureAI;
 public class AzureAIAgentThreadMemoryComponent : ThreadManagementMemoryComponent
 {
     private bool _threadActive = false;
-    private string _threadId = string.Empty;
+    private string? _threadId = null;
     private readonly AgentsClient _client;
 
     public AzureAIAgentThreadMemoryComponent(AgentsClient client)
@@ -20,10 +20,13 @@ public class AzureAIAgentThreadMemoryComponent : ThreadManagementMemoryComponent
         this._client = client;
     }
 
-    public string ThreadId => this._threadId;
-
+    /// <inheritdoc />
     public override bool HasActiveThread => this._threadActive;
 
+    /// <inheritdoc />
+    public override string? CurrentThreadId => this._threadId;
+
+    /// <inheritdoc />
     public override async Task<string> StartNewThreadAsync(CancellationToken cancellationToken = default)
     {
         if (this._threadActive)
@@ -38,6 +41,7 @@ public class AzureAIAgentThreadMemoryComponent : ThreadManagementMemoryComponent
         return assitantThreadResponse.Value.Id;
     }
 
+    /// <inheritdoc />
     public override async Task EndThreadAsync(CancellationToken cancellationToken = default)
     {
         if (!this._threadActive)
@@ -46,12 +50,11 @@ public class AzureAIAgentThreadMemoryComponent : ThreadManagementMemoryComponent
         }
 
         await this._client.DeleteThreadAsync(this._threadId, cancellationToken).ConfigureAwait(false);
+        this._threadActive = false;
+        this._threadId = null;
     }
 
-    public override async Task LoadContextAsync(string? inputText = null, CancellationToken cancellationToken = default)
-    {
-    }
-
+    /// <inheritdoc />
     public override async Task MaintainContextAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
     {
         if (!this._threadActive)
@@ -66,10 +69,7 @@ public class AzureAIAgentThreadMemoryComponent : ThreadManagementMemoryComponent
         }
     }
 
-    public override async Task SaveContextAsync(CancellationToken cancellationToken = default)
-    {
-    }
-
+    /// <inheritdoc />
     public override Task<string> GetFormattedContextAsync(CancellationToken cancellationToken = default)
     {
         return Task.FromResult(string.Empty);

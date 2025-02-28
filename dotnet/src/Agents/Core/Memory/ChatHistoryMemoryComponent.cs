@@ -14,7 +14,7 @@ public class ChatHistoryMemoryComponent : BaseChatHistoryMemoryComponent
     private readonly MemoryDocumentStore _memoryDocumentStore;
     private readonly ChatHistory _chatHistory = new();
     private bool _threadActive = false;
-    private string _threadId;
+    private string? _threadId;
 
     public ChatHistoryMemoryComponent(Kernel kernel, string? userPreferencesStoreName = "ChatHistoryStore")
     {
@@ -34,6 +34,9 @@ public class ChatHistoryMemoryComponent : BaseChatHistoryMemoryComponent
 
     /// <inheritdoc/>
     public override bool HasActiveThread => this._threadActive;
+
+    /// <inheritdoc/>
+    public override string? CurrentThreadId => this._threadId;
 
     /// <summary>
     /// Gets or sets the prompt template to use when generating a summary of the conversation to save to memory at the end of the conversation.
@@ -125,6 +128,7 @@ public class ChatHistoryMemoryComponent : BaseChatHistoryMemoryComponent
         }
 
         this._chatHistory.Clear();
+        this._threadId = null;
         this._threadActive = false;
     }
 }

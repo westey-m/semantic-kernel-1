@@ -34,9 +34,12 @@ public class ChatCompletionAgentWithMemory : AgentWithMemory
         this._loadContextOnFirstMessage = loadContextOnFirstMessage;
         this._startNewThreadOnFirstMessage = startNewThreadOnFirstMessage;
 
-        foreach (var memoryComponent in memoryComponents)
+        if (memoryComponents != null)
         {
-            this.MemoryManager.RegisterMemoryComponent(memoryComponent);
+            foreach (var memoryComponent in memoryComponents)
+            {
+                this.MemoryManager.RegisterMemoryComponent(memoryComponent);
+            }
         }
     }
 
@@ -53,21 +56,31 @@ public class ChatCompletionAgentWithMemory : AgentWithMemory
         this._loadContextOnFirstMessage = loadContextOnFirstMessage;
         this._startNewThreadOnFirstMessage = startNewThreadOnFirstMessage;
 
-        foreach (var memoryComponent in memoryComponents)
+        if (memoryComponents != null)
         {
-            this.MemoryManager.RegisterMemoryComponent(memoryComponent);
+            foreach (var memoryComponent in memoryComponents)
+            {
+                this.MemoryManager.RegisterMemoryComponent(memoryComponent);
+            }
         }
     }
 
+    /// <inheritdoc/>
     public override MemoryManager MemoryManager => this._memoryManager;
 
+    /// <inheritdoc/>
     public override bool HasActiveThread => this._chatHistoryMemoryComponent.HasActiveThread;
 
+    /// <inheritdoc/>
+    public override string? CurrentThreadId => this._chatHistoryMemoryComponent.CurrentThreadId;
+
+    /// <inheritdoc/>
     public override Task<string> StartNewThreadAsync(CancellationToken cancellationToken = default)
     {
         return this._chatHistoryMemoryComponent.StartNewThreadAsync(cancellationToken);
     }
 
+    /// <inheritdoc/>
     public override async Task EndThreadAsync(CancellationToken cancellationToken = default)
     {
         if (this._chatHistoryMemoryComponent.HasActiveThread)
@@ -78,6 +91,7 @@ public class ChatCompletionAgentWithMemory : AgentWithMemory
         await this._chatHistoryMemoryComponent.EndThreadAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    /// <inheritdoc/>
     public override async IAsyncEnumerable<ChatMessageContent> CompleteAsync(
         ChatMessageContent chatMessageContent,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)

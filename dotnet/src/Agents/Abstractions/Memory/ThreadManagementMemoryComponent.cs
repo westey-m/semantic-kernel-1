@@ -16,6 +16,11 @@ public abstract class ThreadManagementMemoryComponent : MemoryComponent
     public abstract bool HasActiveThread { get; }
 
     /// <summary>
+    /// Gets the id of the current thread.
+    /// </summary>
+    public abstract string? CurrentThreadId { get; }
+
+    /// <summary>
     /// Starts a new thread and returns the thread id.
     /// </summary>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
