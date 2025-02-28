@@ -504,8 +504,9 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         memoryManager.RegisterPlugins(overrideKernel);
 
         // Generate the agent response(s)
+        var chatHistory = await memoryManager.RetrieveCurrentChatHistoryAsync();
         await foreach (ChatMessageContent response in agent.InvokeAsync(
-            memoryManager.ChatHistory,
+            chatHistory,
             new KernelArguments(new PromptExecutionSettings { FunctionChoiceBehavior = FunctionChoiceBehavior.Auto() }),
             overrideInstructions: memoryContext,
             overrideKernel))
@@ -520,7 +521,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         }
     }
 
-    private class FinancialPlugin
+    private sealed class FinancialPlugin
     {
         [KernelFunction]
         public async Task<string> ConsolidateInvoicesAndPaymentsAsync(string company, ReportFormat outputFormat, CancellationToken cancellationToken)

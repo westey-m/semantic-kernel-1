@@ -15,7 +15,7 @@ namespace Microsoft.SemanticKernel.Agents.Memory;
 public class ChatCompletionAgentWithMemory : AgentWithMemory
 {
     private readonly ChatCompletionAgent _agent;
-    private readonly BaseChatHistoryMemoryComponent _chatHistoryMemoryComponent;
+    private readonly ThreadManagementMemoryComponent _chatHistoryMemoryComponent;
     private readonly ChatHistoryMemoryManager _memoryManager;
     private readonly bool _loadContextOnFirstMessage;
     private readonly bool _startNewThreadOnFirstMessage;
@@ -45,7 +45,7 @@ public class ChatCompletionAgentWithMemory : AgentWithMemory
 
     public ChatCompletionAgentWithMemory(
         ChatCompletionAgent agent,
-        BaseChatHistoryMemoryComponent chatHistoryMemoryComponent,
+        ThreadManagementMemoryComponent chatHistoryMemoryComponent,
         IEnumerable<MemoryComponent>? memoryComponents = default,
         bool loadContextOnFirstMessage = true,
         bool startNewThreadOnFirstMessage = true)
@@ -119,8 +119,9 @@ public class ChatCompletionAgentWithMemory : AgentWithMemory
         this.MemoryManager.RegisterPlugins(overrideKernel);
 
         // Generate the agent response(s)
+        var chatHistory = await this._memoryManager.RetrieveCurrentChatHistoryAsync(cancellationToken).ConfigureAwait(false);
         await foreach (ChatMessageContent response in this._agent.InvokeAsync(
-            this._memoryManager.ChatHistory,
+            chatHistory,
             new KernelArguments(new PromptExecutionSettings { FunctionChoiceBehavior = FunctionChoiceBehavior.Auto() }),
             overrideInstructions: memoryContext,
             overrideKernel,

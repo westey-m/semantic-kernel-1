@@ -2,6 +2,7 @@
 
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace Microsoft.SemanticKernel.Agents.Memory;
 
@@ -33,4 +34,11 @@ public abstract class ThreadManagementMemoryComponent : MemoryComponent
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>A task that completes when the thread has been ended.</returns>
     public abstract Task EndThreadAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves the current chat history.
+    /// </summary>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    /// <returns>The chat history.</returns>
+    public abstract Task<ChatHistory> RetrieveCurrentChatHistoryAsync(CancellationToken cancellationToken = default);
 }

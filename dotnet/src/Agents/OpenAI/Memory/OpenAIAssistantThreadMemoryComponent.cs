@@ -1,10 +1,12 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Agents.Memory;
 using Microsoft.SemanticKernel.Agents.OpenAI.Internal;
+using Microsoft.SemanticKernel.ChatCompletion;
 using OpenAI.Assistants;
 
 namespace Microsoft.SemanticKernel.Agents.OpenAI;
@@ -73,5 +75,16 @@ public class OpenAIAssistantThreadMemoryComponent : ThreadManagementMemoryCompon
     public override Task<string> GetFormattedContextAsync(CancellationToken cancellationToken = default)
     {
         return Task.FromResult(string.Empty);
+    }
+
+    /// <inheritdoc />
+    public override async Task<ChatHistory> RetrieveCurrentChatHistoryAsync(CancellationToken cancellationToken = default)
+    {
+        if (!this._threadActive)
+        {
+            throw new InvalidOperationException("No thread active.");
+        }
+
+        return new ChatHistory(await AssistantThreadActions.GetMessagesAsync(this._client, this._threadId!, cancellationToken).ToListAsync(cancellationToken).ConfigureAwait(false));
     }
 }

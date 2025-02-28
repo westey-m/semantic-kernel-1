@@ -8,7 +8,7 @@ using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace Microsoft.SemanticKernel.Agents.Memory;
 
-public class ChatHistoryMemoryComponent : BaseChatHistoryMemoryComponent
+public class ChatHistoryMemoryComponent : ThreadManagementMemoryComponent
 {
     private readonly Kernel _kernel;
     private readonly MemoryDocumentStore _memoryDocumentStore;
@@ -26,11 +26,6 @@ public class ChatHistoryMemoryComponent : BaseChatHistoryMemoryComponent
     /// Gets or sets an optional history reducer to use for keeping this history size constrained.
     /// </summary>
     public IChatHistoryReducer? HistoryReducer { get; init; }
-
-    /// <summary>
-    /// Gets the current chat history as maintained by this memory component.
-    /// </summary>
-    public override ChatHistory Chathistory => this._chatHistory;
 
     /// <inheritdoc/>
     public override bool HasActiveThread => this._threadActive;
@@ -88,7 +83,7 @@ public class ChatHistoryMemoryComponent : BaseChatHistoryMemoryComponent
     /// <inheritdoc/>
     public override async Task SaveContextAsync(CancellationToken cancellationToken = default)
     {
-        var conversation = string.Join("\n", this.Chathistory
+        var conversation = string.Join("\n", this._chatHistory
             .Where(x => x.Role == AuthorRole.User || x.Role == AuthorRole.Assistant)
             .Select(x => $"{x.Source ?? x.Role}: {x.Content}")).Trim();
 
@@ -130,5 +125,16 @@ public class ChatHistoryMemoryComponent : BaseChatHistoryMemoryComponent
         this._chatHistory.Clear();
         this._threadId = null;
         this._threadActive = false;
+    }
+
+    /// <inheritdoc />
+    public override Task<ChatHistory> RetrieveCurrentChatHistoryAsync(CancellationToken cancellationToken = default)
+    {
+        if (!this._threadActive)
+        {
+            throw new InvalidOperationException("No thread active.");
+        }
+
+        return Task.FromResult(this._chatHistory);
     }
 }

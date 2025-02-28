@@ -1,24 +1,40 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Threading.Tasks;
+using System.Threading;
 using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace Microsoft.SemanticKernel.Agents.Memory;
 
 public class ChatHistoryMemoryManager : MemoryManager
 {
+    private readonly Func<ChatHistory>? _chatHistoryRetriever;
+    private readonly ThreadManagementMemoryComponent _chatHistoryMemoryComponent;
+
     public ChatHistoryMemoryManager(Func<ChatHistory> chatHistoryRetriever)
     {
-        this.ChatHistoryRetriever = chatHistoryRetriever;
+        this._chatHistoryRetriever = chatHistoryRetriever;
     }
 
-    public ChatHistoryMemoryManager(BaseChatHistoryMemoryComponent chatHistoryMemoryComponent)
+    public ChatHistoryMemoryManager(ThreadManagementMemoryComponent chatHistoryMemoryComponent)
     {
-        this.ChatHistoryRetriever = () => chatHistoryMemoryComponent.Chathistory;
         this.RegisterMemoryComponent(chatHistoryMemoryComponent);
+        this._chatHistoryMemoryComponent = chatHistoryMemoryComponent;
     }
 
-    protected Func<ChatHistory> ChatHistoryRetriever { get; private set; }
+    /// <summary>
+    /// Retrieves the current chat history.
+    /// </summary>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
+    /// <returns>The chat history.</returns>
+    public Task<ChatHistory> RetrieveCurrentChatHistoryAsync(CancellationToken cancellationToken = default)
+    {
+        if (this._chatHistoryRetriever != null)
+        {
+            return Task.FromResult(this._chatHistoryRetriever());
+        }
 
-    public ChatHistory ChatHistory => this.ChatHistoryRetriever();
+        return this._chatHistoryMemoryComponent.RetrieveCurrentChatHistoryAsync(cancellationToken);
+    }
 }
