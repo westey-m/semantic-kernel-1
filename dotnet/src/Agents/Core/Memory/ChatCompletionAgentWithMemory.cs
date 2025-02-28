@@ -20,7 +20,6 @@ public class ChatCompletionAgentWithMemory : AgentWithMemory
     private readonly bool _loadContextOnFirstMessage;
     private readonly bool _startNewThreadOnFirstMessage;
     private bool _isFirstMessage = true;
-    private bool _threadActive = false;
 
     public ChatCompletionAgentWithMemory(
         ChatCompletionAgent agent,
@@ -62,37 +61,28 @@ public class ChatCompletionAgentWithMemory : AgentWithMemory
 
     public override MemoryManager MemoryManager => this._memoryManager;
 
-    public override bool HasActiveThread => this._threadActive;
+    public override bool HasActiveThread => this._chatHistoryMemoryComponent.HasActiveThread;
 
-    public override Task StartNewThreadAsync(CancellationToken cancellationToken = default)
+    public override Task<string> StartNewThreadAsync(CancellationToken cancellationToken = default)
     {
-        if (this._threadActive)
-        {
-            throw new InvalidOperationException("Thread already active.");
-        }
-
-        this._threadActive = true;
-
-        return Task.CompletedTask;
+        return this._chatHistoryMemoryComponent.StartNewThreadAsync(cancellationToken);
     }
 
     public override async Task EndThreadAsync(CancellationToken cancellationToken = default)
     {
-        if (!this._threadActive)
+        if (this._chatHistoryMemoryComponent.HasActiveThread)
         {
-            throw new InvalidOperationException("No thread active.");
+            await this._memoryManager.SaveContextAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        await this._memoryManager.SaveContextAsync(cancellationToken).ConfigureAwait(false);
-        this._chatHistoryMemoryComponent.ClearChatHistory();
-        this._threadActive = false;
+        await this._chatHistoryMemoryComponent.EndThreadAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public override async IAsyncEnumerable<ChatMessageContent> CompleteAsync(
         ChatMessageContent chatMessageContent,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        if (!this._threadActive)
+        if (!this._chatHistoryMemoryComponent.HasActiveThread)
         {
             if (!this._startNewThreadOnFirstMessage)
             {

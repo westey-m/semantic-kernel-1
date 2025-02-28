@@ -9,7 +9,7 @@ using OpenAI.Assistants;
 
 namespace Microsoft.SemanticKernel.Agents.OpenAI;
 
-public class OpenAIAssistantThreadMemoryComponent : MemoryComponent
+public class OpenAIAssistantThreadMemoryComponent : ThreadManagementMemoryComponent
 {
     private bool _threadActive = false;
     private string _threadId = string.Empty;
@@ -22,9 +22,9 @@ public class OpenAIAssistantThreadMemoryComponent : MemoryComponent
 
     public string ThreadId => this._threadId;
 
-    public bool HasActiveThread => this._threadActive;
+    public override bool HasActiveThread => this._threadActive;
 
-    public async Task StartNewThreadAsync(CancellationToken cancellationToken = default)
+    public override async Task<string> StartNewThreadAsync(CancellationToken cancellationToken = default)
     {
         if (this._threadActive)
         {
@@ -34,9 +34,11 @@ public class OpenAIAssistantThreadMemoryComponent : MemoryComponent
         var assitantThreadResponse = await this._client.CreateThreadAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
         this._threadId = assitantThreadResponse.Value.Id;
         this._threadActive = true;
+
+        return assitantThreadResponse.Value.Id;
     }
 
-    public async Task EndThreadAsync(CancellationToken cancellationToken = default)
+    public override async Task EndThreadAsync(CancellationToken cancellationToken = default)
     {
         if (!this._threadActive)
         {

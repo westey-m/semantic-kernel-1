@@ -41,7 +41,7 @@ public class AzureAIAgentWithMemory : AgentWithMemory
 
     public override bool HasActiveThread => this._openAIAssistantThreadMemoryComponent.HasActiveThread;
 
-    public override Task StartNewThreadAsync(CancellationToken cancellationToken = default)
+    public override Task<string> StartNewThreadAsync(CancellationToken cancellationToken = default)
     {
         return this._openAIAssistantThreadMemoryComponent.StartNewThreadAsync(cancellationToken);
     }

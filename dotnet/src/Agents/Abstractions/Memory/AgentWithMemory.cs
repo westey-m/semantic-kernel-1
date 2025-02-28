@@ -16,7 +16,7 @@ public abstract class AgentWithMemory
 
     public abstract bool HasActiveThread { get; }
 
-    public abstract Task StartNewThreadAsync(CancellationToken cancellationToken = default);
+    public abstract Task<string> StartNewThreadAsync(CancellationToken cancellationToken = default);
 
     public abstract Task EndThreadAsync(CancellationToken cancellationToken = default);
 }
