@@ -18,15 +18,15 @@ public class MemZeroMemoryComponent : MemoryComponent
     private static readonly Uri s_searchUri = new("/search", UriKind.Relative);
     private static readonly Uri s_createMemoryUri = new("/memories", UriKind.Relative);
 
-    private readonly string _agentId;
-    private readonly string _threadId;
-    private readonly string _userId;
+    private readonly string? _agentId;
+    private readonly string? _threadId;
+    private readonly string? _userId;
     private readonly HttpClient _httpClient;
 
     private bool _contextLoaded = false;
     private string _userPreferences = string.Empty;
 
-    public MemZeroMemoryComponent(string agentId, string threadId, string userId, HttpClient httpClient)
+    public MemZeroMemoryComponent(HttpClient httpClient, string? agentId = default, string? threadId = default, string? userId = default)
     {
         this._agentId = agentId;
         this._threadId = threadId;
@@ -121,7 +121,12 @@ public class MemZeroMemoryComponent : MemoryComponent
     {
         try
         {
-            var clearMemoryUrl = new Uri($"/memories?user_id={this._userId}&agent_id={this._agentId}&run_id={this._threadId}", UriKind.Relative);
+            var querystringParams = new string?[3] { this._userId, this._agentId, this._threadId }
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select((param, index) => $"param{index}={param}");
+            var queryString = string.Join("&", querystringParams);
+            var clearMemoryUrl = new Uri($"/memories?{queryString}", UriKind.Relative);
+
             var responseMessage = await this._httpClient.DeleteAsync(clearMemoryUrl).ConfigureAwait(false);
             responseMessage.EnsureSuccessStatusCode();
         }
@@ -154,11 +159,11 @@ public class MemZeroMemoryComponent : MemoryComponent
     private class SearchRequest
     {
         [JsonPropertyName("agent_id")]
-        public string AgentId { get; set; } = string.Empty;
+        public string? AgentId { get; set; } = null;
         [JsonPropertyName("run_id")]
-        public string RunId { get; set; } = string.Empty;
+        public string? RunId { get; set; } = null;
         [JsonPropertyName("user_id")]
-        public string UserId { get; set; } = string.Empty;
+        public string? UserId { get; set; } = null;
         [JsonPropertyName("query")]
         public string Query { get; set; } = string.Empty;
     }

@@ -245,13 +245,13 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         var httpClient = new HttpClient() { BaseAddress = new Uri("http://localhost:8000"), Timeout = TimeSpan.FromMinutes(10) };
 
         Console.WriteLine("------------ Session one --------------");
-        var agentWithMemory = CreateAgent().WithMemory(memoryComponents: [new MemZeroMemoryComponent("FriendlyAssistant", "thread1", "User1", httpClient)]);
+        var agentWithMemory = CreateAgent().WithMemory(memoryComponents: [new MemZeroMemoryComponent(httpClient, "FriendlyAssistant", "thread1", "User1")]);
         (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Hi, my name is Caoimhe")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
         (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "I love history, please tell me a historical fact")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
         await agentWithMemory.EndThreadAsync();
 
         Console.WriteLine("------------ Session two --------------");
-        var agentWithMemory2 = CreateAgent().WithMemory(memoryComponents: [new MemZeroMemoryComponent("FriendlyAssistant", "thread1", "User1", httpClient)]);
+        var agentWithMemory2 = CreateAgent().WithMemory(memoryComponents: [new MemZeroMemoryComponent(httpClient, "FriendlyAssistant", "thread1", "User1")]);
         (await agentWithMemory2.CompleteAsync(new ChatMessageContent(AuthorRole.User, "What do you know about me?")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
         (await agentWithMemory2.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Please clear my user preferences.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
         await agentWithMemory2.EndThreadAsync();
