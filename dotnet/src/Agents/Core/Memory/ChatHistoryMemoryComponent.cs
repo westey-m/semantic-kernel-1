@@ -47,7 +47,7 @@ public class ChatHistoryMemoryComponent : ThreadManagementMemoryComponent
         """;
 
     /// <inheritdoc/>
-    public override async Task LoadContextAsync(string? inputText = default, CancellationToken cancellationToken = default)
+    public override async Task OnThreadStartAsync(string? inputText = default, CancellationToken cancellationToken = default)
     {
         var previousMemories = string.Empty;
         if (!string.IsNullOrWhiteSpace(inputText))
@@ -65,7 +65,7 @@ public class ChatHistoryMemoryComponent : ThreadManagementMemoryComponent
     }
 
     /// <inheritdoc/>
-    public override async Task MaintainContextAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
+    public override async Task OnNewMessageAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
     {
         this._chatHistory.Add(newMessage);
         await this._chatHistory.ReduceInPlaceAsync(this.HistoryReducer, cancellationToken).ConfigureAwait(false);
@@ -75,13 +75,13 @@ public class ChatHistoryMemoryComponent : ThreadManagementMemoryComponent
     }
 
     /// <inheritdoc/>
-    public override Task<string> GetFormattedContextAsync(CancellationToken cancellationToken = default)
+    public override Task<string> OnAIInvocationAsync(CancellationToken cancellationToken = default)
     {
         return Task.FromResult(string.Empty);
     }
 
     /// <inheritdoc/>
-    public override async Task SaveContextAsync(CancellationToken cancellationToken = default)
+    public override async Task OnThreadEndAsync(CancellationToken cancellationToken = default)
     {
         var conversation = string.Join("\n", this._chatHistory
             .Where(x => x.Role == AuthorRole.User || x.Role == AuthorRole.Assistant)

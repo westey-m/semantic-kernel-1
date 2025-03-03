@@ -191,7 +191,7 @@ public abstract class AgentChat
 
             foreach (ChatMessageContent message in messages)
             {
-                var task = this.MemoryManager.MaintainContextAsync(message);
+                var task = this.MemoryManager.OnNewMessageAsync(message);
             }
 
             // Broadcast message to other channels (in parallel)
@@ -235,7 +235,7 @@ public abstract class AgentChat
             List<ChatMessageContent> messages = [];
 
             // Render the context from each memory component and pass to the agent as override instructions.
-            var renderedContext = await this.MemoryManager.GetFormattedContextAsync(cancellationToken).ConfigureAwait(false);
+            var renderedContext = await this.MemoryManager.OnAIInvocationAsync(cancellationToken).ConfigureAwait(false);
 
             await foreach ((bool isVisible, ChatMessageContent message) in channel.InvokeAsync(agent, renderedContext, cancellationToken).ConfigureAwait(false))
             {
@@ -255,7 +255,7 @@ public abstract class AgentChat
 
             foreach (ChatMessageContent message in messages)
             {
-                await this.MemoryManager.MaintainContextAsync(message, cancellationToken: cancellationToken).ConfigureAwait(false);
+                await this.MemoryManager.OnNewMessageAsync(message, cancellationToken: cancellationToken).ConfigureAwait(false);
             }
 
             // Broadcast message to other channels (in parallel)

@@ -81,7 +81,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             };
 
         chat.MemoryManager.RegisterMemoryComponent(new UserPreferencesMemoryComponent(kernel));
-        await chat.MemoryManager.LoadContextAsync("concept: maps made out of egg cartons.");
+        await chat.MemoryManager.OnThreadStartAsync("concept: maps made out of egg cartons.");
 
         // Invoke chat and display messages.
         ChatMessageContent input = new(AuthorRole.User, "concept: maps made out of egg cartons.");
@@ -93,7 +93,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             this.WriteAgentChatMessage(response);
         }
 
-        await chat.MemoryManager.SaveContextAsync();
+        await chat.MemoryManager.OnThreadEndAsync();
 
         Console.WriteLine($"\n[IS COMPLETED: {chat.IsComplete}]");
     }
@@ -117,7 +117,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
 
         ChatHistoryMemoryManager memoryManager = new(() => chat);
         memoryManager.RegisterMemoryComponent(new UserPreferencesMemoryComponent(kernel));
-        await memoryManager.LoadContextAsync($"Summarize user input. User Input: {userMessage}.");
+        await memoryManager.OnThreadStartAsync($"Summarize user input. User Input: {userMessage}.");
 
         // Define the agent
         ChatCompletionAgent agent =
@@ -132,8 +132,8 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         var newMessage = new ChatMessageContent(AuthorRole.User, userMessage);
         chat.Add(newMessage);
 
-        await memoryManager.MaintainContextAsync(newMessage);
-        var memories = await memoryManager.GetFormattedContextAsync();
+        await memoryManager.OnNewMessageAsync(newMessage);
+        var memories = await memoryManager.OnAIInvocationAsync();
 
         // Generate the agent response(s)
         Console.WriteLine("# Agent response(s):");
@@ -142,7 +142,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             Console.WriteLine(response.Content);
         }
 
-        await memoryManager.SaveContextAsync();
+        await memoryManager.OnThreadEndAsync();
     }
 
     [Fact]
@@ -157,7 +157,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
 
         ChatHistoryMemoryManager memoryManager = new(() => chat);
         memoryManager.RegisterMemoryComponent(new UserPreferencesMemoryComponent(kernel));
-        await memoryManager.LoadContextAsync($"Summarize user input. User Input: {userMessage}.");
+        await memoryManager.OnThreadStartAsync($"Summarize user input. User Input: {userMessage}.");
 
         // Define the agent
         ChatCompletionAgent agent =
@@ -172,8 +172,8 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         var newMessage1 = new ChatMessageContent(AuthorRole.User, userMessage);
         chat.Add(newMessage1);
 
-        await memoryManager.MaintainContextAsync(newMessage1);
-        var memories = await memoryManager.GetFormattedContextAsync();
+        await memoryManager.OnNewMessageAsync(newMessage1);
+        var memories = await memoryManager.OnAIInvocationAsync();
 
         // Generate the agent response(s)
         Console.WriteLine("# Agent response(s):");
@@ -186,8 +186,8 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         var newMessage2 = new ChatMessageContent(AuthorRole.User, "I live in Paris");
         chat.Add(newMessage2);
 
-        await memoryManager.MaintainContextAsync(newMessage2);
-        memories = await memoryManager.GetFormattedContextAsync();
+        await memoryManager.OnNewMessageAsync(newMessage2);
+        memories = await memoryManager.OnAIInvocationAsync();
 
         // Generate the agent response(s)
         Console.WriteLine("# Agent response(s):");
@@ -196,13 +196,13 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             Console.WriteLine(response.Content);
         }
 
-        await memoryManager.SaveContextAsync();
+        await memoryManager.OnThreadEndAsync();
 
         // Second usage of memory manager should load previous context.
         ChatHistoryMemoryManager memoryManager2 = new(() => chat);
         memoryManager2.RegisterMemoryComponent(new UserPreferencesMemoryComponent(kernel));
-        await memoryManager2.LoadContextAsync(string.Empty);
-        await memoryManager.SaveContextAsync();
+        await memoryManager2.OnThreadStartAsync(string.Empty);
+        await memoryManager.OnThreadEndAsync();
     }
 
     [Fact]
@@ -216,26 +216,26 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         ChatHistoryMemoryManager memoryManager = new(new ChatHistoryMemoryComponent(kernel));
         memoryManager.RegisterMemoryComponent(new UserPreferencesMemoryComponent(kernel));
 
-        await memoryManager.MaintainContextAsync(new ChatMessageContent(AuthorRole.Assistant, "How can I help you?") { Source = "MyAgent" });
+        await memoryManager.OnNewMessageAsync(new ChatMessageContent(AuthorRole.Assistant, "How can I help you?") { Source = "MyAgent" });
 
         var userMessage = "My name is Eoin. I live in Madrid. I like rain and the seaside.";
-        await memoryManager.LoadContextAsync(userMessage);
-        await memoryManager.MaintainContextAsync(new ChatMessageContent(AuthorRole.User, userMessage));
-        await memoryManager.MaintainContextAsync(new ChatMessageContent(AuthorRole.User, "This chat is very dreary."));
+        await memoryManager.OnThreadStartAsync(userMessage);
+        await memoryManager.OnNewMessageAsync(new ChatMessageContent(AuthorRole.User, userMessage));
+        await memoryManager.OnNewMessageAsync(new ChatMessageContent(AuthorRole.User, "This chat is very dreary."));
 
-        await memoryManager.SaveContextAsync();
+        await memoryManager.OnThreadEndAsync();
 
         Console.WriteLine("------------ Session two --------------");
 
         // Second usage of memory manager should load previous context.
         ChatHistoryMemoryManager memoryManager2 = new(new ChatHistoryMemoryComponent(kernel));
         memoryManager2.RegisterMemoryComponent(new UserPreferencesMemoryComponent(kernel));
-        await memoryManager2.LoadContextAsync("Hi there");
+        await memoryManager2.OnThreadStartAsync("Hi there");
 
         // Add a user message to the conversation
-        await memoryManager2.MaintainContextAsync(new ChatMessageContent(AuthorRole.User, "I now live in Paris."));
+        await memoryManager2.OnNewMessageAsync(new ChatMessageContent(AuthorRole.User, "I now live in Paris."));
 
-        await memoryManager2.SaveContextAsync();
+        await memoryManager2.OnThreadEndAsync();
     }
 
     [Fact]
@@ -462,11 +462,11 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         memoryManager1.RegisterMemoryComponent(new UserPreferencesMemoryComponent(kernel));
 
         var userMessage = "Please consolidate today's invoices and payments.";
-        await memoryManager1.LoadContextAsync(userMessage);
+        await memoryManager1.OnThreadStartAsync(userMessage);
         await this.InvokeAgentAsync(agent, memoryManager1, userMessage);
         await this.InvokeAgentAsync(agent, memoryManager1, "I am working with Contoso and I always want format B.");
 
-        await memoryManager1.SaveContextAsync();
+        await memoryManager1.OnThreadEndAsync();
 
         Console.WriteLine("------------ Session two --------------");
 
@@ -475,10 +475,10 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         memoryManager2.RegisterMemoryComponent(new UserPreferencesMemoryComponent(kernel));
 
         var userMessage2 = "Please consolidate today's invoices and payments.";
-        await memoryManager2.LoadContextAsync(userMessage2);
+        await memoryManager2.OnThreadStartAsync(userMessage2);
         await this.InvokeAgentAsync(agent, memoryManager2, userMessage);
 
-        await memoryManager2.SaveContextAsync();
+        await memoryManager2.OnThreadEndAsync();
 
         Console.WriteLine("------------ Session three --------------");
 
@@ -487,18 +487,18 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         memoryManager3.RegisterMemoryComponent(new UserPreferencesMemoryComponent(kernel));
 
         var userMessage3 = "What do you know about me?";
-        await memoryManager3.LoadContextAsync(userMessage3);
+        await memoryManager3.OnThreadStartAsync(userMessage3);
         await this.InvokeAgentAsync(agent, memoryManager3, userMessage3);
 
         await this.InvokeAgentAsync(agent, memoryManager3, "Please clear my user preferences.");
 
-        await memoryManager3.SaveContextAsync();
+        await memoryManager3.OnThreadEndAsync();
     }
 
     private async Task InvokeAgentAsync(ChatCompletionAgent agent, ChatHistoryMemoryManager memoryManager, string userMessage)
     {
-        await memoryManager.MaintainContextAsync(new ChatMessageContent(AuthorRole.User, userMessage));
-        var memoryContext = await memoryManager.GetFormattedContextAsync();
+        await memoryManager.OnNewMessageAsync(new ChatMessageContent(AuthorRole.User, userMessage));
+        var memoryContext = await memoryManager.OnAIInvocationAsync();
 
         var overrideKernel = agent.Kernel.Clone();
         memoryManager.RegisterPlugins(overrideKernel);
@@ -516,7 +516,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
 
             if (response.Role == AuthorRole.Assistant)
             {
-                await memoryManager.MaintainContextAsync(response);
+                await memoryManager.OnNewMessageAsync(response);
             }
         }
     }

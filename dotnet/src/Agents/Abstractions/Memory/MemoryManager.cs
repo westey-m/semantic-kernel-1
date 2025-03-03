@@ -18,24 +18,24 @@ public class MemoryManager
         this._memoryComponents.Add(agentMemory);
     }
 
-    public virtual async Task LoadContextAsync(string userInput, CancellationToken cancellationToken = default)
+    public virtual async Task OnThreadStartAsync(string userInput, CancellationToken cancellationToken = default)
     {
-        await Task.WhenAll(this.MemoryComponents.Select(x => x.LoadContextAsync(userInput, cancellationToken)).ToList()).ConfigureAwait(false);
+        await Task.WhenAll(this.MemoryComponents.Select(x => x.OnThreadStartAsync(userInput, cancellationToken)).ToList()).ConfigureAwait(false);
     }
 
-    public virtual async Task SaveContextAsync(CancellationToken cancellationToken = default)
+    public virtual async Task OnThreadEndAsync(CancellationToken cancellationToken = default)
     {
-        await Task.WhenAll(this.MemoryComponents.Select(x => x.SaveContextAsync(cancellationToken)).ToList()).ConfigureAwait(false);
+        await Task.WhenAll(this.MemoryComponents.Select(x => x.OnThreadEndAsync(cancellationToken)).ToList()).ConfigureAwait(false);
     }
 
-    public virtual async Task MaintainContextAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
+    public virtual async Task OnNewMessageAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
     {
-        await Task.WhenAll(this.MemoryComponents.Select(x => x.MaintainContextAsync(newMessage, cancellationToken)).ToList()).ConfigureAwait(false);
+        await Task.WhenAll(this.MemoryComponents.Select(x => x.OnNewMessageAsync(newMessage, cancellationToken)).ToList()).ConfigureAwait(false);
     }
 
-    public virtual async Task<string> GetFormattedContextAsync(CancellationToken cancellationToken = default)
+    public virtual async Task<string> OnAIInvocationAsync(CancellationToken cancellationToken = default)
     {
-        var subContexts = await Task.WhenAll(this.MemoryComponents.Select(x => x.GetFormattedContextAsync(cancellationToken)).ToList()).ConfigureAwait(false);
+        var subContexts = await Task.WhenAll(this.MemoryComponents.Select(x => x.OnAIInvocationAsync(cancellationToken)).ToList()).ConfigureAwait(false);
         return string.Join("\n", subContexts);
     }
 

@@ -74,7 +74,7 @@ public class UserPreferencesMemoryComponent : MemoryComponent
         """;
 
     /// <inheritdoc/>
-    public override async Task LoadContextAsync(string? inputText = default, CancellationToken cancellationToken = default)
+    public override async Task OnThreadStartAsync(string? inputText = default, CancellationToken cancellationToken = default)
     {
         if (!this._contextLoaded)
         {
@@ -94,7 +94,7 @@ public class UserPreferencesMemoryComponent : MemoryComponent
     }
 
     /// <inheritdoc/>
-    public override async Task SaveContextAsync(CancellationToken cancellationToken = default)
+    public override async Task OnThreadEndAsync(CancellationToken cancellationToken = default)
     {
         Console.WriteLine("- UserPreferencesMemory - Saving user preferences context"
             + "\n    " + this._userPreferences);
@@ -103,7 +103,7 @@ public class UserPreferencesMemoryComponent : MemoryComponent
     }
 
     /// <inheritdoc/>
-    public override async Task MaintainContextAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
+    public override async Task OnNewMessageAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
     {
         if (newMessage.Role == AuthorRole.User)
         {
@@ -121,7 +121,7 @@ public class UserPreferencesMemoryComponent : MemoryComponent
     }
 
     /// <inheritdoc/>
-    public override Task<string> GetFormattedContextAsync(CancellationToken cancellationToken = default)
+    public override Task<string> OnAIInvocationAsync(CancellationToken cancellationToken = default)
     {
         return Task.FromResult("The following list contains facts about the user:\n" + this._userPreferences);
     }

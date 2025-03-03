@@ -11,12 +11,16 @@ namespace Microsoft.SemanticKernel.Agents.Memory;
 public abstract class MemoryComponent
 {
     /// <summary>
-    /// Checks long term storage for any memories that are relevant to the current session based on the input text.
+    /// Called when a new thread is started.
     /// </summary>
+    /// <remarks>
+    /// Implementers can use this method to do any operations required at the start of a new thread.
+    /// For exmple, checking long term storage for any memories that are relevant to the current session based on the input text.
+    /// </remarks>
     /// <param name="inputText">The input text, typically a user ask.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>A task that completes when the context has been loaded.</returns>
-    public virtual Task LoadContextAsync(string? inputText = default, CancellationToken cancellationToken = default)
+    public virtual Task OnThreadStartAsync(string? inputText = default, CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;
     }
@@ -30,27 +34,33 @@ public abstract class MemoryComponent
     /// <param name="newMessage">The new message.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>A task that completes when the context has been updated.</returns>
-    public virtual Task MaintainContextAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
+    public virtual Task OnNewMessageAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;
     }
 
     /// <summary>
-    /// Saves any relevant data currently in context to long term storage.
+    /// Called when a thread is ended.
     /// </summary>
+    /// <remarks>
+    /// Implementers can use this method to do any operations required at the end of a thread.
+    /// For exmple, storing the context to long term storage.
+    /// </remarks>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>A task that completes when the context has been saved.</returns>
-    public virtual Task SaveContextAsync(CancellationToken cancellationToken = default)
+    public virtual Task OnThreadEndAsync(CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;
     }
 
     /// <summary>
-    /// Get the current context as a string that can be passed to a chat completion service as context.
+    /// Called just before the AI is invoked
+    /// Implementers can load any additional context required at this time,
+    /// but they should also return any context that should be passed to the AI.
     /// </summary>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>A task that completes when the context has been rendered and returned.</returns>
-    public abstract Task<string> GetFormattedContextAsync(CancellationToken cancellationToken = default);
+    public abstract Task<string> OnAIInvocationAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Register plugins required by this memory component on the provided <see cref="Kernel"/>.

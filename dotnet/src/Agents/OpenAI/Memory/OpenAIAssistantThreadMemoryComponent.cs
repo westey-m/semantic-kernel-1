@@ -57,7 +57,7 @@ public class OpenAIAssistantThreadMemoryComponent : ThreadManagementMemoryCompon
     }
 
     /// <inheritdoc />
-    public override async Task MaintainContextAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
+    public override async Task OnNewMessageAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
     {
         if (!this._threadActive)
         {
@@ -72,7 +72,7 @@ public class OpenAIAssistantThreadMemoryComponent : ThreadManagementMemoryCompon
     }
 
     /// <inheritdoc />
-    public override Task<string> GetFormattedContextAsync(CancellationToken cancellationToken = default)
+    public override Task<string> OnAIInvocationAsync(CancellationToken cancellationToken = default)
     {
         return Task.FromResult(string.Empty);
     }

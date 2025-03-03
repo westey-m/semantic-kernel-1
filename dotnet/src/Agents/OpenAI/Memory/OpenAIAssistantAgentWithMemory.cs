@@ -60,7 +60,7 @@ public class OpenAIAssistantAgentWithMemory : AgentWithMemory
     /// <inheritdoc/>
     public override async Task EndThreadAsync(CancellationToken cancellationToken = default)
     {
-        await this._memoryManager.SaveContextAsync(cancellationToken).ConfigureAwait(false);
+        await this._memoryManager.OnThreadEndAsync(cancellationToken).ConfigureAwait(false);
         await this._openAIAssistantThreadMemoryComponent.EndThreadAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -81,12 +81,12 @@ public class OpenAIAssistantAgentWithMemory : AgentWithMemory
 
         if (this._isFirstMessage && this._loadContextOnFirstMessage)
         {
-            await this._memoryManager.LoadContextAsync(chatMessageContent.Content ?? string.Empty, cancellationToken).ConfigureAwait(false);
+            await this._memoryManager.OnThreadStartAsync(chatMessageContent.Content ?? string.Empty, cancellationToken).ConfigureAwait(false);
             this._isFirstMessage = false;
         }
 
-        await this._memoryManager.MaintainContextAsync(chatMessageContent, cancellationToken).ConfigureAwait(false);
-        var memoryContext = await this._memoryManager.GetFormattedContextAsync(cancellationToken).ConfigureAwait(false);
+        await this._memoryManager.OnNewMessageAsync(chatMessageContent, cancellationToken).ConfigureAwait(false);
+        var memoryContext = await this._memoryManager.OnAIInvocationAsync(cancellationToken).ConfigureAwait(false);
 
         var overrideKernel = this._agent.Kernel.Clone();
         this.MemoryManager.RegisterPlugins(overrideKernel);
@@ -100,7 +100,7 @@ public class OpenAIAssistantAgentWithMemory : AgentWithMemory
         {
             if (response.Role == AuthorRole.Assistant)
             {
-                await this._memoryManager.MaintainContextAsync(response, cancellationToken).ConfigureAwait(false);
+                await this._memoryManager.OnNewMessageAsync(response, cancellationToken).ConfigureAwait(false);
             }
 
             yield return response;
