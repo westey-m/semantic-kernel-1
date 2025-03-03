@@ -235,7 +235,7 @@ public abstract class AgentChat
             List<ChatMessageContent> messages = [];
 
             // Render the context from each memory component and pass to the agent as override instructions.
-            var renderedContext = await this.MemoryManager.OnAIInvocationAsync(cancellationToken).ConfigureAwait(false);
+            var renderedContext = await this.MemoryManager.OnAIInvocationAsync(this.History.Last(), cancellationToken).ConfigureAwait(false);
 
             await foreach ((bool isVisible, ChatMessageContent message) in channel.InvokeAsync(agent, renderedContext, cancellationToken).ConfigureAwait(false))
             {

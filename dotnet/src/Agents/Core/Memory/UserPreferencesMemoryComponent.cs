@@ -121,7 +121,7 @@ public class UserPreferencesMemoryComponent : MemoryComponent
     }
 
     /// <inheritdoc/>
-    public override Task<string> OnAIInvocationAsync(CancellationToken cancellationToken = default)
+    public override Task<string> OnAIInvocationAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
     {
         return Task.FromResult("The following list contains facts about the user:\n" + this._userPreferences);
     }

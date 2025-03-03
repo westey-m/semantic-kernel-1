@@ -33,9 +33,9 @@ public class MemoryManager
         await Task.WhenAll(this.MemoryComponents.Select(x => x.OnNewMessageAsync(newMessage, cancellationToken)).ToList()).ConfigureAwait(false);
     }
 
-    public virtual async Task<string> OnAIInvocationAsync(CancellationToken cancellationToken = default)
+    public virtual async Task<string> OnAIInvocationAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
     {
-        var subContexts = await Task.WhenAll(this.MemoryComponents.Select(x => x.OnAIInvocationAsync(cancellationToken)).ToList()).ConfigureAwait(false);
+        var subContexts = await Task.WhenAll(this.MemoryComponents.Select(x => x.OnAIInvocationAsync(newMessage, cancellationToken)).ToList()).ConfigureAwait(false);
         return string.Join("\n", subContexts);
     }
 

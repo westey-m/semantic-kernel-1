@@ -133,7 +133,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         chat.Add(newMessage);
 
         await memoryManager.OnNewMessageAsync(newMessage);
-        var memories = await memoryManager.OnAIInvocationAsync();
+        var memories = await memoryManager.OnAIInvocationAsync(newMessage);
 
         // Generate the agent response(s)
         Console.WriteLine("# Agent response(s):");
@@ -173,7 +173,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         chat.Add(newMessage1);
 
         await memoryManager.OnNewMessageAsync(newMessage1);
-        var memories = await memoryManager.OnAIInvocationAsync();
+        var memories = await memoryManager.OnAIInvocationAsync(newMessage1);
 
         // Generate the agent response(s)
         Console.WriteLine("# Agent response(s):");
@@ -187,7 +187,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         chat.Add(newMessage2);
 
         await memoryManager.OnNewMessageAsync(newMessage2);
-        memories = await memoryManager.OnAIInvocationAsync();
+        memories = await memoryManager.OnAIInvocationAsync(newMessage2);
 
         // Generate the agent response(s)
         Console.WriteLine("# Agent response(s):");
@@ -497,8 +497,9 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
 
     private async Task InvokeAgentAsync(ChatCompletionAgent agent, ChatHistoryMemoryManager memoryManager, string userMessage)
     {
-        await memoryManager.OnNewMessageAsync(new ChatMessageContent(AuthorRole.User, userMessage));
-        var memoryContext = await memoryManager.OnAIInvocationAsync();
+        var message = new ChatMessageContent(AuthorRole.User, userMessage);
+        await memoryManager.OnNewMessageAsync(message);
+        var memoryContext = await memoryManager.OnAIInvocationAsync(message);
 
         var overrideKernel = agent.Kernel.Clone();
         memoryManager.RegisterPlugins(overrideKernel);

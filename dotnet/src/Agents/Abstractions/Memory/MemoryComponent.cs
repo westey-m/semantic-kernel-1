@@ -58,9 +58,10 @@ public abstract class MemoryComponent
     /// Implementers can load any additional context required at this time,
     /// but they should also return any context that should be passed to the AI.
     /// </summary>
+    /// <param name="newMessage">The most recent message that the AI is being invoked with.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>A task that completes when the context has been rendered and returned.</returns>
-    public abstract Task<string> OnAIInvocationAsync(CancellationToken cancellationToken = default);
+    public abstract Task<string> OnAIInvocationAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Register plugins required by this memory component on the provided <see cref="Kernel"/>.

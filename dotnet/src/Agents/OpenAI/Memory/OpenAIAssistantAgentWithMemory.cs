@@ -86,7 +86,7 @@ public class OpenAIAssistantAgentWithMemory : AgentWithMemory
         }
 
         await this._memoryManager.OnNewMessageAsync(chatMessageContent, cancellationToken).ConfigureAwait(false);
-        var memoryContext = await this._memoryManager.OnAIInvocationAsync(cancellationToken).ConfigureAwait(false);
+        var memoryContext = await this._memoryManager.OnAIInvocationAsync(chatMessageContent, cancellationToken).ConfigureAwait(false);
 
         var overrideKernel = this._agent.Kernel.Clone();
         this.MemoryManager.RegisterPlugins(overrideKernel);

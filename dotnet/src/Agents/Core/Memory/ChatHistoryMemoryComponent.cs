@@ -75,7 +75,7 @@ public class ChatHistoryMemoryComponent : ThreadManagementMemoryComponent
     }
 
     /// <inheritdoc/>
-    public override Task<string> OnAIInvocationAsync(CancellationToken cancellationToken = default)
+    public override Task<string> OnAIInvocationAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(string.Empty);
     }
