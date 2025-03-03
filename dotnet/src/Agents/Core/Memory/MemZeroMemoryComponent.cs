@@ -35,7 +35,7 @@ public class MemZeroMemoryComponent : MemoryComponent
     }
 
     /// <inheritdoc/>
-    public override async Task OnThreadStartAsync(string? inputText = default, CancellationToken cancellationToken = default)
+    public override async Task OnThreadStartAsync(string threadId, string? inputText = default, CancellationToken cancellationToken = default)
     {
         if (!this._contextLoaded)
         {

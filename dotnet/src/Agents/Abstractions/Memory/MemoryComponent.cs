@@ -11,16 +11,17 @@ namespace Microsoft.SemanticKernel.Agents.Memory;
 public abstract class MemoryComponent
 {
     /// <summary>
-    /// Called when a new thread is started.
+    /// Called just after a new thread is started.
     /// </summary>
     /// <remarks>
     /// Implementers can use this method to do any operations required at the start of a new thread.
     /// For exmple, checking long term storage for any memories that are relevant to the current session based on the input text.
     /// </remarks>
+    /// <param name="threadId">The id of the new thread.</param>
     /// <param name="inputText">The input text, typically a user ask.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>A task that completes when the context has been loaded.</returns>
-    public virtual Task OnThreadStartAsync(string? inputText = default, CancellationToken cancellationToken = default)
+    public virtual Task OnThreadStartAsync(string threadId, string? inputText = default, CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;
     }
@@ -40,15 +41,16 @@ public abstract class MemoryComponent
     }
 
     /// <summary>
-    /// Called when a thread is ended.
+    /// Called just before a thread is ended.
     /// </summary>
     /// <remarks>
     /// Implementers can use this method to do any operations required at the end of a thread.
     /// For exmple, storing the context to long term storage.
     /// </remarks>
+    /// <param name="threadId">The id of the thread that will be ended.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
     /// <returns>A task that completes when the context has been saved.</returns>
-    public virtual Task OnThreadEndAsync(CancellationToken cancellationToken = default)
+    public virtual Task OnThreadEndAsync(string threadId, CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;
     }

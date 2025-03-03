@@ -47,7 +47,7 @@ public class ChatHistoryMemoryComponent : ThreadManagementMemoryComponent
         """;
 
     /// <inheritdoc/>
-    public override async Task OnThreadStartAsync(string? inputText = default, CancellationToken cancellationToken = default)
+    public override async Task OnThreadStartAsync(string threadId, string? inputText = default, CancellationToken cancellationToken = default)
     {
         var previousMemories = string.Empty;
         if (!string.IsNullOrWhiteSpace(inputText))
@@ -81,7 +81,7 @@ public class ChatHistoryMemoryComponent : ThreadManagementMemoryComponent
     }
 
     /// <inheritdoc/>
-    public override async Task OnThreadEndAsync(CancellationToken cancellationToken = default)
+    public override async Task OnThreadEndAsync(string threadId, CancellationToken cancellationToken = default)
     {
         var conversation = string.Join("\n", this._chatHistory
             .Where(x => x.Role == AuthorRole.User || x.Role == AuthorRole.Assistant)

@@ -74,7 +74,7 @@ public class UserPreferencesMemoryComponent : MemoryComponent
         """;
 
     /// <inheritdoc/>
-    public override async Task OnThreadStartAsync(string? inputText = default, CancellationToken cancellationToken = default)
+    public override async Task OnThreadStartAsync(string threadId, string? inputText = default, CancellationToken cancellationToken = default)
     {
         if (!this._contextLoaded)
         {
@@ -94,7 +94,7 @@ public class UserPreferencesMemoryComponent : MemoryComponent
     }
 
     /// <inheritdoc/>
-    public override async Task OnThreadEndAsync(CancellationToken cancellationToken = default)
+    public override async Task OnThreadEndAsync(string threadId, CancellationToken cancellationToken = default)
     {
         Console.WriteLine("- UserPreferencesMemory - Saving user preferences context"
             + "\n    " + this._userPreferences);

@@ -83,9 +83,9 @@ public class ChatCompletionAgentWithMemory : AgentWithMemory
     /// <inheritdoc/>
     public override async Task EndThreadAsync(CancellationToken cancellationToken = default)
     {
-        if (this._chatHistoryMemoryComponent.HasActiveThread)
+        if (this.HasActiveThread)
         {
-            await this._memoryManager.OnThreadEndAsync(cancellationToken).ConfigureAwait(false);
+            await this._memoryManager.OnThreadEndAsync(this._chatHistoryMemoryComponent.CurrentThreadId!, cancellationToken).ConfigureAwait(false);
         }
 
         await this._chatHistoryMemoryComponent.EndThreadAsync(cancellationToken).ConfigureAwait(false);
@@ -108,7 +108,10 @@ public class ChatCompletionAgentWithMemory : AgentWithMemory
 
         if (this._isFirstMessage && this._loadContextOnFirstMessage)
         {
-            await this._memoryManager.OnThreadStartAsync(chatMessageContent.Content ?? string.Empty, cancellationToken).ConfigureAwait(false);
+            await this._memoryManager.OnThreadStartAsync(
+                this._chatHistoryMemoryComponent.CurrentThreadId!,
+                chatMessageContent.Content ?? string.Empty,
+                cancellationToken).ConfigureAwait(false);
             this._isFirstMessage = false;
         }
 

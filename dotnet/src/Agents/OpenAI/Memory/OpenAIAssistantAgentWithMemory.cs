@@ -60,7 +60,11 @@ public class OpenAIAssistantAgentWithMemory : AgentWithMemory
     /// <inheritdoc/>
     public override async Task EndThreadAsync(CancellationToken cancellationToken = default)
     {
-        await this._memoryManager.OnThreadEndAsync(cancellationToken).ConfigureAwait(false);
+        if (this.HasActiveThread)
+        {
+            await this._memoryManager.OnThreadEndAsync(this._openAIAssistantThreadMemoryComponent.CurrentThreadId!, cancellationToken).ConfigureAwait(false);
+        }
+
         await this._openAIAssistantThreadMemoryComponent.EndThreadAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -81,7 +85,10 @@ public class OpenAIAssistantAgentWithMemory : AgentWithMemory
 
         if (this._isFirstMessage && this._loadContextOnFirstMessage)
         {
-            await this._memoryManager.OnThreadStartAsync(chatMessageContent.Content ?? string.Empty, cancellationToken).ConfigureAwait(false);
+            await this._memoryManager.OnThreadStartAsync(
+                this._openAIAssistantThreadMemoryComponent.CurrentThreadId!,
+                chatMessageContent.Content ?? string.Empty,
+                cancellationToken).ConfigureAwait(false);
             this._isFirstMessage = false;
         }
 

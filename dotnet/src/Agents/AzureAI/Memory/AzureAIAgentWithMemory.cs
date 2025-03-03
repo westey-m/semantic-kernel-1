@@ -58,7 +58,11 @@ public class AzureAIAgentWithMemory : AgentWithMemory
     /// <inheritdoc />
     public override async Task EndThreadAsync(CancellationToken cancellationToken = default)
     {
-        await this._memoryManager.OnThreadEndAsync(cancellationToken).ConfigureAwait(false);
+        if (this.HasActiveThread)
+        {
+            await this._memoryManager.OnThreadEndAsync(this._azureAIAssistantThreadMemoryComponent.CurrentThreadId!, cancellationToken).ConfigureAwait(false);
+        }
+
         await this._azureAIAssistantThreadMemoryComponent.EndThreadAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -79,7 +83,10 @@ public class AzureAIAgentWithMemory : AgentWithMemory
 
         if (this._isFirstMessage && this._loadContextOnFirstMessage)
         {
-            await this._memoryManager.OnThreadStartAsync(chatMessageContent.Content ?? string.Empty, cancellationToken).ConfigureAwait(false);
+            await this._memoryManager.OnThreadStartAsync(
+                this._azureAIAssistantThreadMemoryComponent.CurrentThreadId!,
+                chatMessageContent.Content ?? string.Empty,
+                cancellationToken).ConfigureAwait(false);
             this._isFirstMessage = false;
         }
 

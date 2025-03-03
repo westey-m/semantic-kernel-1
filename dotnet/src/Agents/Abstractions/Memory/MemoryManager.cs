@@ -18,14 +18,14 @@ public class MemoryManager
         this._memoryComponents.Add(agentMemory);
     }
 
-    public virtual async Task OnThreadStartAsync(string userInput, CancellationToken cancellationToken = default)
+    public virtual async Task OnThreadStartAsync(string threadId, string userInput, CancellationToken cancellationToken = default)
     {
-        await Task.WhenAll(this.MemoryComponents.Select(x => x.OnThreadStartAsync(userInput, cancellationToken)).ToList()).ConfigureAwait(false);
+        await Task.WhenAll(this.MemoryComponents.Select(x => x.OnThreadStartAsync(threadId, userInput, cancellationToken)).ToList()).ConfigureAwait(false);
     }
 
-    public virtual async Task OnThreadEndAsync(CancellationToken cancellationToken = default)
+    public virtual async Task OnThreadEndAsync(string threadId, CancellationToken cancellationToken = default)
     {
-        await Task.WhenAll(this.MemoryComponents.Select(x => x.OnThreadEndAsync(cancellationToken)).ToList()).ConfigureAwait(false);
+        await Task.WhenAll(this.MemoryComponents.Select(x => x.OnThreadEndAsync(threadId, cancellationToken)).ToList()).ConfigureAwait(false);
     }
 
     public virtual async Task OnNewMessageAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
