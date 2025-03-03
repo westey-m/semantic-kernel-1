@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 using System.ClientModel;
 using Azure.Identity;
+using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.Agents.AzureAI;
@@ -8,6 +9,7 @@ using Microsoft.SemanticKernel.Agents.Chat;
 using Microsoft.SemanticKernel.Agents.Memory;
 using Microsoft.SemanticKernel.Agents.OpenAI;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Data;
 using OpenAI.Assistants;
 
 namespace Agents;
@@ -255,6 +257,26 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         (await agentWithMemory2.CompleteAsync(new ChatMessageContent(AuthorRole.User, "What do you know about me?")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
         (await agentWithMemory2.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Please clear my user preferences.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
         await agentWithMemory2.EndThreadAsync();
+
+        ChatCompletionAgent CreateAgent()
+        {
+            return new()
+            {
+                Instructions = "You are a friendly assistant",
+                Name = "FriendlyAssistant",
+                Kernel = kernel,
+            };
+        }
+    }
+
+    [Fact]
+    public async Task MinimalChatCompletionAgentWitRAGSampleAsync()
+    {
+        var kernel = CreateKernelWithRAGSupport();
+
+        var agentWithMemory = CreateAgent().WithMemory(memoryComponents: [new TextSearchRagMemoryComponent(kernel.GetRequiredService<VectorStoreTextSearch<RAGDataRecord>>(), null)]);
+        (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "How do I construct a Qdrant Vector store in C#")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
+        await agentWithMemory.EndThreadAsync();
 
         ChatCompletionAgent CreateAgent()
         {
@@ -561,5 +583,41 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             "userid/12345");
 
         return builder.Build();
+    }
+
+    protected Kernel CreateKernelWithRAGSupport()
+    {
+        var builder = Kernel.CreateBuilder();
+
+        AddChatCompletionToKernel(builder);
+        builder.AddAzureOpenAITextEmbeddingGeneration(
+            TestConfiguration.AzureOpenAIEmbeddings.DeploymentName,
+            TestConfiguration.AzureOpenAIEmbeddings.Endpoint,
+            new AzureCliCredential());
+        builder.Services.AddQdrantVectorStoreRecordCollection<Guid, RAGDataRecord>("pdfcontent", "localhost");
+        builder.Services.AddVectorStoreTextSearch<RAGDataRecord>();
+
+        return builder.Build();
+    }
+
+    public class RAGDataRecord
+    {
+        [VectorStoreRecordKey]
+        public required Guid Key { get; set; }
+
+        [VectorStoreRecordData]
+        [TextSearchResultValue]
+        public string? Text { get; set; }
+
+        [VectorStoreRecordData]
+        [TextSearchResultName]
+        public string? ReferenceDescription { get; set; }
+
+        [VectorStoreRecordData]
+        [TextSearchResultLink]
+        public string? ReferenceLink { get; set; }
+
+        [VectorStoreRecordVector(1536)]
+        public ReadOnlyMemory<float> TextEmbedding { get; set; }
     }
 }
