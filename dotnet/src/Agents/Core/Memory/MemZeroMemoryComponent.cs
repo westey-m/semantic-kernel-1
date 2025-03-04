@@ -19,18 +19,20 @@ public class MemZeroMemoryComponent : MemoryComponent
     private static readonly Uri s_createMemoryUri = new("/memories", UriKind.Relative);
 
     private readonly string? _agentId;
-    private readonly string? _threadId;
+    private string? _threadId;
     private readonly string? _userId;
+    private readonly bool _scopeToThread;
     private readonly HttpClient _httpClient;
 
     private bool _contextLoaded = false;
     private string _userPreferences = string.Empty;
 
-    public MemZeroMemoryComponent(HttpClient httpClient, string? agentId = default, string? threadId = default, string? userId = default)
+    public MemZeroMemoryComponent(HttpClient httpClient, string? agentId = default, string? threadId = default, string? userId = default, bool scopeToThread = false)
     {
         this._agentId = agentId;
         this._threadId = threadId;
         this._userId = userId;
+        this._scopeToThread = scopeToThread;
         this._httpClient = httpClient;
     }
 
@@ -39,10 +41,12 @@ public class MemZeroMemoryComponent : MemoryComponent
     {
         if (!this._contextLoaded)
         {
+            this._threadId ??= threadId;
+
             var searchRequest = new SearchRequest
             {
                 AgentId = this._agentId,
-                RunId = this._threadId,
+                RunId = this._scopeToThread ? this._threadId : null,
                 UserId = this._userId,
                 Query = inputText ?? string.Empty
             };
@@ -64,7 +68,7 @@ public class MemZeroMemoryComponent : MemoryComponent
                 new CreateMemoryRequest()
                 {
                     AgentId = this._agentId,
-                    RunId = this._threadId,
+                    RunId = this._scopeToThread ? this._threadId : null,
                     UserId = this._userId,
                     Messages = new[]
                     {
@@ -86,12 +90,17 @@ public class MemZeroMemoryComponent : MemoryComponent
         return Task.FromResult("The following list contains facts about the user:\n" + this._userPreferences);
     }
 
+    /// <inheritdoc/>
     public override void RegisterPlugins(Kernel kernel)
     {
         base.RegisterPlugins(kernel);
         kernel.Plugins.AddFromObject(this, "MemZeroMemory");
     }
 
+    /// <summary>
+    /// Plugin method to clear user preferences stored in memory for the current agent/thread/user.
+    /// </summary>
+    /// <returns>A task that completes when the memory is cleared.</returns>
     [KernelFunction]
     [Description("Deletes any user preferences stored about the user.")]
     public async Task ClearUserPreferencesAsync()
@@ -121,7 +130,7 @@ public class MemZeroMemoryComponent : MemoryComponent
     {
         try
         {
-            var querystringParams = new string?[3] { this._userId, this._agentId, this._threadId }
+            var querystringParams = new string?[3] { this._userId, this._agentId, this._scopeToThread ? this._threadId : null }
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Select((param, index) => $"param{index}={param}");
             var queryString = string.Join("&", querystringParams);
@@ -133,17 +142,18 @@ public class MemZeroMemoryComponent : MemoryComponent
         catch (Exception ex)
         {
             Console.WriteLine($"- MemZeroMemory - Error clearing memory: {ex.Message}");
+            throw;
         }
     }
 
     private class CreateMemoryRequest
     {
         [JsonPropertyName("agent_id")]
-        public string AgentId { get; set; } = string.Empty;
+        public string? AgentId { get; set; }
         [JsonPropertyName("run_id")]
-        public string RunId { get; set; } = string.Empty;
+        public string? RunId { get; set; }
         [JsonPropertyName("user_id")]
-        public string UserId { get; set; } = string.Empty;
+        public string? UserId { get; set; }
         [JsonPropertyName("messages")]
         public CreateMemoryMemory[] Messages { get; set; } = [];
     }
