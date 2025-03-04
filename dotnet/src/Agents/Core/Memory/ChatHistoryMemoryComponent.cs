@@ -16,6 +16,12 @@ public class ChatHistoryMemoryComponent : ThreadManagementMemoryComponent
     private bool _threadActive = false;
     private string? _threadId;
 
+    public ChatHistoryMemoryComponent(Kernel kernel, MemoryDocumentStore memoryDocumentStore)
+    {
+        this._kernel = kernel;
+        this._memoryDocumentStore = memoryDocumentStore;
+    }
+
     public ChatHistoryMemoryComponent(Kernel kernel, string? userPreferencesStoreName = "ChatHistoryStore")
     {
         this._kernel = kernel;

@@ -23,6 +23,17 @@ public class UserPreferencesMemoryComponent : MemoryComponent
     /// Initializes a new instance of the <see cref="UserPreferencesMemoryComponent"/> class.
     /// </summary>
     /// <param name="kernel">A kernel to use for making chat completion calls.</param>
+    /// <param name="memoryDocumentStore">The memory document store to retrieve and save memories from and to.</param>
+    public UserPreferencesMemoryComponent(Kernel kernel, MemoryDocumentStore memoryDocumentStore)
+    {
+        this._kernel = kernel;
+        this._memoryDocumentStore = memoryDocumentStore;
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="UserPreferencesMemoryComponent"/> class.
+    /// </summary>
+    /// <param name="kernel">A kernel to use for making chat completion calls.</param>
     /// <param name="userPreferencesStoreName">The service key that the <see cref="MemoryDocumentStore"/> for user preferences is registered under in DI.</param>
     public UserPreferencesMemoryComponent(Kernel kernel, string? userPreferencesStoreName = "UserPreferencesStore")
     {
