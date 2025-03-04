@@ -4,6 +4,7 @@ using System;
 using System.Threading.Tasks;
 using System.Threading;
 using Microsoft.SemanticKernel.ChatCompletion;
+using System.Collections.Generic;
 
 namespace Microsoft.SemanticKernel.Agents.Memory;
 
@@ -12,15 +13,31 @@ public class ChatHistoryMemoryManager : MemoryManager
     private readonly Func<ChatHistory>? _chatHistoryRetriever;
     private readonly ThreadManagementMemoryComponent _chatHistoryMemoryComponent;
 
-    public ChatHistoryMemoryManager(Func<ChatHistory> chatHistoryRetriever)
+    public ChatHistoryMemoryManager(Func<ChatHistory> chatHistoryRetriever, IEnumerable<MemoryComponent>? memoryComponents = default)
     {
         this._chatHistoryRetriever = chatHistoryRetriever;
+
+        if (memoryComponents != null)
+        {
+            foreach (var memoryComponent in memoryComponents)
+            {
+                this.RegisterMemoryComponent(memoryComponent);
+            }
+        }
     }
 
-    public ChatHistoryMemoryManager(ThreadManagementMemoryComponent chatHistoryMemoryComponent)
+    public ChatHistoryMemoryManager(ThreadManagementMemoryComponent chatHistoryMemoryComponent, IEnumerable<MemoryComponent>? memoryComponents = default)
     {
         this.RegisterMemoryComponent(chatHistoryMemoryComponent);
         this._chatHistoryMemoryComponent = chatHistoryMemoryComponent;
+
+        if (memoryComponents != null)
+        {
+            foreach (var memoryComponent in memoryComponents)
+            {
+                this.RegisterMemoryComponent(memoryComponent);
+            }
+        }
     }
 
     /// <summary>
