@@ -1,0 +1,127 @@
+---
+# These are optional elements. Feel free to remove any of them.
+status: {proposed | rejected | accepted | deprecated | … | superseded by [ADR-0001](0001-madr-architecture-decisions.md)}
+contact: {person proposing the ADR}
+date: {YYYY-MM-DD when the decision was last updated}
+deciders: {list everyone involved in the decision}
+consulted: {list everyone whose opinions are sought (typically subject-matter experts); and with whom there is a two-way communication}
+informed: {list everyone who is kept up-to-date on progress; and with whom there is a one-way communication}
+---
+
+# Agents with Memory
+
+## Context and Problem Statement
+
+Today we support multiple agent types that can both be in process as well as remote. Agents can be both stateful and stateless.
+We need to support advanced memory capabilities across this range of agent types.
+
+We can add memory capabilities via a simple mechanism of:
+
+1. Inspecting and using messages as they are passed to and from the agent.
+1. Passing additional context to the agent per invocation.
+
+A requirement for an agent to be usable with our memory capabilities is therefore the need to accept additional per invocation context.
+
+Where agents are remote/external and stateful, any memory capabilities that we add, will not directly affect the state of the remote agent,
+since any memories will be passed as temporary context per invocation.
+
+Each memory capability can be built using a separate component, which has the following characteristics:
+
+1. May store some context that can be provided to the agent per invocation.
+1. May inspect messages from the conversation to learn from the conversation and build its context.
+1. May register plugins to allow the agent to directly store, retrieve, update or clear memories.
+
+The same memory components can also be used to build a stateful agent, since the same mechanisms of inspecting messages and passing
+additional context to (in this case) the LLM, can be used here too.
+In addition, building a stateful agent also requires the context that each component may hold to be storable between invocations.
+This way the conversation can be resumed from this stored state when an invocation to the conversation is received and suspended at the
+end of the invocation, allowing the caller to experience a stateful experience.
+
+### Proposed interface for Memory Components
+
+The types of events that Memory Components require are not unique to memory, and can be used to package up other capabilities too.
+The suggestion is therefore to create a more generally named type that can be used for other scenarios as well.
+
+```csharp
+public abstract class ChatExtensionComponent
+{
+    public virtual Task OnThreadStartAsync(string threadId, string? inputText = default, CancellationToken cancellationToken = default);
+    public virtual Task OnThreadCheckpointAsync(string threadId, CancellationToken cancellationToken = default);
+    public virtual Task OnThreadEndAsync(string threadId, CancellationToken cancellationToken = default);
+
+    public virtual Task OnNewMessageAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default);
+    public abstract Task<string> OnAIInvocationAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default);
+
+    public virtual void RegisterPlugins(Kernel kernel);
+}
+```
+
+Alternative names:
+
+- ThreadComponent
+- ChatComponent
+- MemoryComponent
+
+### Thread Management
+
+Different agent types have different mechanisms for supporting threads and storing conversation history.
+E.g. some are stateless and require the caller to manage this, while others are stateful and expose thread mangement capabilities.
+
+We therefore need a way to interact with the different thread management capabilities of different agents via an abstraction.
+This abstraction can proxy calls to the thread management capabilities of remote agents, or implement in-memory
+chat history management for stateless agents.
+
+Here is a suggested base interface for managing threads.
+
+```csharp
+public abstract class ChatThread
+{
+    public abstract bool HasActiveThread { get; }
+    public abstract string? CurrentThreadId { get; }
+
+    public abstract Task<string> StartNewThreadAsync(CancellationToken cancellationToken = default);
+    public abstract Task EndThreadAsync(CancellationToken cancellationToken = default);
+    public abstract Task<ChatHistory> RetrieveCurrentChatHistoryAsync(CancellationToken cancellationToken = default);
+}
+```
+
+### Combining Threads, Agents and Memory Components
+
+We need the ability to combine Agent, Thread, and memory components.
+Remote Agents that expose their own thread management API will require a matching `ChatThread` component to function correctly.
+
+Stateless agents on the other hand, could be combined with one of multiple availble `ChatThread` components.
+You could for example have:
+
+1. A `ChatThread` component that stores state locally in-memory in an SK ChatHistory component and supports suspend/resume.
+1. A `ChatThread` component that uploads chat messages into a remote message store that does truncation automatically.
+
+A choice of `ChatThread` components also make sense for when you are building your own stateful agent service.
+
+An agent can also be combined with one or more memory components, depending on the type of memory capabilities required.
+
+Here are some sample scenarios.
+
+#### ChatCompletionAgent
+
+ChatCompletionAgent is stateless and designed for local in-memory usage.
+To have it participate in a conversation you require a `ChatThread` component that can manage its chat history.
+You may also add a memory component to summarize the conversation and store it in a vector database, plus
+retrieve previous conversations that are interesting.
+You may also add a second memory component that learns about user preferences, makes them available in context and saves them across conversations.
+
+- ChatCompletionAgent
+- ChatHistoryChatThread
+- ConversationSummaryStorageMemoryComponent
+- UserPreferencesMemoryComponent
+
+#### OpenAIAssistantAgent
+
+OpenAIAssistantAgent is stateful and remote.
+To have it participate in a conversation you require a `ChatThread` component that can proxy calls to its own thread management.
+Let's say the agent can also remember details from previous conversations, you would not need a component to do any conversation summarization, storage or retrieval.
+You may however add a memory component that learns about user preferences, makes them available in context and saves them across conversations.
+
+- OpenAIAssistantAgent
+- OpenAIAssistantChatThread
+- UserPreferencesMemoryComponent
