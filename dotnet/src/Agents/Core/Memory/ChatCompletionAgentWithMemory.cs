@@ -15,7 +15,7 @@ namespace Microsoft.SemanticKernel.Agents.Memory;
 public class ChatCompletionAgentWithMemory : AgentWithMemory
 {
     private readonly ChatCompletionAgent _agent;
-    private readonly ThreadManagementMemoryComponent _chatHistoryMemoryComponent;
+    private readonly ChatThread _chatHistoryMemoryComponent;
     private readonly ChatHistoryMemoryManager _memoryManager;
     private readonly bool _loadContextOnFirstMessage;
     private readonly bool _startNewThreadOnFirstMessage;
@@ -23,13 +23,12 @@ public class ChatCompletionAgentWithMemory : AgentWithMemory
 
     public ChatCompletionAgentWithMemory(
         ChatCompletionAgent agent,
-        Kernel? chatHistoryMemoryComponentKernel = default,
         IEnumerable<MemoryComponent>? memoryComponents = default,
         bool loadContextOnFirstMessage = true,
         bool startNewThreadOnFirstMessage = true)
     {
         this._agent = agent;
-        this._chatHistoryMemoryComponent = new ChatHistoryMemoryComponent(chatHistoryMemoryComponentKernel ?? agent.Kernel);
+        this._chatHistoryMemoryComponent = new ChatHistoryThread();
         this._memoryManager = new ChatHistoryMemoryManager(this._chatHistoryMemoryComponent);
         this._loadContextOnFirstMessage = loadContextOnFirstMessage;
         this._startNewThreadOnFirstMessage = startNewThreadOnFirstMessage;
@@ -45,7 +44,7 @@ public class ChatCompletionAgentWithMemory : AgentWithMemory
 
     public ChatCompletionAgentWithMemory(
         ChatCompletionAgent agent,
-        ThreadManagementMemoryComponent chatHistoryMemoryComponent,
+        ChatThread chatHistoryMemoryComponent,
         IEnumerable<MemoryComponent>? memoryComponents = default,
         bool loadContextOnFirstMessage = true,
         bool startNewThreadOnFirstMessage = true)
@@ -96,6 +95,7 @@ public class ChatCompletionAgentWithMemory : AgentWithMemory
         ChatMessageContent chatMessageContent,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        // Check if we need to start a new thread.
         if (!this._chatHistoryMemoryComponent.HasActiveThread)
         {
             if (!this._startNewThreadOnFirstMessage)
@@ -106,6 +106,7 @@ public class ChatCompletionAgentWithMemory : AgentWithMemory
             await this.StartNewThreadAsync(cancellationToken).ConfigureAwait(false);
         }
 
+        // Check if we need to load context.
         if (this._isFirstMessage && this._loadContextOnFirstMessage)
         {
             await this._memoryManager.OnThreadStartAsync(
@@ -115,9 +116,11 @@ public class ChatCompletionAgentWithMemory : AgentWithMemory
             this._isFirstMessage = false;
         }
 
+        // Update the registered components.
         await this._memoryManager.OnNewMessageAsync(chatMessageContent, cancellationToken).ConfigureAwait(false);
         var memoryContext = await this._memoryManager.OnAIInvocationAsync(chatMessageContent, cancellationToken).ConfigureAwait(false);
 
+        // Register plugins.
         var overrideKernel = this._agent.Kernel.Clone();
         this.MemoryManager.RegisterPlugins(overrideKernel);
 

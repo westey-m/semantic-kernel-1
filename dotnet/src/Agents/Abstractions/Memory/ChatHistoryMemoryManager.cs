@@ -11,11 +11,13 @@ namespace Microsoft.SemanticKernel.Agents.Memory;
 public class ChatHistoryMemoryManager : MemoryManager
 {
     private readonly Func<ChatHistory>? _chatHistoryRetriever;
-    private readonly ThreadManagementMemoryComponent _chatHistoryMemoryComponent;
+    private readonly string? _threadId;
+    private readonly ChatThread? _chatThread;
 
-    public ChatHistoryMemoryManager(Func<ChatHistory> chatHistoryRetriever, IEnumerable<MemoryComponent>? memoryComponents = default)
+    public ChatHistoryMemoryManager(Func<ChatHistory> chatHistoryRetriever, string threadId, IEnumerable<MemoryComponent>? memoryComponents = default)
     {
         this._chatHistoryRetriever = chatHistoryRetriever;
+        this._threadId = threadId;
 
         if (memoryComponents != null)
         {
@@ -26,10 +28,9 @@ public class ChatHistoryMemoryManager : MemoryManager
         }
     }
 
-    public ChatHistoryMemoryManager(ThreadManagementMemoryComponent chatHistoryMemoryComponent, IEnumerable<MemoryComponent>? memoryComponents = default)
+    public ChatHistoryMemoryManager(ChatThread chatThread, IEnumerable<MemoryComponent>? memoryComponents = default)
     {
-        this.RegisterMemoryComponent(chatHistoryMemoryComponent);
-        this._chatHistoryMemoryComponent = chatHistoryMemoryComponent;
+        this._chatThread = chatThread;
 
         if (memoryComponents != null)
         {
@@ -38,6 +39,16 @@ public class ChatHistoryMemoryManager : MemoryManager
                 this.RegisterMemoryComponent(memoryComponent);
             }
         }
+    }
+
+    /// <inheritdoc />
+    public override async Task OnNewMessageAsync(ChatMessageContent newMessage, CancellationToken cancellationToken = default)
+    {
+        await Task.WhenAll(
+        [
+            base.OnNewMessageAsync(newMessage, cancellationToken),
+            this._chatThread?.OnNewMessageAsync(newMessage, cancellationToken) ?? Task.CompletedTask,
+        ]).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -52,6 +63,11 @@ public class ChatHistoryMemoryManager : MemoryManager
             return Task.FromResult(this._chatHistoryRetriever());
         }
 
-        return this._chatHistoryMemoryComponent.RetrieveCurrentChatHistoryAsync(cancellationToken);
+        return this._chatThread!.RetrieveCurrentChatHistoryAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Gets the thread id of the currently active thread or null if none is active.
+    /// </summary>
+    public string? CurrentThreadId => this._threadId ?? this._chatThread?.CurrentThreadId;
 }

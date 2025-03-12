@@ -71,13 +71,13 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         var kernel = CreateKernelWithMemorySupport();
 
         Console.WriteLine("------------ Session one --------------");
-        var agentWithMemory = CreateAgent().WithMemory(memoryComponents: [new UserPreferencesMemoryComponent(kernel)]);
+        var agentWithMemory = CreateAgent().WithMemory(memoryComponents: [new ChatHistorySummarizedStorageMemoryComponent(kernel), new UserPreferencesMemoryComponent(kernel)]);
         (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Hi, my name is Caoimhe")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
         (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "I love history, please tell me a historical fact")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
         await agentWithMemory.EndThreadAsync();
 
         Console.WriteLine("------------ Session two --------------");
-        var agentWithMemory2 = CreateAgent().WithMemory(memoryComponents: [new UserPreferencesMemoryComponent(kernel)]);
+        var agentWithMemory2 = CreateAgent().WithMemory(memoryComponents: [new ChatHistorySummarizedStorageMemoryComponent(kernel), new UserPreferencesMemoryComponent(kernel)]);
         (await agentWithMemory2.CompleteAsync(new ChatMessageContent(AuthorRole.User, "What do you know about me?")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
         await agentWithMemory2.EndThreadAsync();
 
@@ -104,13 +104,13 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         try
         {
             Console.WriteLine("------------ Session one --------------");
-            var agentWithMemory = (await CreateAgent()).WithMemory(memoryComponents: [new UserPreferencesMemoryComponent(kernel)]);
+            var agentWithMemory = (await CreateAgent()).WithMemory(memoryComponents: [new ChatHistorySummarizedStorageMemoryComponent(kernel), new UserPreferencesMemoryComponent(kernel)]);
             (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Hi, my name is Caoimhe")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
             (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "I love history, please tell me a historical fact")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
             await agentWithMemory.EndThreadAsync();
 
             Console.WriteLine("------------ Session two --------------");
-            var agentWithMemory2 = (await CreateAgent()).WithMemory(memoryComponents: [new UserPreferencesMemoryComponent(kernel)]);
+            var agentWithMemory2 = (await CreateAgent()).WithMemory(memoryComponents: [new ChatHistorySummarizedStorageMemoryComponent(kernel), new UserPreferencesMemoryComponent(kernel)]);
             (await agentWithMemory2.CompleteAsync(new ChatMessageContent(AuthorRole.User, "What do you know about me?")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
             await agentWithMemory2.EndThreadAsync();
         }
@@ -157,7 +157,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             Console.WriteLine("------------ Session one --------------");
 
             // Create agent with memory and register memory components.
-            AgentWithMemory agentWithMemory = agent.WithMemory([new UserPreferencesMemoryComponent(kernel)]);
+            AgentWithMemory agentWithMemory = agent.WithMemory([new ChatHistorySummarizedStorageMemoryComponent(kernel), new UserPreferencesMemoryComponent(kernel)]);
 
             (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Please consolidate today's invoices and payments.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
             (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "I am working with Contoso and I always want format B.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
@@ -167,7 +167,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             Console.WriteLine("------------ Session two --------------");
 
             // Second usage of memory manager should load previous context.
-            agentWithMemory = agent.WithMemory([new UserPreferencesMemoryComponent(kernel)]);
+            agentWithMemory = agent.WithMemory([new ChatHistorySummarizedStorageMemoryComponent(kernel), new UserPreferencesMemoryComponent(kernel)]);
 
             (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Please consolidate today's invoices and payments.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
 
@@ -176,7 +176,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
             Console.WriteLine("------------ Session three --------------");
 
             // Third usage of memory manager should load previous context.
-            agentWithMemory = agent.WithMemory([new UserPreferencesMemoryComponent(kernel)]);
+            agentWithMemory = agent.WithMemory([new ChatHistorySummarizedStorageMemoryComponent(kernel), new UserPreferencesMemoryComponent(kernel)]);
 
             (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "What do you know about me?")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
             (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Please clear my user preferences.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
@@ -210,7 +210,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         // TODO: Suspend / Resume.
 
         // Create agent with memory and register memory components.
-        AgentWithMemory agentWithMemory = agent.WithMemory(kernel, [new UserPreferencesMemoryComponent(kernel)]);
+        AgentWithMemory agentWithMemory = agent.WithMemory([new ChatHistorySummarizedStorageMemoryComponent(kernel), new UserPreferencesMemoryComponent(kernel)]);
 
         (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Please consolidate today's invoices and payments.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
         (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "I am working with Contoso and I always want format B.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
@@ -220,7 +220,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         Console.WriteLine("------------ Session two --------------");
 
         // Second usage of memory manager should load previous context.
-        agentWithMemory = agent.WithMemory(kernel, [new UserPreferencesMemoryComponent(kernel)]);
+        agentWithMemory = agent.WithMemory([new ChatHistorySummarizedStorageMemoryComponent(kernel), new UserPreferencesMemoryComponent(kernel)]);
 
         (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Please consolidate today's invoices and payments.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
 
@@ -229,7 +229,7 @@ public class Agents_Memory(ITestOutputHelper output) : BaseAgentsTest(output)
         Console.WriteLine("------------ Session three --------------");
 
         // Third usage of memory manager should load previous context.
-        agentWithMemory = agent.WithMemory(kernel, [new UserPreferencesMemoryComponent(kernel)]);
+        agentWithMemory = agent.WithMemory([new ChatHistorySummarizedStorageMemoryComponent(kernel), new UserPreferencesMemoryComponent(kernel)]);
 
         (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "What do you know about me?")).ToListAsync()).ForEach(this.WriteAgentChatMessage);
         (await agentWithMemory.CompleteAsync(new ChatMessageContent(AuthorRole.User, "Please clear my user preferences.")).ToListAsync()).ForEach(this.WriteAgentChatMessage);

@@ -223,7 +223,7 @@ public sealed class AgentGroupChat : AgentChat
     {
         this._agents = new(agents);
         this._agentIds = new(this._agents.Select(a => a.Id));
-        this._memoryManager = new ChatHistoryMemoryManager(() => this.History);
+        this._memoryManager = new ChatHistoryMemoryManager(() => this.History, "1");
     }
 
     private void EnsureStrategyLoggerAssignment()

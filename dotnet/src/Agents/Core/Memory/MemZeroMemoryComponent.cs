@@ -80,7 +80,7 @@ public class MemZeroMemoryComponent : MemoryComponent
                     }
                 }).ConfigureAwait(false);
 
-            Console.WriteLine($"- MemZeroMemory - Updated Mem0 with new message");
+            Console.WriteLine("- MemZeroMemory - Updated Mem0 with new message");
         }
     }
 

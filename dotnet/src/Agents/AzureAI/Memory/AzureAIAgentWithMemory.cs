@@ -13,8 +13,8 @@ namespace Microsoft.SemanticKernel.Agents.AzureAI;
 public class AzureAIAgentWithMemory : AgentWithMemory
 {
     private readonly AzureAIAgent _agent;
-    private readonly AzureAIAgentThreadMemoryComponent _azureAIAssistantThreadMemoryComponent;
-    private readonly AzureAIAgentMemoryManager _memoryManager;
+    private readonly AzureAIAgentChatThread _chatThread;
+    private readonly ChatHistoryMemoryManager _memoryManager;
     private readonly bool _loadContextOnFirstMessage;
     private readonly bool _startNewThreadOnFirstMessage;
     private bool _isFirstMessage = true;
@@ -26,8 +26,8 @@ public class AzureAIAgentWithMemory : AgentWithMemory
         bool startNewThreadOnFirstMessage = true)
     {
         this._agent = agent;
-        this._azureAIAssistantThreadMemoryComponent = new AzureAIAgentThreadMemoryComponent(agent.Client);
-        this._memoryManager = new AzureAIAgentMemoryManager(this._azureAIAssistantThreadMemoryComponent);
+        this._chatThread = new AzureAIAgentChatThread(agent.Client);
+        this._memoryManager = new ChatHistoryMemoryManager(this._chatThread);
         this._loadContextOnFirstMessage = loadContextOnFirstMessage;
         this._startNewThreadOnFirstMessage = startNewThreadOnFirstMessage;
 
@@ -44,15 +44,15 @@ public class AzureAIAgentWithMemory : AgentWithMemory
     public override MemoryManager MemoryManager => this._memoryManager;
 
     /// <inheritdoc />
-    public override bool HasActiveThread => this._azureAIAssistantThreadMemoryComponent.HasActiveThread;
+    public override bool HasActiveThread => this._chatThread.HasActiveThread;
 
     /// <inheritdoc/>
-    public override string? CurrentThreadId => this._azureAIAssistantThreadMemoryComponent.CurrentThreadId;
+    public override string? CurrentThreadId => this._chatThread.CurrentThreadId;
 
     /// <inheritdoc />
     public override Task<string> StartNewThreadAsync(CancellationToken cancellationToken = default)
     {
-        return this._azureAIAssistantThreadMemoryComponent.StartNewThreadAsync(cancellationToken);
+        return this._chatThread.StartNewThreadAsync(cancellationToken);
     }
 
     /// <inheritdoc />
@@ -60,10 +60,10 @@ public class AzureAIAgentWithMemory : AgentWithMemory
     {
         if (this.HasActiveThread)
         {
-            await this._memoryManager.OnThreadEndAsync(this._azureAIAssistantThreadMemoryComponent.CurrentThreadId!, cancellationToken).ConfigureAwait(false);
+            await this._memoryManager.OnThreadEndAsync(this._chatThread.CurrentThreadId!, cancellationToken).ConfigureAwait(false);
         }
 
-        await this._azureAIAssistantThreadMemoryComponent.EndThreadAsync(cancellationToken).ConfigureAwait(false);
+        await this._chatThread.EndThreadAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -71,6 +71,7 @@ public class AzureAIAgentWithMemory : AgentWithMemory
         ChatMessageContent chatMessageContent,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        // Check if we need to start a new thread.
         if (!this.HasActiveThread)
         {
             if (!this._startNewThreadOnFirstMessage)
@@ -81,21 +82,25 @@ public class AzureAIAgentWithMemory : AgentWithMemory
             await this.StartNewThreadAsync(cancellationToken).ConfigureAwait(false);
         }
 
+        // Check if we need to load context.
         if (this._isFirstMessage && this._loadContextOnFirstMessage)
         {
             await this._memoryManager.OnThreadStartAsync(
-                this._azureAIAssistantThreadMemoryComponent.CurrentThreadId!,
+                this._chatThread.CurrentThreadId!,
                 chatMessageContent.Content ?? string.Empty,
                 cancellationToken).ConfigureAwait(false);
             this._isFirstMessage = false;
         }
 
+        // Update the registered components.
         await this._memoryManager.OnNewMessageAsync(chatMessageContent, cancellationToken).ConfigureAwait(false);
         var memoryContext = await this._memoryManager.OnAIInvocationAsync(chatMessageContent, cancellationToken).ConfigureAwait(false);
 
+        // Register plugins.
         var overrideKernel = this._agent.Kernel.Clone();
         this.MemoryManager.RegisterPlugins(overrideKernel);
 
+        // Generate the agent response(s)
         await foreach (ChatMessageContent response in this._agent.InvokeAsync(
             this._memoryManager.CurrentThreadId!,
             new AzureAIInvocationOptions { AdditionalInstructions = memoryContext },
