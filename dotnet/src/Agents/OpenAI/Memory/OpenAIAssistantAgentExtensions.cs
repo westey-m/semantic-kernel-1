@@ -10,13 +10,11 @@ public static class OpenAIAssistantAgentExtensions
     public static OpenAIAssistantAgentWithMemory WithMemory(
         this OpenAIAssistantAgent agent,
         IEnumerable<MemoryComponent>? memoryComponents = default,
-        bool loadContextOnFirstMessage = true,
         bool startNewThreadOnFirstMessage = true)
     {
         return new OpenAIAssistantAgentWithMemory(
             agent,
             memoryComponents,
-            loadContextOnFirstMessage,
             startNewThreadOnFirstMessage);
     }
 }

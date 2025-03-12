@@ -10,13 +10,11 @@ public static class ChatCompletionAgentExtensions
     public static ChatCompletionAgentWithMemory WithMemory(
         this ChatCompletionAgent agent,
         IEnumerable<MemoryComponent>? memoryComponents = default,
-        bool loadContextOnFirstMessage = true,
         bool startNewThreadOnFirstMessage = true)
     {
         return new ChatCompletionAgentWithMemory(
             agent,
             memoryComponents,
-            loadContextOnFirstMessage,
             startNewThreadOnFirstMessage);
     }
 }
