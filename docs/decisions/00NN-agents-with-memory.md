@@ -151,9 +151,9 @@ var agent = new MyAgent()
     {
         Name = "CreditorsAgent",
         Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
-        Kernel = kernel
-    }
-    .WithMemory([new UserPreferencesMemoryComponent(kernel)]);
+        Kernel = kernel,
+        Extensions = [new UserPreferencesMemoryComponent(kernel)]
+    };
 
 var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?");
 var response = await agent.InvokeAsync("And invoice 33-22-6325?");
@@ -203,9 +203,9 @@ var agent = new MyAgent()
         Name = "CreditorsAgent",
         Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
         Kernel = kernel,
-        ThreadId = "12345"
-    }
-    .WithMemory([new UserPreferencesMemoryComponent(kernel)]);
+        ThreadId = "12345",
+        Extensions = [new UserPreferencesMemoryComponent(kernel)]
+    };
 
 // Resuming previous thread when agent class is stateless and thread and memory is managed separately.
 var agent = new MyAgent()
