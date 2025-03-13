@@ -85,10 +85,15 @@ public abstract class ChatThread
 }
 ```
 
+Alternative names:
+
+- ChatContext
+
 ### Combining Threads, Agents and Memory Components
 
 We need the ability to combine Agent, Thread, and memory components.
 Remote Agents that expose their own thread management API will require a matching `ChatThread` component to function correctly.
+This matching `ChatThread` component would simply proxy to the thread management API of the service.
 
 Stateless agents on the other hand, could be combined with one of multiple availble `ChatThread` components.
 You could for example have:
@@ -99,6 +104,16 @@ You could for example have:
 A choice of `ChatThread` components also make sense for when you are building your own stateful agent service.
 
 An agent can also be combined with one or more memory components, depending on the type of memory capabilities required.
+**There is a close relationship between the instances of the thread and memory components associated with an agent.**
+**This is regardless of whether the thread ultimately lives in a remote agent service or is managed locally.**
+
+A specific thread is going to contain messages from the user(s) and agent(s) that are participating in the thread.
+These messages are typically considered private to the participants of the thread.
+Similarly, most memories that are derived from this thread, e.g. chat summaries or user preferences, would be considered
+private too.
+The context stored in each memory component while a thread is active, is private to the thread itself.
+A memory component may however store memories to long term storage which could allow sharing of memories between
+threads where it is safe to do so.
 
 Here are some sample scenarios.
 
@@ -125,3 +140,79 @@ You may however add a memory component that learns about user preferences, makes
 - OpenAIAssistantAgent
 - OpenAIAssistantChatThread
 - UserPreferencesMemoryComponent
+
+## Potential agent consumption code
+
+Starting a conversation with a new thread.
+
+```csharp
+// Agent class instance is stateful and manages thread and memory inside.
+var agent = new MyAgent()
+    {
+        Name = "CreditorsAgent",
+        Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
+        Kernel = kernel
+    }
+    .WithMemory([new UserPreferencesMemoryComponent(kernel)]);
+
+var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?");
+var response = await agent.InvokeAsync("And invoice 33-22-6325?");
+
+Console.WriteLine(agent.ThreadId);
+await agent.EndThread();
+
+// Agent class is stateless and thread and memory is managed separately.
+var agent = new MyAgent()
+    {
+        Name = "CreditorsAgent",
+        Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
+        Kernel = kernel
+    }
+var thread = new MyAgentChatThread();
+await thread.StartThread();
+var memoryManager = new MemoryManager([new UserPreferencesMemoryComponent(kernel)]);
+
+var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?", thread, memoryManager);
+var response = await agent.InvokeAsync("And invoice 33-22-6325?", thread, memoryManager);
+
+Console.WriteLine(thread.ThreadId);
+await thread.EndThread();
+
+// Agent class is stateless and thread and memory is managed separately.
+var agent = new MyAgent()
+    {
+        Name = "CreditorsAgent",
+        Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
+        Kernel = kernel
+    }
+var memoryManager = new MemoryManager([new UserPreferencesMemoryComponent(kernel)]);
+
+var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?", memoryManager);
+var response = await agent.InvokeAsync("And invoice 33-22-6325?", response.Thread, memoryManager);
+
+Console.WriteLine(response.Thread.ThreadId);
+await response.Thread.EndThread();
+```
+
+Resuming a conversation on an existing thread.
+
+```csharp
+// Resuming previous thread with stateful agent class.
+var agent = new MyAgent()
+    {
+        Name = "CreditorsAgent",
+        Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
+        Kernel = kernel,
+        ThreadId = "12345"
+    }
+    .WithMemory([new UserPreferencesMemoryComponent(kernel)]);
+
+// Resuming previous thread when agent class is stateless and thread and memory is managed separately.
+var agent = new MyAgent()
+    {
+        Name = "CreditorsAgent",
+        Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
+        Kernel = kernel
+    }
+var thread = new MyAgentChatThread("12345");
+```
