@@ -216,3 +216,35 @@ var agent = new MyAgent()
     }
 var thread = new MyAgentChatThread("12345");
 ```
+
+Multi-agent conversation using stateful pattern
+
+```csharp
+var agent1 = new MyAgent()
+    {
+        Name = "Copywriter",
+        Instructions = "You are an experienced copywriter.",
+        Kernel = kernel,
+        Extensions = [new UserPreferencesMemoryComponent(kernel)]
+    };
+
+var agent2 = new MyAgent()
+    {
+        Name = "Editor",
+        Instructions = "You are an experienced editor.",
+        Kernel = kernel
+    };
+
+var groupChat = new GroupChat(agent1, agent2)
+{
+    Extensions = [new ChatHistorySummarizedStorage(kernel)]
+};
+
+var response = await groupChat.InvokeAsync("Write a funny marketing slogan for decorative lamps made with tree bark?");
+
+Console.WriteLine(agent1.ThreadId);
+Console.WriteLine(agent2.ThreadId);
+Console.WriteLine(groupChat.ThreadId);
+// End all threads?
+await groupChat.EndThread();
+```
