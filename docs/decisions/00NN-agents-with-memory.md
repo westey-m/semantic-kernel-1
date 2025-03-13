@@ -260,21 +260,23 @@ await groupChat.EndThread();
 ChatCompletionAgent agent =
     new()
     {
-        Instructions = "Summarize user input",
-        Name = "SummarizationAgent",
+        Instructions = "You are a friendly assistant",
+        Name = "FriendlyAssistant",
         Kernel = kernel,
     };
-ChatHistory chat = [new ChatMessageContent(AuthorRole.User, userMessage)];
+ChatHistory chat = [new ChatMessageContent(AuthorRole.User, "What is the capital of France")];
 await agent.InvokeAsync(chat);
 
 // Azure AI Agent
 var azureAIClient = AzureAIAgent.CreateAzureAIClient(TestConfiguration.AzureAI.ConnectionString, new AzureCliCredential());
 var azureAIAgentsClient = azureAIClient.GetAgentsClient();
-var createAgentResponse = await azureAIAgentsClient.CreateAgentAsync("gpt-4o", "FriendlyAssistant", "FriendlyAssistant", "You are a friendly assistant");
-var agent = new AzureAIAgent(createAgentResponse.Value, azureAIAgentsClient) { Kernel = kernel };
+var definition = await azureAIAgentsClient.CreateAgentAsync("gpt-4o", "FriendlyAssistant", "FriendlyAssistant", "You are a friendly assistant");
+var thread = new AzureAIAgent(definition, azureAIAgentsClient) { Kernel = kernel };
 
-var createThreadResponse = await client.CreateThreadAsync(cancellationToken: cancellationToken);
-await agent.InvokeAsync(assitantThreadResponse.Value.Id);
+var createThreadResponse = await azureAIAgentsClient.CreateThreadAsync();
+
+agent.AddChatMessageAsync(thread.Id, new ChatMessageContent(AuthorRole.User, "What is the capital of France"));
+await agent.InvokeAsync(thread.Id);
 
 // Azure OpenAI Assistant Agent
 var client = OpenAIAssistantAgent.CreateAzureOpenAIClient(new AzureCliCredential(), new Uri(this.Endpoint!));
@@ -282,10 +284,25 @@ var assistantClient = client.GetAssistantClient();
 Assistant assistant =
     await assistantClient.CreateAssistantAsync(
         this.Model,
-        name: "FinanceAgent",
-        instructions: "You are an expert in financial management and accounting and can use tools to consolidate invoices and payments");
+        name: "FriendlyAssistant",
+        instructions: "You are a friendly assistant");
 OpenAIAssistantAgent agent = new(assistant, assistantClient) { Kernel = kernel };
 
-var createThreadResponse = await assistantClient.CreateThreadAsync(cancellationToken: cancellationToken);
+var createThreadResponse = await assistantClient.CreateThreadAsync();
+
+await agent.AddChatMessageAsync(createThreadResponse.Value.Id, new ChatMessageContent(AuthorRole.User, "What is the capital of France"));
 await agent.InvokeAsync(createThreadResponse.Value.Id);
+
+// Bedrock Agent
+var client = new AmazonBedrockAgentClient();
+var agentModel = await this.Client.CreateAndPrepareAgentAsync(new()
+{
+    AgentName = "FriendlyAssistant",
+    Description = "Friendly Assistant",
+    Instruction = "You are a friendly assistant",
+    AgentResourceRoleArn = TestConfiguration.BedrockAgent.AgentResourceRoleArn,
+    FoundationModel = TestConfiguration.BedrockAgent.FoundationModel,
+});
+var agent = new BedrockAgent(agentModel, this.Client);
+agent.InvokeAsync(BedrockAgent.CreateSessionId(), "What is the capital of France");
 ```
