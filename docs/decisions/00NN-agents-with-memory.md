@@ -162,15 +162,20 @@ Console.WriteLine(agent.ThreadId);
 await agent.EndThread();
 
 // Agent class is stateless and thread and memory is managed separately.
+// Allows you to pass thread specific config to a new thread when creating it.
+// Allows you to fork threads, if each response contains the newly forked thread.
+// Potentially complicates scenario where multiple agents need to converse together with the same thread and you don't want them to share memory components.
 var agent = new MyAgent()
     {
         Name = "CreditorsAgent",
         Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
         Kernel = kernel
     }
-var thread = new MyAgentChatThread();
+var thread = new MyAgentChatThread()
+{
+    Extensions = [new UserPreferencesMemoryComponent(kernel)]
+};
 await thread.StartThread();
-var memoryManager = new MemoryManager([new UserPreferencesMemoryComponent(kernel)]);
 
 var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?", thread, memoryManager);
 var response = await agent.InvokeAsync("And invoice 33-22-6325?", thread, memoryManager);
@@ -178,17 +183,16 @@ var response = await agent.InvokeAsync("And invoice 33-22-6325?", thread, memory
 Console.WriteLine(thread.ThreadId);
 await thread.EndThread();
 
-// Agent class is stateless and thread and memory is managed separately.
+// Agent class is stateless and thread and memory is managed separately, with auto thread creation.
 var agent = new MyAgent()
     {
         Name = "CreditorsAgent",
         Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
         Kernel = kernel
     }
-var memoryManager = new MemoryManager([new UserPreferencesMemoryComponent(kernel)]);
 
-var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?", memoryManager);
-var response = await agent.InvokeAsync("And invoice 33-22-6325?", response.Thread, memoryManager);
+var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?", [new UserPreferencesMemoryComponent(kernel)]);
+var response = await agent.InvokeAsync("And invoice 33-22-6325?", response.Thread);
 
 Console.WriteLine(response.Thread.ThreadId);
 await response.Thread.EndThread();
@@ -247,4 +251,41 @@ Console.WriteLine(agent2.ThreadId);
 Console.WriteLine(groupChat.ThreadId);
 // End all threads?
 await groupChat.EndThread();
+```
+
+## Comparing current agent invocation
+
+```csharp
+// Chat Completion Agent
+ChatCompletionAgent agent =
+    new()
+    {
+        Instructions = "Summarize user input",
+        Name = "SummarizationAgent",
+        Kernel = kernel,
+    };
+ChatHistory chat = [new ChatMessageContent(AuthorRole.User, userMessage)];
+await agent.InvokeAsync(chat);
+
+// Azure AI Agent
+var azureAIClient = AzureAIAgent.CreateAzureAIClient(TestConfiguration.AzureAI.ConnectionString, new AzureCliCredential());
+var azureAIAgentsClient = azureAIClient.GetAgentsClient();
+var createAgentResponse = await azureAIAgentsClient.CreateAgentAsync("gpt-4o", "FriendlyAssistant", "FriendlyAssistant", "You are a friendly assistant");
+var agent = new AzureAIAgent(createAgentResponse.Value, azureAIAgentsClient) { Kernel = kernel };
+
+var createThreadResponse = await client.CreateThreadAsync(cancellationToken: cancellationToken);
+await agent.InvokeAsync(assitantThreadResponse.Value.Id);
+
+// Azure OpenAI Assistant Agent
+var client = OpenAIAssistantAgent.CreateAzureOpenAIClient(new AzureCliCredential(), new Uri(this.Endpoint!));
+var assistantClient = client.GetAssistantClient();
+Assistant assistant =
+    await assistantClient.CreateAssistantAsync(
+        this.Model,
+        name: "FinanceAgent",
+        instructions: "You are an expert in financial management and accounting and can use tools to consolidate invoices and payments");
+OpenAIAssistantAgent agent = new(assistant, assistantClient) { Kernel = kernel };
+
+var createThreadResponse = await assistantClient.CreateThreadAsync(cancellationToken: cancellationToken);
+await agent.InvokeAsync(createThreadResponse.Value.Id);
 ```
