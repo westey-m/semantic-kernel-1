@@ -141,12 +141,11 @@ You may however add a memory component that learns about user preferences, makes
 - OpenAIAssistantChatThread
 - UserPreferencesMemoryComponent
 
-## Potential agent consumption code
+## Starting a conversation with a new thread
 
-Starting a conversation with a new thread.
+Agent class instance is stateful and manages thread and memory inside.
 
 ```csharp
-// Agent class instance is stateful and manages thread and memory inside.
 var agent = new MyAgent()
     {
         Name = "CreditorsAgent",
@@ -160,11 +159,14 @@ var response = await agent.InvokeAsync("And invoice 33-22-6325?");
 
 Console.WriteLine(agent.ThreadId);
 await agent.EndThread();
+```
 
-// Agent class is stateless and thread and memory is managed separately.
-// Allows you to pass thread specific config to a new thread when creating it.
-// Allows you to fork threads, if each response contains the newly forked thread.
-// Potentially complicates scenario where multiple agents need to converse together with the same thread and you don't want them to share memory components.
+Agent class is stateless and thread and memory is managed separately.
+Allows you to pass thread specific config to a new thread when creating it.
+Allows you to fork threads, if each response contains the newly forked thread.
+Potentially complicates scenario where multiple agents need to converse together with the same thread and you don't want them to share memory components.
+
+```csharp
 var agent = new MyAgent()
     {
         Name = "CreditorsAgent",
@@ -182,8 +184,11 @@ var response = await agent.InvokeAsync("And invoice 33-22-6325?", thread, memory
 
 Console.WriteLine(thread.ThreadId);
 await thread.EndThread();
+```
 
-// Agent class is stateless and thread and memory is managed separately, with auto thread creation.
+Agent class is stateless and thread and memory is managed separately, with auto thread creation.
+
+```csharp
 var agent = new MyAgent()
     {
         Name = "CreditorsAgent",
@@ -198,10 +203,11 @@ Console.WriteLine(response.Thread.ThreadId);
 await response.Thread.EndThread();
 ```
 
-Resuming a conversation on an existing thread.
+## Resuming a conversation on an existing thread
+
+Resuming previous thread with stateful agent class.
 
 ```csharp
-// Resuming previous thread with stateful agent class.
 var agent = new MyAgent()
     {
         Name = "CreditorsAgent",
@@ -210,8 +216,11 @@ var agent = new MyAgent()
         ThreadId = "12345",
         Extensions = [new UserPreferencesMemoryComponent(kernel)]
     };
+```
 
-// Resuming previous thread when agent class is stateless and thread and memory is managed separately.
+Resuming previous thread when agent class is stateless and thread and memory is managed separately.
+
+```csharp
 var agent = new MyAgent()
     {
         Name = "CreditorsAgent",
@@ -221,7 +230,7 @@ var agent = new MyAgent()
 var thread = new MyAgentChatThread("12345");
 ```
 
-Multi-agent conversation using stateful pattern
+## Multi-agent conversation using stateful pattern
 
 ```csharp
 var agent1 = new MyAgent()
@@ -255,8 +264,9 @@ await groupChat.EndThread();
 
 ## Comparing current agent invocation
 
+Using the chat completion agent
+
 ```csharp
-// Chat Completion Agent
 ChatCompletionAgent agent =
     new()
     {
@@ -266,8 +276,11 @@ ChatCompletionAgent agent =
     };
 ChatHistory chat = [new ChatMessageContent(AuthorRole.User, "What is the capital of France")];
 await agent.InvokeAsync(chat);
+```
 
-// Azure AI Agent
+Using the Azure AI Agent
+
+```csharp
 var azureAIClient = AzureAIAgent.CreateAzureAIClient(TestConfiguration.AzureAI.ConnectionString, new AzureCliCredential());
 var azureAIAgentsClient = azureAIClient.GetAgentsClient();
 var definition = await azureAIAgentsClient.CreateAgentAsync("gpt-4o", "FriendlyAssistant", "FriendlyAssistant", "You are a friendly assistant");
@@ -277,8 +290,11 @@ var createThreadResponse = await azureAIAgentsClient.CreateThreadAsync();
 
 agent.AddChatMessageAsync(thread.Id, new ChatMessageContent(AuthorRole.User, "What is the capital of France"));
 await agent.InvokeAsync(thread.Id);
+```
 
-// Azure OpenAI Assistant Agent
+Using the Azure OpenAI Assistant Agent
+
+```csharp
 var client = OpenAIAssistantAgent.CreateAzureOpenAIClient(new AzureCliCredential(), new Uri(this.Endpoint!));
 var assistantClient = client.GetAssistantClient();
 Assistant assistant =
@@ -292,8 +308,11 @@ var createThreadResponse = await assistantClient.CreateThreadAsync();
 
 await agent.AddChatMessageAsync(createThreadResponse.Value.Id, new ChatMessageContent(AuthorRole.User, "What is the capital of France"));
 await agent.InvokeAsync(createThreadResponse.Value.Id);
+```
 
-// Bedrock Agent
+Using the Bedrock Agent
+
+```csharp
 var client = new AmazonBedrockAgentClient();
 var agentModel = await this.Client.CreateAndPrepareAgentAsync(new()
 {
