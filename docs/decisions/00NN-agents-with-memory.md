@@ -147,6 +147,7 @@ Currently different types of multi-agent systems exist.
 
 1. A bag of agents that communicate via chat history with an orchestrator that determines who's next.
 1. A defined process containing agents that communicate via and output from one passed as input to the next.
+    1. For handoff pattern using a history
 
 From an usage perspective the 2nd looks like a very capable single agent, but the first can allow for users
 to have visibility of the fact that multiple agents are participating in a conversation with them.
@@ -299,8 +300,8 @@ var response1 = await agent.InvokeAsync("tell me a joke");
 var response2 = await agent.InvokeAsync("tell me another");
 
 // Two branches of response 2:
-var agent3 new ResponsesAgent(agent) { ThreadId = response2.Thread.Id };
-var agent4 new ResponsesAgent(agent) { ThreadId = response2.Thread.Id, Extensions = [new MemZeroMemoryComponent(kernel)] };
+var agent3 new ResponsesAgent(agent);
+var agent4 new ResponsesAgent(agent) { Extensions = [new MemZeroMemoryComponent(kernel)] };
 var response3 = await agent3.InvokeAsync("tell me another");
 var response4 = await agent4.InvokeAsync("tell me another");
 ```
@@ -314,10 +315,12 @@ var agent = new ResponsesAgent()
         Kernel = kernel
     };
 
-var response1 = await agent.InvokeAsync("tell me a joke", [new UserPreferencesMemoryComponent(kernel)]);
-var response2 = await agent.InvokeAsync("tell me another", response1.Thread);
+var userPrefs = new UserPreferencesMemoryComponent(kernel);
+var response1 = await agent.InvokeAsync("tell me a joke", [userPrefs]);
+var response2 = await agent.InvokeAsync("tell me another", response1.Thread, [userPrefs]);
 
 // Two branches of response 2:
+// Potential issue: You will get a different outcome when doing the following with an AssistantsAgent to a ResponsesAgent.
 var response3 = await agent.InvokeAsync("tell me another", response2.Thread);
  // Do the new memory components replace whats on the thread, feels weird to not have it passed to the thread.
 var response4 = await agent.InvokeAsync("tell me another", response2.Thread, [new MemZeroMemoryComponent(kernel)]);
@@ -345,9 +348,9 @@ Using the Azure AI Agent
 var azureAIClient = AzureAIAgent.CreateAzureAIClient(TestConfiguration.AzureAI.ConnectionString, new AzureCliCredential());
 var azureAIAgentsClient = azureAIClient.GetAgentsClient();
 var definition = await azureAIAgentsClient.CreateAgentAsync("gpt-4o", "FriendlyAssistant", "FriendlyAssistant", "You are a friendly assistant");
-var thread = new AzureAIAgent(definition, azureAIAgentsClient) { Kernel = kernel };
+var agent = new AzureAIAgent(definition, azureAIAgentsClient) { Kernel = kernel };
 
-var createThreadResponse = await azureAIAgentsClient.CreateThreadAsync();
+AgentThread thread =  = await azureAIAgentsClient.CreateThreadAsync();
 
 agent.AddChatMessageAsync(thread.Id, new ChatMessageContent(AuthorRole.User, "What is the capital of France"));
 await agent.InvokeAsync(thread.Id);
@@ -398,15 +401,24 @@ The following is a list of proposed methods to add to the existing Agent base ty
 1. Add a common `CreateAgentAsync` method, that can create the agent in the service if that is required.
 
 ```csharp
-class Agent
+abstract class Agent
 {
     ...
 
-    public async Task<CreateAgentResponse> CreateAgentAsync(CancellationToken cancellationToken? = default);
-    public async Task<InvokeResponse> InvokeAsync(ChatMessageContent chatMessageContent, ChatThread? thread = default, CancellationToken cancellationToken? = default);
-    public async Task<AddMessageResponse> AddChatMessageAsync(ChatMessageContent chatMessageContent, ChatThread? thread = default, CancellationToken cancellationToken? = default);
+    public abstract async Task<CreateAgentResponse> CreateAgentAsync(CancellationToken cancellationToken? = default);
+    public abstract async Task<InvokeResponse> InvokeAsync(
+        ChatMessageContent? chatMessageContent = default,
+        ChatThread? thread = default,
+        ChatExtensionComponent[] components,
+        CancellationToken cancellationToken? = default);
 
     ...
+}
+
+// Optional Future:
+abstract class SpecialAgent : Agent
+{
+    public abstract async Task<AddMessageResponse> AddChatMessageAsync(ChatMessageContent chatMessageContent, ChatThread? thread = default, CancellationToken cancellationToken? = default);
 }
 
 class InvokeResponse
@@ -417,7 +429,24 @@ class InvokeResponse
 
 class AddMessageResponse
 {
-    public ChatMessageContent chatMessageContent { get; }
     public ChatThread thread { get; }
 }
+```
+
+Higher level approach:
+
+```csharp
+abstract class StatefulAgent
+{
+    ...
+
+    public abstract async Task<ChatMessageContent> CreateAgentAsync(CancellationToken cancellationToken? = default);
+    public abstract async Task InvokeAsync(ChatMessageContent? chatMessageContent = default, CancellationToken cancellationToken? = default);
+
+    ...
+}
+
+// Can be either a wrapper, or a direct implementation.
+// E.g. for a wrapper.
+new ChatCompletionAgent().WithState(/* Optional custom Thread */new ChatHistoryThread(), [new MemZeroMemoryComponent(kernel)]);
 ```
