@@ -141,9 +141,28 @@ You may however add a memory component that learns about user preferences, makes
 - OpenAIAssistantChatThread
 - UserPreferencesMemoryComponent
 
+## Multi-agent conversations
+
+Currently different types of multi-agent systems exist.
+
+1. A bag of agents that communicate via chat history with an orchestrator that determines who's next.
+1. A defined process containing agents that communicate via and output from one passed as input to the next.
+
+From an usage perspective the 2nd looks like a very capable single agent, but the first can allow for users
+to have visibility of the fact that multiple agents are participating in a conversation with them.
+
+## Composition comparison
+
+|Feature|Agent contains Thread + Memory|Thread contains Memory and passed on invocation|
+|-|-|-|
+|Thread forking|Could be modeled by cloning Agent and passing old threadId|Could be modeled by returning a new thread on invocation|
+|Thread specific config|Could be modeled by creating new Agent with thread config|Could be modeled by passing config when creating a thread object|
+|Multi agent conversation|||
+
 ## Starting a conversation with a new thread
 
 Agent class instance is stateful and manages thread and memory inside.
+Memory components / thread instances are passed once and lives as long as the agent instance lives.
 
 ```csharp
 var agent = new MyAgent()
@@ -151,7 +170,9 @@ var agent = new MyAgent()
         Name = "CreditorsAgent",
         Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
         Kernel = kernel,
-        Extensions = [new UserPreferencesMemoryComponent(kernel)]
+        Extensions = [new UserPreferencesMemoryComponent(kernel)],
+        // Optional:
+        Thread = new MyAgentChatThread()
     };
 
 var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?");
@@ -162,9 +183,9 @@ await agent.EndThread();
 ```
 
 Agent class is stateless and thread and memory is managed separately.
-Allows you to pass thread specific config to a new thread when creating it.
-Allows you to fork threads, if each response contains the newly forked thread.
-Potentially complicates scenario where multiple agents need to converse together with the same thread and you don't want them to share memory components.
+Memory components / thread instances are passed per run, and their lifetimes are managed separately from the agent.
+Since they are associated with the run, and multiple agents may participate in a run, it may not be
+possible to limit memory components to specific agents via this mechanism.
 
 ```csharp
 var agent = new MyAgent()
@@ -179,8 +200,8 @@ var thread = new MyAgentChatThread()
 };
 await thread.StartThread();
 
-var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?", thread, memoryManager);
-var response = await agent.InvokeAsync("And invoice 33-22-6325?", thread, memoryManager);
+var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?", thread);
+var response = await agent.InvokeAsync("And invoice 33-22-6325?", thread);
 
 Console.WriteLine(thread.ThreadId);
 await thread.EndThread();
@@ -262,6 +283,46 @@ Console.WriteLine(groupChat.ThreadId);
 await groupChat.EndThread();
 ```
 
+## Thread forking with Responses
+
+Stateful agent
+
+```csharp
+var agent = new ResponsesAgent()
+    {
+        model = "gpt-4o-mini"
+        Kernel = kernel,
+        Extensions = [new UserPreferencesMemoryComponent(kernel)],
+    };
+
+var response1 = await agent.InvokeAsync("tell me a joke");
+var response2 = await agent.InvokeAsync("tell me another");
+
+// Two branches of response 2:
+var agent3 new ResponsesAgent(agent) { ThreadId = response2.Thread.Id };
+var agent4 new ResponsesAgent(agent) { ThreadId = response2.Thread.Id, Extensions = [new MemZeroMemoryComponent(kernel)] };
+var response3 = await agent3.InvokeAsync("tell me another");
+var response4 = await agent4.InvokeAsync("tell me another");
+```
+
+Stateless Agent
+
+```csharp
+var agent = new ResponsesAgent()
+    {
+        model = "gpt-4o-mini"
+        Kernel = kernel
+    };
+
+var response1 = await agent.InvokeAsync("tell me a joke", [new UserPreferencesMemoryComponent(kernel)]);
+var response2 = await agent.InvokeAsync("tell me another", response1.Thread);
+
+// Two branches of response 2:
+var response3 = await agent.InvokeAsync("tell me another", response2.Thread);
+ // Do the new memory components replace whats on the thread, feels weird to not have it passed to the thread.
+var response4 = await agent.InvokeAsync("tell me another", response2.Thread, [new MemZeroMemoryComponent(kernel)]);
+```
+
 ## Comparing current agent invocation
 
 Using the chat completion agent
@@ -324,4 +385,39 @@ var agentModel = await this.Client.CreateAndPrepareAgentAsync(new()
 });
 var agent = new BedrockAgent(agentModel, this.Client);
 agent.InvokeAsync(BedrockAgent.CreateSessionId(), "What is the capital of France");
+```
+
+## Comparison of proposal with existing agents
+
+The following is a list of proposed methods to add to the existing Agent base type:
+
+1. Change different `InvokeAsync` methods to single design that takes `ChatMessageContent` and `ChatThread` as input.
+1. Response should contain `ChatThread`, that can be modified from input due to forks.
+1. Modify all `Agent` implementations to integrate with `MemoryManager` and invoke it on required lifecycle events, e.g. AI Invocation, messages added, etc.
+1. Add an `AddChatMessageAsync` to all `Agent` implementations, to allow propogating responses from other conversation partitipants (e.g. Agents), where invocation is not desirable.
+1. Add a common `CreateAgentAsync` method, that can create the agent in the service if that is required.
+
+```csharp
+class Agent
+{
+    ...
+
+    public async Task<CreateAgentResponse> CreateAgentAsync(CancellationToken cancellationToken? = default);
+    public async Task<InvokeResponse> InvokeAsync(ChatMessageContent chatMessageContent, ChatThread? thread = default, CancellationToken cancellationToken? = default);
+    public async Task<AddMessageResponse> AddChatMessageAsync(ChatMessageContent chatMessageContent, ChatThread? thread = default, CancellationToken cancellationToken? = default);
+
+    ...
+}
+
+class InvokeResponse
+{
+    public ChatMessageContent chatMessageContent { get; }
+    public ChatThread thread { get; }
+}
+
+class AddMessageResponse
+{
+    public ChatMessageContent chatMessageContent { get; }
+    public ChatThread thread { get; }
+}
 ```
