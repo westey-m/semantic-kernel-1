@@ -172,6 +172,9 @@ This means that for an agent to be able to participate in such a process it need
 ```csharp
 public Task InvokeAsync(
     ChatMessageContent? chatMessageContent = default,
+    KernelArguments? arguments = null,
+    Kernel? kernel = null,
+    string? overrideInstructions = null,
     CancellationToken cancellationToken? = default);
 ```
 
@@ -182,7 +185,9 @@ public Task InvokeAsync(
 public Task<InvokeResponse> InvokeAsync(
     ChatMessageContent? chatMessageContent = default,
     ChatThread? thread = default,
-    ChatExtensionComponent[] components,
+    KernelArguments? arguments = null,
+    Kernel? kernel = null,
+    string? overrideInstructions = null,
     CancellationToken cancellationToken? = default)
 ```
 
@@ -201,7 +206,7 @@ agent.InvokeAsync("Sample Prompt");
 
 ```csharp
 // Create new thread:
-agent.InvokeAsync("Sample Prompt", [new UserPreferencesMemoryComponent(kernel)])
+agent.InvokeAsync("Sample Prompt")
 // Continue existing thread:
 agent.InvokeAsync("Sample Prompt", thread)
 ```
@@ -218,7 +223,7 @@ Passed to `Agent` constructor
 </td>
 <td>
 
-Passed to `Thread` constructor or on invocation for auto thread creation.
+Passed to `Thread` constructor.
 
 </td>
 </tr>
@@ -248,12 +253,6 @@ var thread = new MyAgentChatThread()
 var response = await agent.InvokeAsync(
     "Sample Prompt",
     thread);
-```
-
-```csharp
-var response = await agent.InvokeAsync(
-    "Sample Prompt",
-    [new UserPreferencesMemoryComponent(kernel)]);
 ```
 
 </td>
@@ -339,7 +338,6 @@ abstract class GroupConversationAgent : StatefulAgent
 {
     public abstract async Task AddChatMessageAsync(
         ChatMessageContent chatMessageContent,
-        ChatThread? thread = default,
         CancellationToken cancellationToken? = default);
 }
 ```
@@ -446,7 +444,7 @@ var agent = new MyAgent()
     Kernel = kernel
 }
 
-var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?", [new UserPreferencesMemoryComponent(kernel)]);
+var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?");
 response = await agent.InvokeAsync("And invoice 33-22-6325?", response.Thread);
 
 Console.WriteLine(response.Thread.ThreadId);
@@ -553,7 +551,7 @@ var response2 = await agent.InvokeAsync("tell me another", response1.Thread, [us
 // Potential issue: You will get a different outcome when doing the following with an AssistantsAgent to a ResponsesAgent.
 var response3 = await agent.InvokeAsync("tell me another", response2.Thread);
  // Do the new memory components replace whats on the thread, feels weird to not have it passed to the thread.
-var response4 = await agent.InvokeAsync("tell me another", response2.Thread, [new MemZeroMemoryComponent(kernel)]);
+var response4 = await agent.InvokeAsync("tell me another", new ResponsesThread(response2.Thread.ThreadId, [new MemZeroMemoryComponent(kernel)]));
 ```
 
 ## Comparing current agent invocation
@@ -629,18 +627,22 @@ The following is a list of proposed methods to add to the existing Agent base ty
 1. Change different `InvokeAsync` methods to single design that takes `ChatMessageContent` and `ChatThread` as input.
 1. Response should contain `ChatThread`, that can be modified from input due to forks.
 1. Modify all `Agent` implementations to integrate with `MemoryManager` and invoke it on required lifecycle events, e.g. AI Invocation, messages added, etc.
-1. Add a common `CreateAgentAsync` method, that can create the agent in the service if that is required.
+1. NEEDS MORE INVESTIGATION: Add a common `CreateAgentAsync` method, that can create the agent in the service if that is required.
 
 ```csharp
 abstract class Agent
 {
     ...
 
+    // NEEDS MORE INVESTIGATION
     public abstract async Task<CreateAgentResponse> CreateAgentAsync(CancellationToken cancellationToken? = default);
+
     public abstract async Task<InvokeResponse> InvokeAsync(
         ChatMessageContent? chatMessageContent = default,
         ChatThread? thread = default,
-        ChatExtensionComponent[] components,
+        KernelArguments? arguments = null,
+        Kernel? kernel = null,
+        string? overrideInstructions = null,
         CancellationToken cancellationToken? = default);
 
     ...
@@ -667,7 +669,10 @@ can therefore be restricted to this agent subtype.
 ```csharp
 abstract class GroupConversationAgent : Agent
 {
-    public abstract async Task<AddMessageResponse> AddChatMessageAsync(ChatMessageContent chatMessageContent, ChatThread? thread = default, CancellationToken cancellationToken? = default);
+    public abstract async Task<AddMessageResponse> AddChatMessageAsync(
+        ChatMessageContent chatMessageContent,
+        ChatThread? thread = default,
+        CancellationToken cancellationToken? = default);
 }
 
 class AddMessageResponse
@@ -683,8 +688,18 @@ abstract class StatefulAgent
 {
     ...
 
+    // NEEDS MORE INVESTIGATION
     public abstract async Task<ChatMessageContent> CreateAgentAsync(CancellationToken cancellationToken? = default);
-    public abstract async Task InvokeAsync(ChatMessageContent? chatMessageContent = default, CancellationToken cancellationToken? = default);
+
+    public abstract async Task InvokeAsync(
+        ChatMessageContent? chatMessageContent = default,
+        KernelArguments? arguments = null,
+        Kernel? kernel = null,
+        string? overrideInstructions = null,
+        CancellationToken cancellationToken? = default);
+
+    // TODO: NEEDS MORE THINKING
+    public StatefulAgent Fork();
 
     ...
 }
@@ -697,6 +712,9 @@ new ChatCompletionAgent().WithState(/* Optional custom Thread */new ChatHistoryT
 ```csharp
 abstract class GroupConversationAgent : StatefulAgent
 {
-    public abstract async Task AddChatMessageAsync(ChatMessageContent chatMessageContent, ChatThread? thread = default, CancellationToken cancellationToken? = default);
+    public abstract async Task AddChatMessageAsync(
+        ChatMessageContent chatMessageContent,
+        ChatThread? thread = default,
+        CancellationToken cancellationToken? = default);
 }
 ```
