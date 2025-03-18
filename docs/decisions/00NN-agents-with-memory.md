@@ -141,7 +141,7 @@ You may however add a memory component that learns about user preferences, makes
 - OpenAIAssistantChatThread
 - UserPreferencesMemoryComponent
 
-## Multi-agent conversations
+## Multi-agent conversations / processes
 
 Currently different types of multi-agent systems exist.
 
@@ -329,7 +329,7 @@ var thread = new MyAgentChatThread("Custom Config Setting")
 </tr>
 
 <tr>
-<td>Multi agent Group Chat</td>
+<td>Multi-agent Group Chat</td>
 <td>
 
 Supported by having an `AddChatMessageAsync` method that can be used to propogate messages from other agents.
@@ -368,9 +368,17 @@ class AddMessageResponse
 </tr>
 
 <tr>
-<td>Agent Handoff</td>
-<td></td>
-<td></td>
+<td>Multi-agent Processes with handoff</td>
+<td>N/A</td>
+<td>
+
+Can be used by a higher level runner that for each step creates a new `ChatThread` with the outputs and handoffs of the previous agents and invokes the next `Agent`.
+Probably makes sense to be able to add memory components to both the runner and to each `Agent`.
+Distinguishing betweeen memory components that will save user information and those that won't is important here, so that there is no accidental user data leakage.
+
+Since there is no threading on the lower level agents, perhaps they should take a modified memory component type that doesn't have the threading methods on it.
+
+</td>
 </tr>
 </table>
 
