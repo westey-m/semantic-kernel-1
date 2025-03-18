@@ -154,27 +154,211 @@ to have visibility of the fact that multiple agents are participating in a conve
 
 ## Composition comparison
 
-|Feature|Agent contains Thread + Memory|Thread contains Memory and passed on invocation|
-|-|-|-|
-|Thread forking|Could be modeled by cloning Agent and passing old threadId|Could be modeled by returning a new thread on invocation|
-|Thread specific config|Could be modeled by creating new Agent with thread config|Could be modeled by passing config when creating a thread object|
-|Multi agent conversation|||
+<table>
+<tr>
+<th>Feature</th>
+<th>Agent contains Thread + Memory<br/>(Higher Level abstraction)</th>
+<th>Thread contains Memory and passed on invocation<br/>(Lower Level abstraction)</th>
+</tr>
+<tr>
+<td>Agent Invocation Signature</td>
+<td>
+
+```csharp
+public Task InvokeAsync(
+    ChatMessageContent? chatMessageContent = default,
+    CancellationToken cancellationToken? = default);
+```
+
+</td>
+<td>
+
+```csharp
+public Task<InvokeResponse> InvokeAsync(
+    ChatMessageContent? chatMessageContent = default,
+    ChatThread? thread = default,
+    ChatExtensionComponent[] components,
+    CancellationToken cancellationToken? = default)
+```
+
+</td>
+</tr>
+<tr>
+<td>Agent Invocation Sample</td>
+<td>
+
+```csharp
+agent.InvokeAsync("Sample Prompt");
+```
+
+</td>
+<td>
+
+```csharp
+// Create new thread:
+agent.InvokeAsync("Sample Prompt", [new UserPreferencesMemoryComponent(kernel)])
+// Continue existing thread:
+agent.InvokeAsync("Sample Prompt", thread)
+```
+
+</td>
+
+</tr>
+<tr>
+<td>Supplying Memory Components</td>
+<td>
+
+Passed to `Agent` constructor
+
+</td>
+<td>
+
+Passed to `Thread` constructor or on invocation for auto thread creation.
+
+</td>
+</tr>
+
+<tr>
+<td>Supplying Memory Components Sample</td>
+<td>
+
+```csharp
+var agent = new MyAgent()
+{
+    Name = "SampleAgent",
+    Instructions = "Sample Instructions.",
+    Kernel = kernel,
+    Extensions = [new UserPreferencesMemoryComponent(kernel)]
+};
+```
+
+</td>
+<td>
+
+```csharp
+var thread = new MyAgentChatThread()
+{
+    Extensions = [new UserPreferencesMemoryComponent(kernel)]
+};
+var response = await agent.InvokeAsync(
+    "Sample Prompt",
+    thread);
+```
+
+```csharp
+var response = await agent.InvokeAsync(
+    "Sample Prompt",
+    [new UserPreferencesMemoryComponent(kernel)]);
+```
+
+</td>
+
+<tr>
+<td>Thread management</td>
+<td>
+
+`Agent` owns `Thread` and maintains single thread by default.
+
+</td>
+<td>
+
+Developer owns `Thread` and each invocation generates updated `Thread` that needs to be used in new invocation to avoid forking.
+
+</td>
+</tr>
+
+<tr>
+<td>Thread forking</td>
+<td>
+
+Clone `Agent` instance.
+
+```csharp
+agent.InvokeAsync("Tell me a joke");
+var forkedAgent = new ResponsesAgent(agent);
+
+agent.InvokeAsync("Tell me a different joke");
+forkedAgent.InvokeAsync("Tell me a different joke")`;
+```
+
+</td>
+<td>
+
+Use same `Thread` instance twice.
+
+```csharp
+var response = agent.InvokeAsync("Tell me a joke");
+agent.InvokeAsync("Tell me a different joke", response.Thread);
+agent.InvokeAsync("Tell me a different joke", response.Thread);
+```
+
+</td>
+</tr>
+
+<tr>
+<td>Thread specific config</td>
+<td>
+
+Construct thread manually with settings before passing to agent.
+
+```csharp
+var agent = new MyAgent()
+{
+    Name = "SampleAgent",
+    Instructions = "Sample Instructions.",
+    Kernel = kernel,
+    Thread = new MyAgentChatThread("Custom Config Setting")
+};
+```
+
+</td>
+<td>
+
+Construct thread manually with settings.
+
+```csharp
+var thread = new MyAgentChatThread("Custom Config Setting")
+```
+
+</td>
+</tr>
+
+<tr>
+<td>Multi agent conversation</td>
+<td></td>
+<td></td>
+</tr>
+
+<tr>
+<td>Adding chat messages before invoking</td>
+<td></td>
+<td></td>
+</tr>
+
+<tr>
+<td>Agent Handoff</td>
+<td></td>
+<td></td>
+</tr>
+</table>
 
 ## Starting a conversation with a new thread
+
+### Higher Level Abstraction
 
 Agent class instance is stateful and manages thread and memory inside.
 Memory components / thread instances are passed once and lives as long as the agent instance lives.
 
 ```csharp
 var agent = new MyAgent()
-    {
-        Name = "CreditorsAgent",
-        Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
-        Kernel = kernel,
-        Extensions = [new UserPreferencesMemoryComponent(kernel)],
-        // Optional:
-        Thread = new MyAgentChatThread()
-    };
+{
+    Name = "CreditorsAgent",
+    Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
+    Kernel = kernel,
+    Extensions = [new UserPreferencesMemoryComponent(kernel)],
+    // Optional:
+    Thread = new MyAgentChatThread()
+};
 
 var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?");
 var response = await agent.InvokeAsync("And invoice 33-22-6325?");
@@ -183,18 +367,22 @@ Console.WriteLine(agent.ThreadId);
 await agent.EndThread();
 ```
 
+### Lower Level Abstraction
+
 Agent class is stateless and thread and memory is managed separately.
 Memory components / thread instances are passed per run, and their lifetimes are managed separately from the agent.
 Since they are associated with the run, and multiple agents may participate in a run, it may not be
 possible to limit memory components to specific agents via this mechanism.
 
+With manual thread creation.
+
 ```csharp
 var agent = new MyAgent()
-    {
-        Name = "CreditorsAgent",
-        Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
-        Kernel = kernel
-    }
+{
+    Name = "CreditorsAgent",
+    Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
+    Kernel = kernel
+}
 var thread = new MyAgentChatThread()
 {
     Extensions = [new UserPreferencesMemoryComponent(kernel)]
@@ -202,24 +390,24 @@ var thread = new MyAgentChatThread()
 await thread.StartThread();
 
 var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?", thread);
-var response = await agent.InvokeAsync("And invoice 33-22-6325?", thread);
+response = await agent.InvokeAsync("And invoice 33-22-6325?", response.thread);
 
-Console.WriteLine(thread.ThreadId);
+Console.WriteLine(response.Thread.ThreadId);
 await thread.EndThread();
 ```
 
-Agent class is stateless and thread and memory is managed separately, with auto thread creation.
+With auto thread creation.
 
 ```csharp
 var agent = new MyAgent()
-    {
-        Name = "CreditorsAgent",
-        Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
-        Kernel = kernel
-    }
+{
+    Name = "CreditorsAgent",
+    Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
+    Kernel = kernel
+}
 
 var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?", [new UserPreferencesMemoryComponent(kernel)]);
-var response = await agent.InvokeAsync("And invoice 33-22-6325?", response.Thread);
+response = await agent.InvokeAsync("And invoice 33-22-6325?", response.Thread);
 
 Console.WriteLine(response.Thread.ThreadId);
 await response.Thread.EndThread();
@@ -227,7 +415,7 @@ await response.Thread.EndThread();
 
 ## Resuming a conversation on an existing thread
 
-Resuming previous thread with stateful agent class.
+### Higher Level Abstraction
 
 ```csharp
 var agent = new MyAgent()
@@ -235,12 +423,13 @@ var agent = new MyAgent()
         Name = "CreditorsAgent",
         Instructions = "You are able to help pay creditors and ensure that invoices are processed and receipts are consolidated.",
         Kernel = kernel,
-        ThreadId = "12345",
+        Thread = new MyAgentChatThread("12345"),
         Extensions = [new UserPreferencesMemoryComponent(kernel)]
     };
+var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?");
 ```
 
-Resuming previous thread when agent class is stateless and thread and memory is managed separately.
+### Lower Level Abstraction
 
 ```csharp
 var agent = new MyAgent()
@@ -250,6 +439,7 @@ var agent = new MyAgent()
         Kernel = kernel
     }
 var thread = new MyAgentChatThread("12345");
+var response = await agent.InvokeAsync("Has invoice 33-22-6324 from Fabrikam been paid yet?", thread);
 ```
 
 ## Multi-agent conversation using stateful pattern
@@ -286,7 +476,7 @@ await groupChat.EndThread();
 
 ## Thread forking with Responses
 
-Stateful agent
+### Higher Level Abstraction
 
 ```csharp
 var agent = new ResponsesAgent()
@@ -306,7 +496,7 @@ var response3 = await agent3.InvokeAsync("tell me another");
 var response4 = await agent4.InvokeAsync("tell me another");
 ```
 
-Stateless Agent
+### Lower Level Abstraction
 
 ```csharp
 var agent = new ResponsesAgent()
