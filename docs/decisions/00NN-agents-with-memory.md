@@ -147,10 +147,15 @@ Currently different types of multi-agent systems exist.
 
 1. A bag of agents that communicate via chat history with an orchestrator that determines who's next.
 1. A defined process containing agents that communicate via and output from one passed as input to the next.
-    1. For handoff pattern using a history
+    1. The OpenAI SDK Handoffs support passing a list of events that happened previously, including previous handoffs and agent outputs. This looks to be via chat history as well, where handoffs for example are represented as tool calls.
 
 From an usage perspective the 2nd looks like a very capable single agent, but the first can allow for users
 to have visibility of the fact that multiple agents are participating in a conversation with them.
+
+With the first approach, we need the ability to replicate messages from both users and agents to all agents, without it necessarily being that agent's turn to respond.
+
+With the second approach, we need the ability to pass the history of the process up to that point to the next agent in the process.
+This means that for an agent to be able to participate in such a process it needs the ability to take an arbitrary chat history as input.
 
 ## Composition comparison
 
@@ -324,15 +329,42 @@ var thread = new MyAgentChatThread("Custom Config Setting")
 </tr>
 
 <tr>
-<td>Multi agent conversation</td>
-<td></td>
-<td></td>
-</tr>
+<td>Multi agent Group Chat</td>
+<td>
 
-<tr>
-<td>Adding chat messages before invoking</td>
-<td></td>
-<td></td>
+Supported by having an `AddChatMessageAsync` method that can be used to propogate messages from other agents.
+
+```csharp
+abstract class GroupConversationAgent : StatefulAgent
+{
+    public abstract async Task AddChatMessageAsync(
+        ChatMessageContent chatMessageContent,
+        ChatThread? thread = default,
+        CancellationToken cancellationToken? = default);
+}
+```
+
+</td>
+<td>
+
+Supported by having an `AddChatMessageAsync` method that can be used to propogate messages from other agents.
+
+```csharp
+abstract class GroupConversationAgent : Agent
+{
+    public abstract async Task<AddMessageResponse> AddChatMessageAsync(
+        ChatMessageContent chatMessageContent,
+        ChatThread? thread = default,
+        CancellationToken cancellationToken? = default);
+}
+
+class AddMessageResponse
+{
+    public ChatThread thread { get; }
+}
+```
+
+</td>
 </tr>
 
 <tr>
@@ -582,12 +614,13 @@ agent.InvokeAsync(BedrockAgent.CreateSessionId(), "What is the capital of France
 
 ## Comparison of proposal with existing agents
 
+### Lower level approach
+
 The following is a list of proposed methods to add to the existing Agent base type:
 
 1. Change different `InvokeAsync` methods to single design that takes `ChatMessageContent` and `ChatThread` as input.
 1. Response should contain `ChatThread`, that can be modified from input due to forks.
 1. Modify all `Agent` implementations to integrate with `MemoryManager` and invoke it on required lifecycle events, e.g. AI Invocation, messages added, etc.
-1. Add an `AddChatMessageAsync` to all `Agent` implementations, to allow propogating responses from other conversation partitipants (e.g. Agents), where invocation is not desirable.
 1. Add a common `CreateAgentAsync` method, that can create the agent in the service if that is required.
 
 ```csharp
@@ -605,16 +638,28 @@ abstract class Agent
     ...
 }
 
-// Optional Future:
-abstract class SpecialAgent : Agent
-{
-    public abstract async Task<AddMessageResponse> AddChatMessageAsync(ChatMessageContent chatMessageContent, ChatThread? thread = default, CancellationToken cancellationToken? = default);
-}
-
 class InvokeResponse
 {
     public ChatMessageContent chatMessageContent { get; }
     public ChatThread thread { get; }
+}
+```
+
+Additional possible work to support message propogation from other agents in a multi-agent conversation:
+
+1. Add an `AddChatMessageAsync` to `Agent` implementations that support this, to allow propogating responses from other conversation partitipants (e.g. Agents), where invocation is not desirable.
+
+To support agents in a group conversation with other agents, it must be possible to propogate messages from one agent to other agents without
+the other agents responding.
+Not all services support this type of interaction model in all modes.
+E.g. when using responses, you can simulate this when managing chat history locally and using the mode that doesn't save history in the service.
+An extension of `Agent` which adds this capability for agents/modes that support it, is therefore valuable, since a group conversation
+can therefore be restricted to this agent subtype.
+
+```csharp
+abstract class GroupConversationAgent : Agent
+{
+    public abstract async Task<AddMessageResponse> AddChatMessageAsync(ChatMessageContent chatMessageContent, ChatThread? thread = default, CancellationToken cancellationToken? = default);
 }
 
 class AddMessageResponse
@@ -623,7 +668,7 @@ class AddMessageResponse
 }
 ```
 
-Higher level approach:
+### Higher level approach
 
 ```csharp
 abstract class StatefulAgent
@@ -639,4 +684,11 @@ abstract class StatefulAgent
 // Can be either a wrapper, or a direct implementation.
 // E.g. for a wrapper.
 new ChatCompletionAgent().WithState(/* Optional custom Thread */new ChatHistoryThread(), [new MemZeroMemoryComponent(kernel)]);
+```
+
+```csharp
+abstract class GroupConversationAgent : StatefulAgent
+{
+    public abstract async Task AddChatMessageAsync(ChatMessageContent chatMessageContent, ChatThread? thread = default, CancellationToken cancellationToken? = default);
+}
 ```
