@@ -176,7 +176,9 @@ This means that for an agent to be able to participate in such a process it need
 <td>
 
 ```csharp
-var responses = await agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Fortune favors the bold."), thread);
+var responses = await agent.InvokeAsync(
+    new ChatMessageContent(AuthorRole.User, "Fortune favors the bold."),
+    thread);
 var thread = await responses.GetThreadAsync();
 var responseItems = await responses.ToListAsync();
 ```
@@ -194,7 +196,9 @@ var responseItems = await responses.ToListAsync();
 <td>
 
 ```csharp
-var responses = await agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Fortune favors the bold."), thread);
+var responses = await agent.InvokeAsync(
+    new ChatMessageContent(AuthorRole.User, "Fortune favors the bold."),
+    thread);
 var thread = responses.Thread;
 var responsItems = responses;
 ```
@@ -211,7 +215,9 @@ var responsItems = responses;
 <td>
 
 ```csharp
-var responses = await agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Fortune favors the bold."), thread);
+var responses = await agent.InvokeAsync(
+    new ChatMessageContent(AuthorRole.User, "Fortune favors the bold."),
+    thread);
 var thread = responses.Thread;
 var responseItems = responses.Results;
 ```
@@ -230,7 +236,9 @@ var responseItems = responses.Results;
 <td>
 
 ```csharp
-var responses = agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Fortune favors the bold."), thread);
+var responses = agent.InvokeAsync(
+    new ChatMessageContent(AuthorRole.User, "Fortune favors the bold."),
+    thread);
 await foreach (var response in responses)
 {
     var thread = response.Thread;
@@ -252,7 +260,9 @@ await foreach (var response in responses)
 <td>
 
 ```csharp
-var responses = agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Fortune favors the bold."), thread);
+var responses = agent.InvokeAsync(
+    new ChatMessageContent(AuthorRole.User, "Fortune favors the bold."),
+    thread);
 await foreach (var response in responses)
 {
     var thread = response.Thread;
