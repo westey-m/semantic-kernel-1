@@ -157,6 +157,113 @@ With the first approach, we need the ability to replicate messages from both use
 With the second approach, we need the ability to pass the history of the process up to that point to the next agent in the process.
 This means that for an agent to be able to participate in such a process it needs the ability to take an arbitrary chat history as input.
 
+## Invoke Response Type Options
+
+<table>
+<tr>
+<th>Option</th>
+<th>Notes</th>
+<th>Sample</th>
+</tr>
+
+<tr>
+<td>Custom Async Enumerable</td>
+<td>
+<p>Adds a `Thread` property onto the IAsyncEnumerable.</p>
+<p>Allows responses to be enumerated Asynchronously.</p>
+<p>Requires awaiting the response and then awaiting the enumerable and thread.</p>
+</td>
+<td>
+
+```csharp
+var responses = await agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Fortune favors the bold."), thread);
+var thread = await responses.GetThreadAsync();
+var responseItems = await responses.ToListAsync();
+```
+
+</td>
+</tr>
+
+<tr>
+<td>Custom Enumerable</td>
+<td>
+<p>Adds a `Thread` property onto the IEnumerable.</p>
+<p>No asynchronous enumeration.</p>
+<p>Only await the enumerable.</p>
+</td>
+<td>
+
+```csharp
+var responses = await agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Fortune favors the bold."), thread);
+var thread = responses.Thread;
+var responsItems = responses;
+```
+
+</td>
+</tr>
+
+<tr>
+<td>Container class with Enumerable and Thread</td>
+<td>
+<p>No asynchronous enumeration.</p>
+<p>Only await the container.</p>
+</td>
+<td>
+
+```csharp
+var responses = await agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Fortune favors the bold."), thread);
+var thread = responses.Thread;
+var responseItems = responses.Results;
+```
+
+</td>
+</tr>
+
+<tr>
+<td>IAsyncEnumerable with Container Class elements</td>
+<td>
+<p>Return an IAsyncEnumerable which contains Container objects around ChatMessageContent and Thread</p>
+<p>Can include the thread on the last element</p>
+<p>Only await the IAsyncEnumerable.</p>
+<p>Also works well with streaming.</p>
+</td>
+<td>
+
+```csharp
+var responses = agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Fortune favors the bold."), thread);
+await foreach (var response in responses)
+{
+    var thread = response.Thread;
+    var chatMessageContent = response.ChatMessageContent;
+}
+```
+
+</td>
+</tr>
+
+<tr>
+<td>IAsyncEnumerable with elements Inheriting from ChatMessageContent</td>
+<td>
+<p>Return an IAsyncEnumerable which contains ChatMessageContent objects that have been extended to contain Thread</p>
+<p>Can include the thread on the last element</p>
+<p>Only await the IAsyncEnumerable.</p>
+<p>Also works well with streaming.</p>
+</td>
+<td>
+
+```csharp
+var responses = agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, "Fortune favors the bold."), thread);
+await foreach (var response in responses)
+{
+    var thread = response.Thread;
+    var chatMessageContent = response;
+}
+```
+
+</td>
+</tr>
+</table>
+
 ## Composition comparison
 
 <table>
@@ -174,7 +281,7 @@ public Task InvokeAsync(
     ChatMessageContent? chatMessageContent = default,
     KernelArguments? arguments = null,
     Kernel? kernel = null,
-    string? overrideInstructions = null,
+    string? additionalInstructions = null,
     CancellationToken cancellationToken? = default);
 ```
 
@@ -187,7 +294,7 @@ public Task<InvokeResponse> InvokeAsync(
     ChatThread? thread = default,
     KernelArguments? arguments = null,
     Kernel? kernel = null,
-    string? overrideInstructions = null,
+    string? additionalInstructions = null,
     CancellationToken cancellationToken? = default)
 ```
 
@@ -627,22 +734,23 @@ The following is a list of proposed methods to add to the existing Agent base ty
 1. Change different `InvokeAsync` methods to single design that takes `ChatMessageContent` and `ChatThread` as input.
 1. Response should contain `ChatThread`, that can be modified from input due to forks.
 1. Modify all `Agent` implementations to integrate with `MemoryManager` and invoke it on required lifecycle events, e.g. AI Invocation, messages added, etc.
-1. NEEDS MORE INVESTIGATION: Add a common `CreateAgentAsync` method, that can create the agent in the service if that is required.
+1. TODO: NEEDS MORE INVESTIGATION: Add a common `CreateAgentAsync` method, that can create the agent in the service if that is required.
 
 ```csharp
 abstract class Agent
 {
     ...
 
-    // NEEDS MORE INVESTIGATION
+    // TODO: NEEDS MORE INVESTIGATION
     public abstract async Task<CreateAgentResponse> CreateAgentAsync(CancellationToken cancellationToken? = default);
 
+    // TODO: Should we support agent tools override at invocation time?
     public abstract async Task<InvokeResponse> InvokeAsync(
         ChatMessageContent? chatMessageContent = default,
         ChatThread? thread = default,
         KernelArguments? arguments = null,
         Kernel? kernel = null,
-        string? overrideInstructions = null,
+        string? additionalInstructions = null,
         CancellationToken cancellationToken? = default);
 
     ...
@@ -688,14 +796,14 @@ abstract class StatefulAgent
 {
     ...
 
-    // NEEDS MORE INVESTIGATION
+    // TODO: NEEDS MORE INVESTIGATION
     public abstract async Task<ChatMessageContent> CreateAgentAsync(CancellationToken cancellationToken? = default);
 
     public abstract async Task InvokeAsync(
         ChatMessageContent? chatMessageContent = default,
         KernelArguments? arguments = null,
         Kernel? kernel = null,
-        string? overrideInstructions = null,
+        string? additionalInstructions = null,
         CancellationToken cancellationToken? = default);
 
     // TODO: NEEDS MORE THINKING
