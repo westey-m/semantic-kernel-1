@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.Json;
@@ -43,8 +44,10 @@ public class VectorStoreRecordJsonModelBuilder : VectorStoreRecordModelBuilder
     }
 
     /// <inheritdoc/>
-    protected override void Customize()
+    protected override void Customize(Type type)
     {
+        var dynamicMapping = type == typeof(Dictionary<string, object?>);
+
         // This mimics the naming behavior of the System.Text.Json serializer, which we use for serialization/deserialization.
         // The property storage names in the model must in sync with the serializer configuration, since the model is used e.g. for filtering
         // even if serialization/deserialization doesn't use the model.
@@ -55,7 +58,21 @@ public class VectorStoreRecordJsonModelBuilder : VectorStoreRecordModelBuilder
             var keyPropertyWithReservedName = this.Options.ReservedKeyStorageName is not null && property is VectorStoreRecordKeyPropertyModel;
             string storageName;
 
-            if (property.PropertyInfo?.GetCustomAttribute<JsonPropertyNameAttribute>() is { } jsonPropertyNameAttribute)
+            if (dynamicMapping)
+            {
+                if (keyPropertyWithReservedName && property.StorageName is not null && property.StorageName != this.Options.ReservedKeyStorageName)
+                {
+                    throw new InvalidOperationException($"The key property for your connector must always have the reserved name '{this.Options.ReservedKeyStorageName}' and cannot be changed.");
+                }
+
+                if (namingPolicy is not null && property.StorageName is not null)
+                {
+                    property.TemporaryStorageName = namingPolicy.ConvertName(property.StorageName);
+                }
+
+                continue;
+            }
+            else if (property.PropertyInfo?.GetCustomAttribute<JsonPropertyNameAttribute>() is { } jsonPropertyNameAttribute)
             {
                 if (keyPropertyWithReservedName && jsonPropertyNameAttribute.Name != this.Options.ReservedKeyStorageName)
                 {

@@ -61,7 +61,7 @@ public sealed class AzureAISearchVectorStoreRecordCollectionTests(ITestOutputHel
         // Act
         await sut.CreateCollectionAsync();
         var upsertResult = await sut.UpsertAsync(hotel);
-        var getResult = await sut.GetAsync("Upsert-1");
+        var getResult = await sut.GetAsync("Upsert-1", new() { IncludeVectors = true });
         var embedding = await fixture.EmbeddingGenerator.GenerateEmbeddingAsync("A great hotel");
         var searchResults = await sut.VectorizedSearchAsync(
             embedding,
@@ -137,7 +137,7 @@ public sealed class AzureAISearchVectorStoreRecordCollectionTests(ITestOutputHel
         // Act
         var hotel = await this.CreateTestHotelAsync("Upsert-1");
         var upsertResult = await sut.UpsertAsync(hotel);
-        var getResult = await sut.GetAsync("Upsert-1");
+        var getResult = await sut.GetAsync("Upsert-1", new() { IncludeVectors = true });
 
         // Assert
         Assert.NotNull(upsertResult);

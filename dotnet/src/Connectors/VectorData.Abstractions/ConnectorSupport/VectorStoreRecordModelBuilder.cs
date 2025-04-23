@@ -87,7 +87,7 @@ public class VectorStoreRecordModelBuilder
             this.ProcessRecordDefinition(vectorStoreRecordDefinition, dynamicMapping ? null : type);
         }
 
-        this.Customize();
+        this.Customize(type);
         this.Validate(type);
 
         return new(type, this.KeyProperties, this.DataProperties, this.VectorProperties, this.PropertyMap);
@@ -162,7 +162,7 @@ public class VectorStoreRecordModelBuilder
                 continue;
             }
 
-            this.SetPropertyStorageName(property, storageName);
+            this.SetPropertyStorageName(property, storageName, type);
 
             property.PropertyInfo = clrProperty;
             this.PropertyMap.Add(clrProperty.Name, property);
@@ -220,7 +220,7 @@ public class VectorStoreRecordModelBuilder
                 }
             }
 
-            this.SetPropertyStorageName(property, definitionProperty.StoragePropertyName);
+            this.SetPropertyStorageName(property, definitionProperty.StoragePropertyName, type);
 
             switch (definitionProperty)
             {
@@ -272,7 +272,7 @@ public class VectorStoreRecordModelBuilder
         }
     }
 
-    private void SetPropertyStorageName(VectorStoreRecordPropertyModel property, string? storageName)
+    private void SetPropertyStorageName(VectorStoreRecordPropertyModel property, string? storageName, Type? type)
     {
         if (property is VectorStoreRecordKeyPropertyModel && this.Options.ReservedKeyStorageName is not null)
         {
@@ -290,7 +290,7 @@ public class VectorStoreRecordModelBuilder
         // our model needs to be in sync with the serializer's behavior (for e.g. storage names in filters).
         // So we ignore the config here as well.
         // TODO: Consider throwing here instead of ignoring
-        if (this.Options.UsesExternalSerializer)
+        if (this.Options.UsesExternalSerializer && type != null)
         {
             return;
         }
@@ -303,7 +303,7 @@ public class VectorStoreRecordModelBuilder
     /// <summary>
     /// Extension hook for connectors to be able to customize the model.
     /// </summary>
-    protected virtual void Customize()
+    protected virtual void Customize(Type type)
     {
     }
 
