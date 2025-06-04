@@ -71,9 +71,22 @@ internal class QdrantFilterTranslator
 
     private Filter GenerateEqual(string propertyStorageName, object? value, bool negated = false)
     {
-        var condition = value is null
-            ? new Condition { IsNull = new() { Key = propertyStorageName } }
-            : new Condition
+        var condition = value switch
+        {
+            null => new Condition { IsNull = new() { Key = propertyStorageName } },
+            DateTimeOffset dateTimeOffset => new Condition
+            {
+                Field = new FieldCondition
+                {
+                    Key = propertyStorageName,
+                    DatetimeRange = new DatetimeRange
+                    {
+                        Gte = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(dateTimeOffset),
+                        Lte = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(dateTimeOffset),
+                    }
+                },
+            },
+            _ => new Condition
             {
                 Field = new FieldCondition
                 {
@@ -88,7 +101,8 @@ internal class QdrantFilterTranslator
                         _ => throw new InvalidOperationException($"Unsupported filter value type '{value.GetType().Name}'.")
                     }
                 }
-            };
+            }
+        };
 
         var result = new Filter();
 
@@ -117,6 +131,30 @@ internal class QdrantFilterTranslator
             // TODO: Nullable
             if (this.TryBindProperty(first, out var property) && second is ConstantExpression { Value: var constantValue })
             {
+                // Process Dates
+                if (constantValue is DateTimeOffset dateTimeOffsetConstantValue)
+                {
+                    result = new Filter();
+                    result.Must.Add(new Condition
+                    {
+                        Field = new FieldCondition
+                        {
+                            Key = property.StorageName,
+                            DatetimeRange = comparison.NodeType switch
+                            {
+                                ExpressionType.GreaterThan => new DatetimeRange { Gt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(dateTimeOffsetConstantValue) },
+                                ExpressionType.GreaterThanOrEqual => new DatetimeRange { Gte = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(dateTimeOffsetConstantValue) },
+                                ExpressionType.LessThan => new DatetimeRange { Lt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(dateTimeOffsetConstantValue) },
+                                ExpressionType.LessThanOrEqual => new DatetimeRange { Lte = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(dateTimeOffsetConstantValue) },
+
+                                _ => throw new InvalidOperationException("Unreachable")
+                            }
+                        }
+                    });
+                    return true;
+                }
+
+                // Process numeric values
                 double doubleConstantValue = constantValue switch
                 {
                     double d => d,

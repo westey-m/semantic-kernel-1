@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -37,6 +38,23 @@ public class FilterTranslationPreprocessor : ExpressionVisitor
         }
 
         return this.Visit(node);
+    }
+
+    /// <inheritdoc />
+    protected override Expression VisitNew(NewExpression node)
+    {
+        var visited = (NewExpression)base.VisitNew(node);
+
+        switch (visited.Constructor)
+        {
+            // Only allow certain constructors to be executed, to avoid arbitrary code execution.
+            case var constructorInfo when (constructorInfo?.DeclaringType == typeof(DateTimeOffset) || constructorInfo?.DeclaringType == typeof(DateTime)):
+                var subArguments = visited.Arguments.Select(GetConstructorArgumentValue).ToArray();
+                var dateTimeOffset = constructorInfo.Invoke(subArguments);
+                return Expression.Constant(dateTimeOffset, constructorInfo.DeclaringType);
+        }
+
+        return visited;
     }
 
     /// <inheritdoc />
@@ -126,5 +144,20 @@ public class FilterTranslationPreprocessor : ExpressionVisitor
         this._parameterNames.Add(name);
 
         return new QueryParameterExpression(name, evaluatedValue, visited.Type);
+    }
+
+    private static object GetConstructorArgumentValue(Expression argumentExpression)
+    {
+        switch (argumentExpression)
+        {
+            case ConstantExpression c:
+                return c.Value!;
+            // Only allow certain constructors to be executed, to avoid arbitrary code execution.
+            case NewExpression n when n.Constructor is not null && (n.Constructor.DeclaringType == typeof(DateTime) || n.Constructor.DeclaringType == typeof(TimeSpan)):
+                var subArguments = n.Arguments.Select(GetConstructorArgumentValue).ToArray();
+                return n.Constructor.Invoke(subArguments);
+            default:
+                throw new NotSupportedException($"Unsupported argument type: {argumentExpression.NodeType}");
+        }
     }
 }

@@ -126,8 +126,10 @@ internal class AzureAISearchFilterTranslator
                 return;
 
             case DateTime:
-            case DateTimeOffset:
                 throw new NotImplementedException();
+            case DateTimeOffset dto:
+                this._filter.Append(dto.ToUniversalTime().ToString("O"));
+                return;
 
             case Array:
                 throw new NotImplementedException();
